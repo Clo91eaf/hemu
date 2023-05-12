@@ -44,10 +44,12 @@ impl Command {
     }
 
     // use r# to tell the Rust compiler that this identifier should not be considered a keyword identifier.
+    #[allow(unused_variables)]
     fn r#continue(args: &str) -> i32 {
-        0
+        todo!();
     }
 
+    #[allow(unused_variables)]
     fn quit(args: &str) -> i32 {
         -1
     }

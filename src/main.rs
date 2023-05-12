@@ -1,5 +1,6 @@
 mod engine;
 mod monitor;
+mod debug;
 
 use engine::init::engine_start;
 
