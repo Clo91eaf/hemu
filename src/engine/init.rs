@@ -1,5 +1,7 @@
-use crate::monitor::sdb;
+use crate::monitor::{init_monitor, sdb};
 
 pub fn engine_start() {
-    sdb::sdb_mainloop();
+  init_monitor();
+
+  sdb::sdb_mainloop();
 }

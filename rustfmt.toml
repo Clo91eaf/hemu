@@ -1,0 +1,7 @@
+# Configuration for rustfmt
+
+# The maximum width of a line in characters.
+max_width = 80
+
+# Use four spaces for indentation.
+tab_spaces = 2

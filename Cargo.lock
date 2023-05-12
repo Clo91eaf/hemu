@@ -52,6 +52,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "getopt"
+version = "1.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee1289e6cb1ae7c28a9b9776bd599f8afb31c20965ff257a8ea20eaa4da5e3c7"
+
+[[package]]
 name = "getrandom"
 version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -66,8 +72,17 @@ dependencies = [
 name = "hemu"
 version = "0.1.0"
 dependencies = [
+ "getopt",
+ "lazy_static",
+ "libc",
  "rustyline",
 ]
+
+[[package]]
+name = "lazy_static"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
