@@ -19,13 +19,25 @@ lazy_static! {
     };
 }
 
-fn fetch(pc: u32) -> u32 {
-    
+fn fetch(s: Decode) -> u32 {
+    let inst = unsafe {
+        std::slice::from_raw_parts(s.pc as *const u8, 4)
+    };
+    let inst = u32::from_le_bytes([inst[0], inst[1], inst[2], inst[3]]);
+    s.inst = inst;
+    s.dnpc = s.pc + 4;
+    inst 
+}
+
+fn decode(s: Decode) -> u32 {
+
 }
 
 fn exec_once(s: Decode, pc: usize) {
     s.pc = pc;
     s.snpc = pc;
-    s.inst = 
+    // fetch stage
+    s.inst = fetch(s);
+    // decode stage
     cpu.pc = s.dnpc;
 }

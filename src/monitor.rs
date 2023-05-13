@@ -50,7 +50,6 @@ pub fn init_monitor() -> Result<(), Box<dyn std::error::Error>> {
   #[allow(unused_variables)]
   let img_size = load_img(img_file).unwrap();
 
-
   welcome();
 
   Ok(())
