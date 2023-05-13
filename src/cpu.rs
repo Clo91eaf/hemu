@@ -36,19 +36,11 @@ lazy_static! {
   };
 }
 
-fn fetch(s: Decode) -> u32 {
-  let inst = unsafe { std::slice::from_raw_parts(s.pc as *const u8, 4) };
-  let inst = u32::from_le_bytes([inst[0], inst[1], inst[2], inst[3]]);
-  s.inst = inst;
-  s.dnpc = s.pc + 4;
-  inst
-}
-
 fn match_inst(inst: u32, pattern: &str) -> bool {
   let mut mask = 0;
   let mut expected = 0;
 
-  for (i, c) in pattern.chars().enumerate() {
+  for (i, c) in pattern.replace(" ", "").chars().enumerate() {
     if c == '0' || c == '1' {
       mask |= 1 << (31 - i);
       expected |= (c.to_digit(2).unwrap() as u32) << (31 - i);
@@ -58,9 +50,17 @@ fn match_inst(inst: u32, pattern: &str) -> bool {
   (inst & mask) == expected
 }
 
+fn fetch(s: Decode) -> u32 {
+  let inst = unsafe { std::slice::from_raw_parts(s.pc as *const u8, 4) };
+  let inst = u32::from_le_bytes([inst[0], inst[1], inst[2], inst[3]]);
+  s.inst = inst;
+  s.dnpc = s.pc + 4;
+  inst
+}
+
 fn decode(inst: u32) -> Instruction {
   let partterns = [
-    InstPattern::new("??????? ????? ????? ??? ????? 00101 11", Instruction::Upper::ADDI),
+    InstPattern::new("??????? ????? ????? ??? ????? 00101 11", Instruction::Upper::AUIPC),
   ];
   for pattern in patterns.iter() {
     if match_inst(inst, pattern.pattern) {
@@ -70,7 +70,13 @@ fn decode(inst: u32) -> Instruction {
 }
 
 fn execute(s: Decode, inst: Instruction) -> u32 {
-  todo!();
+  match inst {
+    Instruction::Upper::AUIPC => {
+      let rd = (s.inst >> 7) & 0x1f;
+      let imm = (s.inst >> 12) & 0xfffff;
+      s.gpr[rd as usize] = s.pc + imm;
+    }
+  }
 }
 
 fn exec_once(s: Decode, pc: usize) {
