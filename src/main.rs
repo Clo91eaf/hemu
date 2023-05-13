@@ -1,6 +1,7 @@
 mod engine;
 mod monitor;
 mod debug;
+mod cpu;
 
 use engine::init::engine_start;
 

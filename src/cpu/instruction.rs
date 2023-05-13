@@ -1,14 +1,16 @@
-enum Instruction {
+#[derive(Copy, Clone)]
+pub enum Instruction {
   Branch(BranchType),
   Immediate(ImmediateType),
   Jump(JumpType),
   Upper(UpperType),
   Register(RegisterType),
   Store(StoreType),
-  NoType,
+  No(NoType),
 }
 
-enum BranchType {
+#[derive(Copy, Clone)]
+pub enum BranchType {
   BEQ,
   BNE,
   BLT,
@@ -17,7 +19,8 @@ enum BranchType {
   BGEU,
 }
 
-enum ImmediateType {
+#[derive(Copy, Clone)]
+pub enum ImmediateType {
   ADDI,
   SLTI,
   SLTIU,
@@ -29,17 +32,20 @@ enum ImmediateType {
   SRAI,
 }
 
-enum JumpType {
+#[derive(Copy, Clone)]
+pub enum JumpType {
   JAL,
   JALR,
 }
 
-enum UpperType {
+#[derive(Copy, Clone)]
+pub enum UpperType {
   LUI,
   AUIPC,
 }
 
-enum RegisterType {
+#[derive(Copy, Clone)]
+pub enum RegisterType {
   ADD,
   SUB,
   SLL,
@@ -52,8 +58,14 @@ enum RegisterType {
   AND,
 }
 
-enum StoreType {
+#[derive(Copy, Clone)]
+pub enum StoreType {
   SB,
   SH,
   SW,
+}
+
+#[derive(Copy, Clone)]
+pub enum NoType {
+  EBREAK,
 }

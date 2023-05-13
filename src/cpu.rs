@@ -1,7 +1,12 @@
-mod cpu;
 mod instruction;
 
-use instruction::Instruction;
+#[allow(unused_imports)]
+use instruction::{
+  BranchType, ImmediateType, Instruction, JumpType, NoType, RegisterType,
+  StoreType, UpperType,
+};
+
+use std::sync::Mutex;
 
 pub struct CpuState {
   gpr: [usize; 32],
@@ -26,11 +31,11 @@ impl InstPattern {
   }
 }
 
-lazy_static! {
-  static ref CPU: CpuState = CpuState {
+lazy_static::lazy_static! {
+  static ref CPU: Mutex<CpuState> = Mutex::new(CpuState {
     gpr: [0; 32],
     pc: 0x80000000,
-  };
+  });
 }
 
 fn match_inst(inst: u32, pattern: &str) -> bool {
@@ -47,12 +52,15 @@ fn match_inst(inst: u32, pattern: &str) -> bool {
   (inst & mask) == expected
 }
 
-fn bits(inst: u32, start: usize, end: usize) -> u32 {
+fn bits(inst: u32, start: usize, end: usize) -> usize {
   let (start, end) = (31 - start, 31 - end);
-  (inst >> end) & ((1 << (start - end + 1)) - 1)
+  (inst as usize >> end) & ((1 << (start - end + 1)) - 1)
 }
 
-fn decode_operand(s: Decode, inst: Instruction) -> (i64, i64, i64, i64) {
+fn decode_operand(
+  s: & Decode,
+  inst: Instruction,
+) -> (usize, usize, usize, usize) {
   let (rd, rs1, rs2) = (
     bits(s.inst, 7, 12),
     bits(s.inst, 15, 20),
@@ -75,7 +83,7 @@ fn decode_operand(s: Decode, inst: Instruction) -> (i64, i64, i64, i64) {
     ),
     Instruction::Upper(_) => (rd, 0, 0, bits(s.inst, 12, 32) << 12),
     Instruction::Jump(_) => (
-      rs,
+      rd,
       0,
       0,
       bits(s.inst, 31, 32) << 20
@@ -83,47 +91,65 @@ fn decode_operand(s: Decode, inst: Instruction) -> (i64, i64, i64, i64) {
         | bits(s.inst, 20, 21) << 11
         | bits(s.inst, 12, 20) << 12,
     ),
+    _ => (0, 0, 0, 0),
   }
 }
 
-fn fetch(s: Decode) -> u32 {
+fn fetch(s: &mut Decode) {
   let inst = unsafe { std::slice::from_raw_parts(s.pc as *const u8, 4) };
   let inst = u32::from_le_bytes([inst[0], inst[1], inst[2], inst[3]]);
   s.inst = inst;
   s.dnpc = s.pc + 4;
-  inst
 }
 
 fn decode(inst: u32) -> Instruction {
-  let partterns = [InstPattern::new(
-    "??????? ????? ????? ??? ????? 00101 11",
-    Instruction::Upper::AUIPC,
-  )];
+  #[rustfmt::skip]
+  let patterns = [
+    InstPattern::new("??????? ????? ????? ??? ????? 00101 11", Instruction::Upper(UpperType::AUIPC)),
+    InstPattern::new("0000000 00001 00000 000 00000 11100 11", Instruction::No(NoType::EBREAK)),
+  ];
   for pattern in patterns.iter() {
     if match_inst(inst, pattern.pattern) {
       return pattern.itype;
     }
   }
+  Instruction::No(NoType::EBREAK)
 }
 
-fn execute(s: Decode, inst: Instruction) -> u32 {
-  let (rd, rs1, rs2, imm) = decode_operand(s, inst);
+#[rustfmt::skip]
+fn execute(s: &mut Decode, inst: Instruction) {
+  let (rd, rs1, rs2, imm) = decode_operand(&s, inst);
+  let mut cpu = CPU.lock().unwrap();
   match inst {
-    Instruction::Upper::AUIPC => {
-      s.gpr[rd as usize] = s.pc + imm;
-    }
+    Instruction::Upper(UpperType::AUIPC) => {cpu.gpr[rd] = s.pc + imm;}
+    _ => {}
   }
+  cpu.pc = s.dnpc;
 }
 
-fn exec_once(s: Decode, pc: usize) {
+fn exec_once(s: &mut Decode, pc: usize) {
   s.pc = pc;
   s.snpc = pc;
   // fetch stage
-  s.inst = fetch(s);
+  fetch(s);
   // decode stage
   let inst_type = decode(s.inst);
   // execute stage
-  let res = execute(s);
+  execute(s, inst_type);
+}
 
-  cpu.pc = s.dnpc;
+pub fn exec() {
+  let cpu = CPU.lock().unwrap();
+  let mut s = Decode {
+    pc: cpu.pc,
+    snpc: cpu.pc,
+    dnpc: cpu.pc,
+    inst: 0,
+  };
+  loop {
+    exec_once(&mut s, cpu.pc);
+    if cpu.pc == s.dnpc {
+      break;
+    }
+  }
 }
