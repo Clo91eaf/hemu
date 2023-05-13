@@ -1,13 +1,64 @@
 #[derive(Copy, Clone)]
 pub enum Instruction {
-  Branch(BranchType),
+  Register(RegisterType),
   Immediate(ImmediateType),
+  Store(StoreType),
+  Branch(BranchType),
   Jump(JumpType),
   Upper(UpperType),
-  Register(RegisterType),
-  Store(StoreType),
-  No(NoType),
 }
+
+#[derive(Copy, Clone)]
+pub enum RegisterType {
+  ADD,
+  SUB,
+  XOR,
+  OR,
+  AND,
+  SLL,
+  SRL,
+  SRA, // todo
+  SLT,
+  SLTU,
+  MUL,
+  MULW,
+  DIV,
+  DIVU,
+  REM,
+  REMU,
+}
+
+#[derive(Copy, Clone)]
+pub enum ImmediateType {
+  ADDI,
+  XORI,
+  ORI,
+  ANDI,
+  SLLI,
+  SRLI,
+  SRAI,
+  SLTI,
+  SLTIU,
+  LB,
+  LH,
+  LW,
+  LD,
+  LBU,
+  LHU,
+  LWU,
+  LDU,
+  ECALL,
+  EBREAK,
+}
+
+#[derive(Copy, Clone)]
+pub enum StoreType {
+  SB,
+  SH,
+  SW,
+  SD,
+}
+
 
 #[derive(Copy, Clone)]
 pub enum BranchType {
@@ -20,19 +71,6 @@ pub enum BranchType {
 }
 
 #[derive(Copy, Clone)]
-pub enum ImmediateType {
-  ADDI,
-  SLTI,
-  SLTIU,
-  XORI,
-  ORI,
-  ANDI,
-  SLLI,
-  SRLI,
-  SRAI,
-}
-
-#[derive(Copy, Clone)]
 pub enum JumpType {
   JAL,
   JALR,
@@ -42,30 +80,4 @@ pub enum JumpType {
 pub enum UpperType {
   LUI,
   AUIPC,
-}
-
-#[derive(Copy, Clone)]
-pub enum RegisterType {
-  ADD,
-  SUB,
-  SLL,
-  SLT,
-  SLTU,
-  XOR,
-  SRL,
-  SRA,
-  OR,
-  AND,
-}
-
-#[derive(Copy, Clone)]
-pub enum StoreType {
-  SB,
-  SH,
-  SW,
-}
-
-#[derive(Copy, Clone)]
-pub enum NoType {
-  EBREAK,
 }
