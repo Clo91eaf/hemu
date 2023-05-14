@@ -1,22 +1,22 @@
 mod instruction;
+mod memory;
 
-#[allow(unused_imports)]
 use instruction::{
-  BranchType, ImmediateType, Instruction, JumpType, RegisterType,
-  StoreType, UpperType,
+  BranchType, ImmediateType, Instruction, JumpType, RegisterType, StoreType,
+  UpperType,
 };
 
 use std::sync::Mutex;
 
 pub struct CpuState {
-  gpr: [usize; 32],
-  pc: usize,
+  gpr: [u64; 32],
+  pc: u64,
 }
 
 struct Decode {
-  pc: usize,
-  snpc: usize,
-  dnpc: usize,
+  pc: u64,
+  snpc: u64,
+  dnpc: u64,
   inst: u32,
 }
 
@@ -52,15 +52,23 @@ fn match_inst(inst: u32, pattern: &str) -> bool {
   (inst & mask) == expected
 }
 
-fn bits(inst: u32, start: usize, end: usize) -> usize {
-  let (start, end) = (31 - start, 31 - end);
-  (inst as usize >> end) & ((1 << (start - end + 1)) - 1)
+fn bitmask(bits: u32) -> u32 {
+  (1u32 << bits) - 1
 }
 
-fn decode_operand(
-  s: & Decode,
-  inst: Instruction,
-) -> (usize, usize, usize, usize) {
+// similar to x[hi:lo] in verilog
+fn bits(x: u32, hi: u32, lo: u32) -> usize {
+  ((x >> lo) & bitmask(hi - lo + 1)) as usize
+}
+
+fn sext(x: usize, len: u32) -> i64 {
+    assert!(len <= 64);
+    let extend_bits = 64 - len;
+    ((x as i64) << extend_bits) >> extend_bits
+}
+
+
+fn decode_operand(s: &Decode, inst: Instruction) -> (usize, usize, usize, i64) {
   let (rd, rs1, rs2) = (
     bits(s.inst, 7, 12),
     bits(s.inst, 15, 20),
@@ -68,41 +76,48 @@ fn decode_operand(
   );
   match inst {
     Instruction::Register(_) => (rd, rs1, rs2, 0),
-    Instruction::Immediate(_) => (rd, rs1, 0, bits(s.inst, 20, 32)),
-    Instruction::Store(_) => {
-      (0, rs1, rs2, bits(s.inst, 25, 32) << 5 | bits(s.inst, 7, 12))
-    }
+    Instruction::Immediate(_) => (rd, rs1, 0, sext(bits(s.inst, 20, 32), 12)),
+    Instruction::Store(_) => (
+      0,
+      rs1,
+      rs2,
+      sext(bits(s.inst, 25, 32) << 5 | bits(s.inst, 7, 12), 12),
+    ),
     Instruction::Branch(_) => (
       0,
       rs1,
       rs2,
-      bits(s.inst, 31, 32) << 12
-        | bits(s.inst, 7, 8) << 11
-        | bits(s.inst, 25, 31) << 5
-        | bits(s.inst, 8, 12) << 1,
+      sext(
+        bits(s.inst, 31, 32) << 12
+          | bits(s.inst, 7, 8) << 11
+          | bits(s.inst, 25, 31) << 5
+          | bits(s.inst, 8, 12) << 1,
+        13,
+      ),
     ),
-    Instruction::Upper(_) => (rd, 0, 0, bits(s.inst, 12, 32) << 12),
+    Instruction::Upper(_) => (rd, 0, 0, sext(bits(s.inst, 12, 32) << 12, 32)),
     Instruction::Jump(_) => (
       rd,
       0,
       0,
-      bits(s.inst, 31, 32) << 20
-        | bits(s.inst, 21, 31) << 1
-        | bits(s.inst, 20, 21) << 11
-        | bits(s.inst, 12, 20) << 12,
+      sext(
+        bits(s.inst, 31, 32) << 20
+          | bits(s.inst, 21, 31) << 1
+          | bits(s.inst, 20, 21) << 11
+          | bits(s.inst, 12, 20) << 12,
+        21,
+      ),
     ),
-    _ => (0, 0, 0, 0),
   }
 }
 
 fn fetch(s: &mut Decode) {
-  let inst = unsafe { std::slice::from_raw_parts(s.pc as *const u8, 4) };
-  let inst = u32::from_le_bytes([inst[0], inst[1], inst[2], inst[3]]);
+  let inst = memory::read(s.pc, 4) as u32;
   s.inst = inst;
-  s.dnpc = s.pc + 4;
+  s.pc += 4;
 }
 
-fn decode(inst: u32) -> Instruction {
+fn decode(inst: u32, inst_type: &mut Instruction) {
   #[rustfmt::skip]
   let patterns = [
    // Register 
@@ -181,10 +196,10 @@ InstPattern::new("0000000 00000 00000 000 00000 11100 11", Instruction::Immediat
   ];
   for pattern in patterns.iter() {
     if match_inst(inst, pattern.pattern) {
-      return pattern.itype;
+      *inst_type = pattern.itype;
+      return;
     }
   }
-  Instruction::Immediate(ImmediateType::EBREAK)
 }
 
 #[rustfmt::skip]
@@ -192,19 +207,26 @@ fn execute(s: &mut Decode, inst: Instruction) {
   let (rd, rs1, rs2, imm) = decode_operand(&s, inst);
   let mut cpu = CPU.lock().unwrap();
   match inst {
-    Instruction::Upper(UpperType::AUIPC) => {cpu.gpr[rd] = s.pc + imm;}
+    Instruction::Upper(UpperType::AUIPC) => {cpu.gpr[rd] = (s.pc as i64 + imm) as u64;}
+    Instruction::Upper(UpperType::LUI) => {cpu.gpr[rd] = cpu.gpr[rs1];}
+    Instruction::Immediate(ImmediateType::ADDI) => {cpu.gpr[rd] = (cpu.gpr[rs1] as i64 + imm) as u64;}
+    Instruction::Jump(JumpType::JAL) => {cpu.gpr[rd] = s.pc + 4; cpu.pc = (s.pc as i64 + imm) as u64;}
+    Instruction::Store(StoreType::SD) => {memory::write((cpu.gpr[rs1] as i64 + imm) as u64, 8, cpu.gpr[rs2]);}
+    Instruction::Jump(JumpType::JALR) => {s.dnpc = (cpu.gpr[rs1] as i64 + imm) as u64 & !1u64; cpu.gpr[rd] = s.pc + 4;}
     _ => {}
   }
   cpu.pc = s.dnpc;
 }
 
-fn exec_once(s: &mut Decode, pc: usize) {
+fn exec_once(s: &mut Decode, pc: u64) {
   s.pc = pc;
   s.snpc = pc;
+  // pipeline start
+  let mut inst_type = Instruction::Immediate(ImmediateType::EBREAK);
   // fetch stage
   fetch(s);
   // decode stage
-  let inst_type = decode(s.inst);
+  decode(s.inst, &mut inst_type);
   // execute stage
   execute(s, inst_type);
 }
