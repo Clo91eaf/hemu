@@ -1,2 +1,2 @@
-mod paddr;
-mod vaddr;
+pub mod paddr;
+pub mod vaddr;

@@ -8,7 +8,7 @@
 ```
 # HEMU 🚀 - A Rust Riscv Emulator
 
-HEMU (HDU Emulator) is a RISCV64 processor simulator written in Rust. It draws inspiration from Nemus's (NJU emulator) design philosophy and rewrites the logic of the processor using Rust, making the entire system more secure and efficient. Currently, it is an ISA-level simulator but has plans to expand into a cycle-level simulator in the future. At present, HEMU only supports the RISCV64IM instruction set architecture, but there are intentions to continue adding more instruction sets.
+HEMU (HDU Emulator) is a RISCV64 processor simulator written in Rust. It draws inspiration from NEMU(NJU emulator)'s design philosophy and rewrites the logic of the processor using Rust, making the entire system more secure and efficient. Currently, it is an ISA-level simulator but has plans to expand into a cycle-level simulator in the future. At present, HEMU only supports the RISCV64IM instruction set architecture, but there are intentions to continue adding more instruction sets.
 
 ## Installation ⚙️
 
@@ -17,28 +17,26 @@ To install HEMU, you will need to have Rust installed on your machine. You can d
 Once Rust is installed, you can clone the HEMU repository from Github:
 
 ```sh
-git clone https://github.com/username/HEMU.git
-cd HEMU
+git clone https://github.com/Clo91eaf/hemu.git
+cd hemu
 ```
 
 To run HEMU, you can use the following command:
 
 ```sh
-cargo run --release --bin HEMU <filename>
+cargo run --release --bin
 ```
 
-Where `<filename>` is the path to the binary file that you want to execute.
-
-## Usage 📝
+<!-- ## Usage 📝
 
 HEMU currently supports running RISCV64IM binaries. To run a binary using HEMU, you can use the following command:
 
 ```sh
-cargo run --release --bin HEMU <filename>
+cargo run --release --bin
 ```
 
 Where `<filename>` is the path to the binary file that you want to execute.
-
+ -->
 ## Why rust ❓
 
 There are several potential benefits to using Rust to rewrite Nemus's logic:

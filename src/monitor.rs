@@ -1,9 +1,10 @@
 pub mod sdb;
 
+use crate::debug::debug_init;
+use crate::memory::paddr::guest_to_host;
 use getopt::Opt;
 use std::fs::File;
 use std::io::Read;
-use crate::debug::debug_init;
 
 fn welcome() {
   log::info!("Welcome to riscv64-HEMU!",);
@@ -13,20 +14,25 @@ fn welcome() {
 fn load_img(img_file: String) -> std::io::Result<usize> {
   log::info!("img file:{}", img_file);
   let mut file = File::open(img_file)?;
-  let metadata = file.metadata()?;
-  let size = metadata.len() as usize;
+  let mut buffer = [0; 0x1000];
+  let buffer_ptr = 0x80000000 as u64;
 
-  let buffer = unsafe {
-    let ptr = libc::malloc(size) as *mut u8;
-    if ptr.is_null() {
-      panic!("Failed to allocate memory!");
+  unsafe {
+    loop {
+      match file.read(&mut buffer) {
+        Ok(0) => return Ok(0),
+        Ok(n) => {
+          std::ptr::copy_nonoverlapping(
+            buffer.as_ptr(),
+            guest_to_host(buffer_ptr),
+            n,
+          );
+          return Ok(n);
+        }
+        Err(_) => panic!("Failed to read file"),
+      }
     }
-    std::slice::from_raw_parts_mut(ptr, size)
-  };
-
-  file.read_exact(buffer)?;
-
-  Ok(size)
+  }
 }
 
 pub fn init_monitor() -> Result<(), Box<dyn std::error::Error>> {

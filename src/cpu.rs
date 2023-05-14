@@ -112,7 +112,7 @@ fn decode_operand(s: &Decode, inst: Instruction) -> (usize, usize, usize, i64) {
 }
 
 fn fetch(s: &mut Decode) {
-  let inst = memory::read(s.pc, 4) as u32;
+  let inst = memory::read_inst(s.pc) as u32;
   s.inst = inst;
   s.pc += 4;
 }
@@ -211,7 +211,7 @@ fn execute(s: &mut Decode, inst: Instruction) {
     Instruction::Upper(UpperType::LUI) => {cpu.gpr[rd] = cpu.gpr[rs1];}
     Instruction::Immediate(ImmediateType::ADDI) => {cpu.gpr[rd] = (cpu.gpr[rs1] as i64 + imm) as u64;}
     Instruction::Jump(JumpType::JAL) => {cpu.gpr[rd] = s.pc + 4; cpu.pc = (s.pc as i64 + imm) as u64;}
-    Instruction::Store(StoreType::SD) => {memory::write((cpu.gpr[rs1] as i64 + imm) as u64, 8, cpu.gpr[rs2]);}
+    Instruction::Store(StoreType::SD) => {memory::write_data((cpu.gpr[rs1] as i64 + imm) as u64, 8, cpu.gpr[rs2]);}
     Instruction::Jump(JumpType::JALR) => {s.dnpc = (cpu.gpr[rs1] as i64 + imm) as u64 & !1u64; cpu.gpr[rd] = s.pc + 4;}
     _ => {}
   }
