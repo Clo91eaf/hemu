@@ -17,7 +17,7 @@ pub enum RegisterType {
   AND,
   SLL,
   SRL,
-  SRA, // todo
+  // SRA, // todo
   SLT,
   SLTU,
   MUL,
