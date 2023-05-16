@@ -9,10 +9,10 @@ use instruction::{
 #[derive(PartialEq)]
 enum CpuState {
   Running,
-  Stopped,
+  // Stopped,
   Ended,
-  Aborted,
-  Quit,
+  // Aborted,
+  // Quit,
 }
 
 pub struct Cpu {
@@ -57,7 +57,7 @@ fn bitmask(bits: u32) -> u32 {
   (1u32 << bits) - 1
 }
 
-// [lo, hi) 
+// [lo, hi)
 fn bits(x: u32, lo: u32, hi: u32) -> usize {
   assert!(hi >= lo);
   ((x >> lo) & bitmask(hi - lo)) as usize
@@ -120,10 +120,10 @@ impl Cpu {
 
   pub fn fetch(&self, s: &mut Decode) {
     let inst = memory::read_inst(s.pc) as u32;
-    log::info!("fetch: pc = {:x}, inst = {:x}", s.pc, inst);
+    log::info!("fetch: pc = 0x{:08x}, inst = 0x{:08x}", s.pc, inst);
     s.inst = inst;
     s.snpc += 4;
-}
+  }
 
   pub fn decode(&self, inst: u32, inst_type: &mut Instruction) {
     #[rustfmt::skip]
@@ -156,6 +156,7 @@ impl Cpu {
   InstPattern::new("??????? ????? ????? 110 ????? 00000 11", Instruction::Immediate(ImmediateType::LWU)),
   InstPattern::new("??????? ????? ????? 011 ????? 00000 11", Instruction::Immediate(ImmediateType::LD)),
   InstPattern::new("??????? ????? ????? 111 ????? 00000 11", Instruction::Immediate(ImmediateType::LDU)),
+  InstPattern::new("??????? ????? ????? 000 ????? 11001 11", Instruction::Immediate(ImmediateType::JALR)),
     // Store
   InstPattern::new("??????? ????? ????? 000 ????? 01000 11", Instruction::Store(StoreType::SB)),
   InstPattern::new("??????? ????? ????? 001 ????? 01000 11", Instruction::Store(StoreType::SH)),
@@ -170,7 +171,6 @@ impl Cpu {
   InstPattern::new("??????? ????? ????? 111 ????? 11000 11", Instruction::Branch(BranchType::BGEU)),
     // Jump
   InstPattern::new("??????? ????? ????? ??? ????? 11011 11", Instruction::Jump(JumpType::JAL)),
-  InstPattern::new("??????? ????? ????? 000 ????? 11001 11", Instruction::Jump(JumpType::JALR)),
     // Upper
   InstPattern::new("??????? ????? ????? ??? ????? 01101 11", Instruction::Upper(UpperType::LUI)),
   InstPattern::new("??????? ????? ????? ??? ????? 00101 11", Instruction::Upper(UpperType::AUIPC)),
@@ -215,14 +215,56 @@ impl Cpu {
     let (rd, rs1, rs2, imm) = decode_operand(&s, inst);
     s.dnpc = s.snpc;
     match inst {
-      Instruction::Upper(UpperType::AUIPC) => {self.gpr[rd] = (s.pc as i64 + imm) as u64;}
-      Instruction::Upper(UpperType::LUI) => {self.gpr[rd] = self.gpr[rs1];}
+      Instruction::Register(RegisterType::ADD) => {self.gpr[rd] = (self.gpr[rs1] as i64 + self.gpr[rs2] as i64) as u64;}
+      Instruction::Register(RegisterType::SUB) => {self.gpr[rd] = (self.gpr[rs1] as i64 - self.gpr[rs2] as i64) as u64;}
+      Instruction::Register(RegisterType::XOR) => {self.gpr[rd] = self.gpr[rs1] ^ self.gpr[rs2];}
+      Instruction::Register(RegisterType::OR) =>  {self.gpr[rd] = self.gpr[rs1] | self.gpr[rs2];}
+      Instruction::Register(RegisterType::AND) => {self.gpr[rd] = self.gpr[rs1] & self.gpr[rs2];}
+      Instruction::Register(RegisterType::SLL) => {self.gpr[rd] = self.gpr[rs1] << self.gpr[rs2];}
+      Instruction::Register(RegisterType::SRL) => {self.gpr[rd] = self.gpr[rs1] >> self.gpr[rs2];}
+      Instruction::Register(RegisterType::SLT) => {self.gpr[rd] = if (self.gpr[rs1] as i64) < (self.gpr[rs2] as i64) {1} else {0};}
+      Instruction::Register(RegisterType::SLTU) => {self.gpr[rd] = if self.gpr[rs1] < self.gpr[rs2] {1} else {0};}
+
       Instruction::Immediate(ImmediateType::ADDI) => {self.gpr[rd] = (self.gpr[rs1] as i64 + imm) as u64;}
-      Instruction::Jump(JumpType::JAL) => {self.gpr[rd] = s.pc + 4; self.pc = (s.pc as i64 + imm) as u64;}
+      Instruction::Immediate(ImmediateType::XORI) => {self.gpr[rd] = self.gpr[rs1] ^ imm as u64;}
+      Instruction::Immediate(ImmediateType::ORI) => {self.gpr[rd] = self.gpr[rs1] | imm as u64;}
+      Instruction::Immediate(ImmediateType::ANDI) => {self.gpr[rd] = self.gpr[rs1] & imm as u64;}
+      Instruction::Immediate(ImmediateType::SLLI) => {self.gpr[rd] = self.gpr[rs1] << imm;}
+      Instruction::Immediate(ImmediateType::SRLI) => {self.gpr[rd] = self.gpr[rs1] >> imm;}
+      Instruction::Immediate(ImmediateType::SRAI) => {self.gpr[rd] = (self.gpr[rs1] as i64 >> imm) as u64;}
+      Instruction::Immediate(ImmediateType::SLTI) => {self.gpr[rd] = if (self.gpr[rs1] as i64) < imm {1} else {0};}
+      Instruction::Immediate(ImmediateType::SLTIU) => {self.gpr[rd] = if self.gpr[rs1] < imm as u64 {1} else {0};}
+
+      Instruction::Immediate(ImmediateType::LB) => {sext(memory::read_data((self.gpr[rs1] as i64 + imm) as u64, 1) as usize, 8);}
+      Instruction::Immediate(ImmediateType::LBU) => {memory::read_data((self.gpr[rs1] as i64 + imm) as u64, 1);}
+      Instruction::Immediate(ImmediateType::LH) => {sext(memory::read_data((self.gpr[rs1] as i64 + imm) as u64, 2) as usize, 8);}
+      Instruction::Immediate(ImmediateType::LHU) => {memory::read_data((self.gpr[rs1] as i64 + imm) as u64, 2);}
+      Instruction::Immediate(ImmediateType::LW) => {sext(memory::read_data((self.gpr[rs1] as i64 + imm) as u64, 4) as usize, 8);}
+      Instruction::Immediate(ImmediateType::LWU) => {memory::read_data((self.gpr[rs1] as i64 + imm) as u64, 4);}
+      Instruction::Immediate(ImmediateType::LD) => {sext(memory::read_data((self.gpr[rs1] as i64 + imm) as u64, 8) as usize, 8);}
+      Instruction::Immediate(ImmediateType::LDU) => {memory::read_data((self.gpr[rs1] as i64 + imm) as u64, 8);}
+
+      Instruction::Store(StoreType::SB) => {memory::write_data((self.gpr[rs1] as i64 + imm) as u64, 1, self.gpr[rs2]);}
+      Instruction::Store(StoreType::SH) => {memory::write_data((self.gpr[rs1] as i64 + imm) as u64, 2, self.gpr[rs2]);}
+      Instruction::Store(StoreType::SW) => {memory::write_data((self.gpr[rs1] as i64 + imm) as u64, 4, self.gpr[rs2]);}
       Instruction::Store(StoreType::SD) => {memory::write_data((self.gpr[rs1] as i64 + imm) as u64, 8, self.gpr[rs2]);}
-      Instruction::Jump(JumpType::JALR) => {s.dnpc = (self.gpr[rs1] as i64 + imm) as u64 & !1u64; self.gpr[rd] = s.pc + 4;}
+
+      Instruction::Branch(BranchType::BEQ) => {if self.gpr[rs1] == self.gpr[rs2] {s.dnpc = (s.pc as i64 + imm) as u64;}}
+      Instruction::Branch(BranchType::BNE) => {if self.gpr[rs1] != self.gpr[rs2] {s.dnpc = (s.pc as i64 + imm) as u64;}}
+      Instruction::Branch(BranchType::BLT) => {if (self.gpr[rs1] as i64) < (self.gpr[rs2] as i64) {s.dnpc = (s.pc as i64 + imm) as u64;}}
+      Instruction::Branch(BranchType::BGE) => {if (self.gpr[rs1] as i64) >= (self.gpr[rs2] as i64) {s.dnpc = (s.pc as i64 + imm) as u64;}}
+      Instruction::Branch(BranchType::BLTU) => {if self.gpr[rs1] < self.gpr[rs2] {s.dnpc = (s.pc as i64 + imm) as u64;}}
+      Instruction::Branch(BranchType::BGEU) => {if self.gpr[rs1] >= self.gpr[rs2] {s.dnpc = (s.pc as i64 + imm) as u64;}}
+
+      Instruction::Jump(JumpType::JAL) => {self.gpr[rd] = s.pc + 4; s.dnpc = (s.pc as i64 + imm) as u64;}
+      Instruction::Immediate(ImmediateType::JALR) => {self.gpr[rd] = s.pc + 4; s.dnpc = (self.gpr[rs1] as i64 + imm) as u64;}
+
+      Instruction::Upper(UpperType::LUI) => {self.gpr[rd] = self.gpr[rs1];}
+      Instruction::Upper(UpperType::AUIPC) => {self.gpr[rd] = (s.pc as i64 + imm) as u64;}
+
+      Instruction::Immediate(ImmediateType::ECALL) => {todo!();}
       Instruction::Immediate(ImmediateType::EBREAK) => {self.hemu_trap();}
-      _ => {}
+      _ => {todo!("{:?} not implemented", inst);}
     }
     self.gpr[0] = 0;
     self.pc = s.dnpc;

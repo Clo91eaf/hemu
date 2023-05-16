@@ -1,4 +1,4 @@
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum Instruction {
   Register(RegisterType),
   Immediate(ImmediateType),
@@ -8,7 +8,7 @@ pub enum Instruction {
   Upper(UpperType),
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum RegisterType {
   ADD,
   SUB,
@@ -28,7 +28,7 @@ pub enum RegisterType {
   REMU,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum ImmediateType {
   ADDI,
   XORI,
@@ -47,11 +47,12 @@ pub enum ImmediateType {
   LHU,
   LWU,
   LDU,
+  JALR,
   ECALL,
   EBREAK,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum StoreType {
   SB,
   SH,
@@ -60,7 +61,7 @@ pub enum StoreType {
 }
 
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum BranchType {
   BEQ,
   BNE,
@@ -70,13 +71,12 @@ pub enum BranchType {
   BGEU,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum JumpType {
   JAL,
-  JALR,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum UpperType {
   LUI,
   AUIPC,

@@ -13,15 +13,18 @@ pub fn guest_to_host(paddr: u64) -> *mut u8 {
   (pmem.as_mut_ptr() as u64 + paddr - CONFIG_MBASE) as *mut u8
 }
 
+#[allow(dead_code)]
 fn host_to_guest(haddr: *mut u8) -> u64 {
   let mut pmem = PMEM.lock().unwrap();
   haddr as u64 - pmem.as_mut_ptr() as u64 + CONFIG_MBASE
 }
 
+#[allow(dead_code)]
 fn in_pmem(addr: u64) -> bool {
   addr >= CONFIG_MBASE && addr + 1 < CONFIG_MBASE + CONFIG_MSIZE
 }
 
+#[allow(dead_code)]
 fn out_of_bound(addr: u64) -> ! {
   panic!(
     "address = {:016X} is out of bound of pmem [{:016X}, {:016X}) at pc",

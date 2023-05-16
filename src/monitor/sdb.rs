@@ -44,6 +44,7 @@ impl Command {
   }
 
   // use r# to tell the Rust compiler that this identifier should not be considered a keyword identifier.
+  #[allow(unused_variables)]
   fn r#continue(args: &str) -> i32 {
     crate::cpu::exec();
     0
