@@ -68,7 +68,7 @@ impl Command {
   // use r# to tell the Rust compiler that this identifier should not be considered a keyword identifier.
   #[allow(unused_variables)]
   fn r#continue(args: &str, cpu: &mut Cpu) -> i32 {
-    crate::cpu::exec(usize::MAX, cpu);
+    crate::cpu::exec(cpu, usize::MAX);
     0
   }
 

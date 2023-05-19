@@ -6,12 +6,8 @@ use instruction::{
   BranchType, ImmediateType, Instruction, JumpType, RegisterType, StoreType,
   UpperType,
 };
-use memory::{
-  read_data, read_inst, write_data,
-};
-use utils::{
-  match_inst, decode_operand, sext,
-};
+use memory::{read_data, read_inst, write_data};
+use utils::{decode_operand, match_inst, sext};
 
 #[derive(PartialEq)]
 pub enum CpuState {
@@ -25,6 +21,7 @@ pub enum CpuState {
 pub struct Cpu {
   gpr: [u64; 32],
   pc: u64,
+  inst: u32,
   pub state: CpuState,
 }
 
@@ -33,6 +30,7 @@ impl Cpu {
     Cpu {
       gpr: [0; 32],
       pc: 0x80000000,
+      inst: 0,
       state: CpuState::Running,
     }
   }
@@ -42,14 +40,12 @@ impl Cpu {
     log::info!("hemu trap, pc = {:x}, ret = {}", self.pc, self.gpr[10]);
   }
 
-  pub fn fetch(&self, s: &mut Decode) {
-    let inst = read_inst(s.pc) as u32;
-    log::info!("fetch: pc = 0x{:08x}, inst = 0x{:08x}", s.pc, inst);
-    s.inst = inst;
-    s.snpc += 4;
+  pub fn fetch(&mut self) {
+    self.inst = read_inst(self.pc) as u32;
+    log::info!("fetch: pc = 0x{:08x}, inst = 0x{:08x}", self.pc, self.inst);
   }
 
-  pub fn decode(&self, inst: u32, inst_type: &mut Instruction) {
+  pub fn decode(&self, inst_type: &mut Instruction) {
     #[rustfmt::skip]
     let patterns = [
     // Register 
@@ -127,7 +123,7 @@ impl Cpu {
   // InstPattern::new("0100000 ????? ????? 000 ????? 01110 11", Instruction::SUBW),
     ];
     for pattern in patterns.iter() {
-      if match_inst(inst, pattern.pattern) {
+      if match_inst(self.inst, pattern.pattern) {
         *inst_type = pattern.itype;
         return;
       }
@@ -135,10 +131,9 @@ impl Cpu {
   }
 
   #[rustfmt::skip]
-  pub fn execute(&mut self, s: &mut Decode, inst: Instruction) {
-    let (rd, rs1, rs2, imm) = decode_operand(&s, inst);
-    s.dnpc = s.snpc;
-    match inst {
+  pub fn execute(&mut self, inst_type: Instruction) {
+    let (rd, rs1, rs2, imm) = decode_operand(self.inst, inst_type);
+    match inst_type {
       Instruction::Register(RegisterType::ADD) => {self.gpr[rd] = (self.gpr[rs1] as i64 + self.gpr[rs2] as i64) as u64;}
       Instruction::Register(RegisterType::SUB) => {self.gpr[rd] = (self.gpr[rs1] as i64 - self.gpr[rs2] as i64) as u64;}
       Instruction::Register(RegisterType::XOR) => {self.gpr[rd] = self.gpr[rs1] ^ self.gpr[rs2];}
@@ -173,43 +168,24 @@ impl Cpu {
       Instruction::Store(StoreType::SW) => {write_data((self.gpr[rs1] as i64 + imm) as u64, 4, self.gpr[rs2]);}
       Instruction::Store(StoreType::SD) => {write_data((self.gpr[rs1] as i64 + imm) as u64, 8, self.gpr[rs2]);}
 
-      Instruction::Branch(BranchType::BEQ) => {if self.gpr[rs1] == self.gpr[rs2] {s.dnpc = (s.pc as i64 + imm) as u64;}}
-      Instruction::Branch(BranchType::BNE) => {if self.gpr[rs1] != self.gpr[rs2] {s.dnpc = (s.pc as i64 + imm) as u64;}}
-      Instruction::Branch(BranchType::BLT) => {if (self.gpr[rs1] as i64) < (self.gpr[rs2] as i64) {s.dnpc = (s.pc as i64 + imm) as u64;}}
-      Instruction::Branch(BranchType::BGE) => {if (self.gpr[rs1] as i64) >= (self.gpr[rs2] as i64) {s.dnpc = (s.pc as i64 + imm) as u64;}}
-      Instruction::Branch(BranchType::BLTU) => {if self.gpr[rs1] < self.gpr[rs2] {s.dnpc = (s.pc as i64 + imm) as u64;}}
-      Instruction::Branch(BranchType::BGEU) => {if self.gpr[rs1] >= self.gpr[rs2] {s.dnpc = (s.pc as i64 + imm) as u64;}}
+      Instruction::Branch(BranchType::BEQ) => {if self.gpr[rs1] == self.gpr[rs2] {self.pc = (self.pc as i64 + imm) as u64;}}
+      Instruction::Branch(BranchType::BNE) => {if self.gpr[rs1] != self.gpr[rs2] {self.pc = (self.pc as i64 + imm) as u64;}}
+      Instruction::Branch(BranchType::BLT) => {if (self.gpr[rs1] as i64) < (self.gpr[rs2] as i64) {self.pc = (self.pc as i64 + imm) as u64;}}
+      Instruction::Branch(BranchType::BGE) => {if (self.gpr[rs1] as i64) >= (self.gpr[rs2] as i64) {self.pc = (self.pc as i64 + imm) as u64;}}
+      Instruction::Branch(BranchType::BLTU) => {if self.gpr[rs1] < self.gpr[rs2] {self.pc = (self.pc as i64 + imm) as u64;}}
+      Instruction::Branch(BranchType::BGEU) => {if self.gpr[rs1] >= self.gpr[rs2] {self.pc = (self.pc as i64 + imm) as u64;}}
 
-      Instruction::Jump(JumpType::JAL) => {self.gpr[rd] = s.pc + 4; s.dnpc = (s.pc as i64 + imm) as u64;}
-      Instruction::Immediate(ImmediateType::JALR) => {self.gpr[rd] = s.pc + 4; s.dnpc = (self.gpr[rs1] as i64 + imm) as u64;}
+      Instruction::Jump(JumpType::JAL) => {self.gpr[rd] = self.pc + 4; self.pc = (self.pc as i64 + imm) as u64;}
+      Instruction::Immediate(ImmediateType::JALR) => {self.gpr[rd] = self.pc + 4; self.pc = (self.gpr[rs1] as i64 + imm) as u64;}
 
       Instruction::Upper(UpperType::LUI) => {self.gpr[rd] = self.gpr[rs1];}
-      Instruction::Upper(UpperType::AUIPC) => {self.gpr[rd] = (s.pc as i64 + imm) as u64;}
+      Instruction::Upper(UpperType::AUIPC) => {self.gpr[rd] = (self.pc as i64 + imm) as u64;}
 
       Instruction::Immediate(ImmediateType::ECALL) => {todo!();}
       Instruction::Immediate(ImmediateType::EBREAK) => {self.hemu_trap();}
-      _ => {todo!("{:?} not implemented", inst);}
+      _ => {todo!("{:?} not implemented", inst_type);}
     }
     self.gpr[0] = 0;
-    self.pc = s.dnpc;
-  }
-}
-
-pub struct Decode {
-  pc: u64,
-  snpc: u64,
-  dnpc: u64,
-  inst: u32,
-}
-
-impl Decode {
-  pub fn new() -> Decode {
-    Decode {
-      pc: 0x80000000,
-      snpc: 0x80000000,
-      dnpc: 0x80000000,
-      inst: 0,
-    }
   }
 }
 
@@ -224,30 +200,25 @@ impl InstPattern {
   }
 }
 
-fn exec_once(s: &mut Decode, cpu: &mut Cpu) {
-  s.pc = cpu.pc;
-  s.snpc = cpu.pc;
+fn exec_once(cpu: &mut Cpu) {
   // pipeline start
   let mut inst_type = Instruction::Immediate(ImmediateType::EBREAK);
   // fetch stage
-  cpu.fetch(s);
+  cpu.fetch();
   // decode stage
-  cpu.decode(s.inst, &mut inst_type);
+  cpu.decode(&mut inst_type);
   // execute stage
-  cpu.execute(s, inst_type);
+  cpu.execute(inst_type);
 }
 
-fn exec_ntimes(s: &mut Decode, cpu: &mut Cpu, n: usize) {
+fn exec_ntimes(cpu: &mut Cpu, n: usize) {
   for _ in 0..n {
-    exec_once(s, cpu);
+    exec_once(cpu);
   }
 }
 
-pub fn exec(n: usize, cpu: &mut Cpu) {
-  let cpu = &mut Cpu::new();
-  let s = &mut Decode::new();
-
-  exec_ntimes(s, cpu, n);
+pub fn exec(cpu: &mut Cpu, n: usize) {
+  exec_ntimes(cpu, n);
 
   match cpu.state {
     CpuState::Ended => {
