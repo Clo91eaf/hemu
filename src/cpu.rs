@@ -1,9 +1,14 @@
 mod instruction;
 mod memory;
+mod utils;
 
 use instruction::{
   BranchType, ImmediateType, Instruction, JumpType, RegisterType, StoreType,
   UpperType,
+};
+
+use utils::{
+  match_inst, decode_operand, sext,
 };
 
 #[derive(PartialEq)]
@@ -21,98 +26,15 @@ pub struct Cpu {
   cpu_state: CpuState,
 }
 
-pub struct Decode {
-  pc: u64,
-  snpc: u64,
-  dnpc: u64,
-  inst: u32,
-}
-
-struct InstPattern {
-  pattern: &'static str,
-  itype: Instruction,
-}
-
-impl InstPattern {
-  fn new(pattern: &'static str, itype: Instruction) -> InstPattern {
-    InstPattern { pattern, itype }
-  }
-}
-
-fn match_inst(inst: u32, pattern: &str) -> bool {
-  let mut mask = 0;
-  let mut expected = 0;
-
-  for (i, c) in pattern.replace(" ", "").chars().enumerate() {
-    if c == '0' || c == '1' {
-      mask |= 1 << (31 - i);
-      expected |= (c.to_digit(2).unwrap() as u32) << (31 - i);
+impl Cpu {
+  pub fn new() -> Cpu {
+    Cpu {
+      gpr: [0; 32],
+      pc: 0x80000000,
+      cpu_state: CpuState::Running,
     }
   }
 
-  (inst & mask) == expected
-}
-
-fn bitmask(bits: u32) -> u32 {
-  (1u32 << bits) - 1
-}
-
-// [lo, hi)
-fn bits(x: u32, lo: u32, hi: u32) -> usize {
-  assert!(hi >= lo);
-  ((x >> lo) & bitmask(hi - lo)) as usize
-}
-
-fn sext(x: usize, len: u32) -> i64 {
-  assert!(len <= 64);
-  let extend_bits = 64 - len;
-  ((x as i64) << extend_bits) >> extend_bits
-}
-
-fn decode_operand(s: &Decode, inst: Instruction) -> (usize, usize, usize, i64) {
-  let (rd, rs1, rs2) = (
-    bits(s.inst, 7, 12),
-    bits(s.inst, 15, 20),
-    bits(s.inst, 20, 25),
-  );
-  match inst {
-    Instruction::Register(_) => (rd, rs1, rs2, 0),
-    Instruction::Immediate(_) => (rd, rs1, 0, sext(bits(s.inst, 20, 32), 12)),
-    Instruction::Store(_) => (
-      0,
-      rs1,
-      rs2,
-      sext(bits(s.inst, 25, 32) << 5 | bits(s.inst, 7, 12), 12),
-    ),
-    Instruction::Branch(_) => (
-      0,
-      rs1,
-      rs2,
-      sext(
-        bits(s.inst, 31, 32) << 12
-          | bits(s.inst, 7, 8) << 11
-          | bits(s.inst, 25, 31) << 5
-          | bits(s.inst, 8, 12) << 1,
-        13,
-      ),
-    ),
-    Instruction::Upper(_) => (rd, 0, 0, sext(bits(s.inst, 12, 32) << 12, 32)),
-    Instruction::Jump(_) => (
-      rd,
-      0,
-      0,
-      sext(
-        bits(s.inst, 31, 32) << 20
-          | bits(s.inst, 21, 31) << 1
-          | bits(s.inst, 20, 21) << 11
-          | bits(s.inst, 12, 20) << 12,
-        21,
-      ),
-    ),
-  }
-}
-
-impl Cpu {
   fn hemu_trap(&mut self) {
     self.cpu_state = CpuState::Ended;
     log::info!("hemu trap, pc = {:x}, ret = {}", self.pc, self.gpr[10]);
@@ -271,6 +193,37 @@ impl Cpu {
   }
 }
 
+pub struct Decode {
+  pc: u64,
+  snpc: u64,
+  dnpc: u64,
+  inst: u32,
+}
+
+impl Decode {
+  pub fn new() -> Decode {
+    Decode {
+      pc: 0x80000000,
+      snpc: 0x80000000,
+      dnpc: 0x80000000,
+      inst: 0,
+    }
+  }
+}
+
+
+
+struct InstPattern {
+  pattern: &'static str,
+  itype: Instruction,
+}
+
+impl InstPattern {
+  fn new(pattern: &'static str, itype: Instruction) -> InstPattern {
+    InstPattern { pattern, itype }
+  }
+}
+
 fn exec_once(s: &mut Decode, cpu: &mut Cpu) {
   s.pc = cpu.pc;
   s.snpc = cpu.pc;
@@ -284,22 +237,15 @@ fn exec_once(s: &mut Decode, cpu: &mut Cpu) {
   cpu.execute(s, inst_type);
 }
 
-pub fn exec() {
-  let mut cpu = Cpu {
-    gpr: [0; 32],
-    pc: 0x80000000,
-    cpu_state: CpuState::Running,
-  };
-  let mut s = Decode {
-    pc: cpu.pc,
-    snpc: cpu.pc,
-    dnpc: cpu.pc,
-    inst: 0,
-  };
-  loop {
-    exec_once(&mut s, &mut cpu);
-    if cpu.cpu_state == CpuState::Ended {
-      break;
-    }
+fn exec_ntimes(s: &mut Decode, cpu: &mut Cpu, n: usize) {
+  for _ in 0..n {
+    exec_once(s, cpu);
   }
+}
+
+pub fn exec(n: usize) {
+  let cpu = &mut Cpu::new();
+  let s = &mut Decode::new();
+
+  exec_ntimes(s, cpu, n);
 }
