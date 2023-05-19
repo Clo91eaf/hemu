@@ -6,24 +6,26 @@ use instruction::{
   BranchType, ImmediateType, Instruction, JumpType, RegisterType, StoreType,
   UpperType,
 };
-
+use memory::{
+  read_data, read_inst, write_data,
+};
 use utils::{
   match_inst, decode_operand, sext,
 };
 
 #[derive(PartialEq)]
-enum CpuState {
+pub enum CpuState {
   Running,
   // Stopped,
   Ended,
   // Aborted,
-  // Quit,
+  Quit,
 }
 
 pub struct Cpu {
   gpr: [u64; 32],
   pc: u64,
-  cpu_state: CpuState,
+  pub state: CpuState,
 }
 
 impl Cpu {
@@ -31,17 +33,17 @@ impl Cpu {
     Cpu {
       gpr: [0; 32],
       pc: 0x80000000,
-      cpu_state: CpuState::Running,
+      state: CpuState::Running,
     }
   }
 
   fn hemu_trap(&mut self) {
-    self.cpu_state = CpuState::Ended;
+    self.state = CpuState::Ended;
     log::info!("hemu trap, pc = {:x}, ret = {}", self.pc, self.gpr[10]);
   }
 
   pub fn fetch(&self, s: &mut Decode) {
-    let inst = memory::read_inst(s.pc) as u32;
+    let inst = read_inst(s.pc) as u32;
     log::info!("fetch: pc = 0x{:08x}, inst = 0x{:08x}", s.pc, inst);
     s.inst = inst;
     s.snpc += 4;
@@ -157,19 +159,19 @@ impl Cpu {
       Instruction::Immediate(ImmediateType::SLTI) => {self.gpr[rd] = if (self.gpr[rs1] as i64) < imm {1} else {0};}
       Instruction::Immediate(ImmediateType::SLTIU) => {self.gpr[rd] = if self.gpr[rs1] < imm as u64 {1} else {0};}
 
-      Instruction::Immediate(ImmediateType::LB) => {sext(memory::read_data((self.gpr[rs1] as i64 + imm) as u64, 1) as usize, 8);}
-      Instruction::Immediate(ImmediateType::LBU) => {memory::read_data((self.gpr[rs1] as i64 + imm) as u64, 1);}
-      Instruction::Immediate(ImmediateType::LH) => {sext(memory::read_data((self.gpr[rs1] as i64 + imm) as u64, 2) as usize, 8);}
-      Instruction::Immediate(ImmediateType::LHU) => {memory::read_data((self.gpr[rs1] as i64 + imm) as u64, 2);}
-      Instruction::Immediate(ImmediateType::LW) => {sext(memory::read_data((self.gpr[rs1] as i64 + imm) as u64, 4) as usize, 8);}
-      Instruction::Immediate(ImmediateType::LWU) => {memory::read_data((self.gpr[rs1] as i64 + imm) as u64, 4);}
-      Instruction::Immediate(ImmediateType::LD) => {sext(memory::read_data((self.gpr[rs1] as i64 + imm) as u64, 8) as usize, 8);}
-      Instruction::Immediate(ImmediateType::LDU) => {memory::read_data((self.gpr[rs1] as i64 + imm) as u64, 8);}
+      Instruction::Immediate(ImmediateType::LB) => {sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 1) as usize, 8);}
+      Instruction::Immediate(ImmediateType::LBU) => {read_data((self.gpr[rs1] as i64 + imm) as u64, 1);}
+      Instruction::Immediate(ImmediateType::LH) => {sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 2) as usize, 8);}
+      Instruction::Immediate(ImmediateType::LHU) => {read_data((self.gpr[rs1] as i64 + imm) as u64, 2);}
+      Instruction::Immediate(ImmediateType::LW) => {sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 4) as usize, 8);}
+      Instruction::Immediate(ImmediateType::LWU) => {read_data((self.gpr[rs1] as i64 + imm) as u64, 4);}
+      Instruction::Immediate(ImmediateType::LD) => {sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 8) as usize, 8);}
+      Instruction::Immediate(ImmediateType::LDU) => {read_data((self.gpr[rs1] as i64 + imm) as u64, 8);}
 
-      Instruction::Store(StoreType::SB) => {memory::write_data((self.gpr[rs1] as i64 + imm) as u64, 1, self.gpr[rs2]);}
-      Instruction::Store(StoreType::SH) => {memory::write_data((self.gpr[rs1] as i64 + imm) as u64, 2, self.gpr[rs2]);}
-      Instruction::Store(StoreType::SW) => {memory::write_data((self.gpr[rs1] as i64 + imm) as u64, 4, self.gpr[rs2]);}
-      Instruction::Store(StoreType::SD) => {memory::write_data((self.gpr[rs1] as i64 + imm) as u64, 8, self.gpr[rs2]);}
+      Instruction::Store(StoreType::SB) => {write_data((self.gpr[rs1] as i64 + imm) as u64, 1, self.gpr[rs2]);}
+      Instruction::Store(StoreType::SH) => {write_data((self.gpr[rs1] as i64 + imm) as u64, 2, self.gpr[rs2]);}
+      Instruction::Store(StoreType::SW) => {write_data((self.gpr[rs1] as i64 + imm) as u64, 4, self.gpr[rs2]);}
+      Instruction::Store(StoreType::SD) => {write_data((self.gpr[rs1] as i64 + imm) as u64, 8, self.gpr[rs2]);}
 
       Instruction::Branch(BranchType::BEQ) => {if self.gpr[rs1] == self.gpr[rs2] {s.dnpc = (s.pc as i64 + imm) as u64;}}
       Instruction::Branch(BranchType::BNE) => {if self.gpr[rs1] != self.gpr[rs2] {s.dnpc = (s.pc as i64 + imm) as u64;}}
@@ -211,8 +213,6 @@ impl Decode {
   }
 }
 
-
-
 struct InstPattern {
   pattern: &'static str,
   itype: Instruction,
@@ -243,9 +243,21 @@ fn exec_ntimes(s: &mut Decode, cpu: &mut Cpu, n: usize) {
   }
 }
 
-pub fn exec(n: usize) {
+pub fn exec(n: usize, cpu: &mut Cpu) {
   let cpu = &mut Cpu::new();
   let s = &mut Decode::new();
 
   exec_ntimes(s, cpu, n);
+
+  match cpu.state {
+    CpuState::Ended => {
+      log::info!("hemu ended");
+    }
+    CpuState::Running => {
+      log::info!("hemu running");
+    }
+    CpuState::Quit => {
+      log::info!("hemu quit");
+    }
+  }
 }

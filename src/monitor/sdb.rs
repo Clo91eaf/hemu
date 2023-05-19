@@ -1,39 +1,37 @@
+use crate::cpu::{Cpu, CpuState};
 use rustyline::Editor;
 
-struct Command {
-  name: &'static str,
-  description: &'static str,
-  handler: fn(&str) -> i32,
+struct CommandTable {
+  commands: [Command; 2],
 }
 
-impl Command {
-  const fn new(
-    name: &'static str,
-    description: &'static str,
-    handler: fn(&str) -> i32,
-  ) -> Command {
-    Command {
-      name,
-      description,
-      handler,
+impl CommandTable {
+  pub fn new() -> CommandTable {
+    CommandTable {
+      commands: [
+        Command::new("c", "Continue the execution", Command::r#continue),
+        Command::new("q", "Exit hemu", Command::quit),
+      ],
     }
   }
-
-  fn handle(&self, args: &str) -> i32 {
-    (self.handler)(args)
-  }
-
-  fn help(args: &str) -> i32 {
+  #[allow(unused_variables)]
+  fn help(&self, args: &str) -> i32 {
     if args == "" {
-      for i in 0..CMD_TABLE.len() {
-        println!("{} - {}", CMD_TABLE[i].name, CMD_TABLE[i].description);
+      for i in 0..self.commands.len() {
+        println!(
+          "{} - {}",
+          self.commands[i].name, self.commands[i].description
+        );
       }
       return 0;
     }
 
-    for i in 0..CMD_TABLE.len() {
-      if args == CMD_TABLE[i].name {
-        println!("{} - {}", CMD_TABLE[i].name, CMD_TABLE[i].description);
+    for i in 0..self.commands.len() {
+      if args == self.commands[i].name {
+        println!(
+          "{} - {}",
+          self.commands[i].name, self.commands[i].description
+        );
         return 0;
       }
     }
@@ -42,27 +40,47 @@ impl Command {
 
     0
   }
+}
+
+struct Command {
+  name: &'static str,
+  description: &'static str,
+  handler: fn(&str, &mut Cpu) -> i32,
+}
+
+impl Command {
+  fn new(
+    name: &'static str,
+    description: &'static str,
+    handler: fn(&str, &mut Cpu) -> i32,
+  ) -> Command {
+    Command {
+      name,
+      description,
+      handler,
+    }
+  }
+
+  fn handle(&self, args: &str, cpu: &mut Cpu) -> i32 {
+    (self.handler)(args, cpu)
+  }
 
   // use r# to tell the Rust compiler that this identifier should not be considered a keyword identifier.
   #[allow(unused_variables)]
-  fn r#continue(args: &str) -> i32 {
-    crate::cpu::exec(usize::MAX);
+  fn r#continue(args: &str, cpu: &mut Cpu) -> i32 {
+    crate::cpu::exec(usize::MAX, cpu);
     0
   }
 
   #[allow(unused_variables)]
-  fn quit(args: &str) -> i32 {
+  fn quit(args: &str, cpu: &mut Cpu) -> i32 {
+    cpu.state = CpuState::Quit;
     -1
   }
 }
 
-const CMD_TABLE: [Command; 3] = [
-  Command::new("help", "Print this help message", Command::help),
-  Command::new("c", "Continue the execution", Command::r#continue),
-  Command::new("q", "Exit hemu", Command::quit),
-];
-
-pub fn sdb_mainloop() {
+pub fn sdb_mainloop(cpu: &mut Cpu) {
+  let cmd_table = CommandTable::new();
   let mut rl = Editor::<()>::new();
   if rl.load_history("history").is_err() {
     println!("No previous history.");
@@ -81,16 +99,16 @@ pub fn sdb_mainloop() {
           continue;
         }
 
-        for cmd in CMD_TABLE.iter() {
+        for cmd in cmd_table.commands.iter() {
           if input_cmd == cmd.name {
-            if cmd.handle(input_args) < 0 {
+            if cmd.handle(input_args, cpu) < 0 {
               break 'out;
             }
             continue 'out;
           }
         }
 
-        Command::help("");
+        cmd_table.help("");
       }
       Err(_) => {
         println!("Error!");

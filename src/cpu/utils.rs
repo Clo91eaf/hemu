@@ -15,12 +15,12 @@ pub fn match_inst(inst: u32, pattern: &str) -> bool {
   (inst & mask) == expected
 }
 
-pub fn bitmask(bits: u32) -> u32 {
+fn bitmask(bits: u32) -> u32 {
   (1u32 << bits) - 1
 }
 
 // [lo, hi)
-pub fn bits(x: u32, lo: u32, hi: u32) -> usize {
+fn bits(x: u32, lo: u32, hi: u32) -> usize {
   assert!(hi >= lo);
   ((x >> lo) & bitmask(hi - lo)) as usize
 }
