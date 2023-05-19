@@ -134,33 +134,33 @@ impl Cpu {
   pub fn execute(&mut self, inst_type: Instruction) {
     let (rd, rs1, rs2, imm) = decode_operand(self.inst, inst_type);
     match inst_type {
-      Instruction::Register(RegisterType::ADD) => {self.gpr[rd] = (self.gpr[rs1] as i64 + self.gpr[rs2] as i64) as u64;}
-      Instruction::Register(RegisterType::SUB) => {self.gpr[rd] = (self.gpr[rs1] as i64 - self.gpr[rs2] as i64) as u64;}
-      Instruction::Register(RegisterType::XOR) => {self.gpr[rd] = self.gpr[rs1] ^ self.gpr[rs2];}
-      Instruction::Register(RegisterType::OR) =>  {self.gpr[rd] = self.gpr[rs1] | self.gpr[rs2];}
-      Instruction::Register(RegisterType::AND) => {self.gpr[rd] = self.gpr[rs1] & self.gpr[rs2];}
-      Instruction::Register(RegisterType::SLL) => {self.gpr[rd] = self.gpr[rs1] << self.gpr[rs2];}
-      Instruction::Register(RegisterType::SRL) => {self.gpr[rd] = self.gpr[rs1] >> self.gpr[rs2];}
-      Instruction::Register(RegisterType::SLT) => {self.gpr[rd] = if (self.gpr[rs1] as i64) < (self.gpr[rs2] as i64) {1} else {0};}
+      Instruction::Register(RegisterType::ADD)  => {self.gpr[rd] = (self.gpr[rs1] as i64 + self.gpr[rs2] as i64) as u64;}
+      Instruction::Register(RegisterType::SUB)  => {self.gpr[rd] = (self.gpr[rs1] as i64 - self.gpr[rs2] as i64) as u64;}
+      Instruction::Register(RegisterType::XOR)  => {self.gpr[rd] = self.gpr[rs1] ^ self.gpr[rs2];}
+      Instruction::Register(RegisterType::OR)   => {self.gpr[rd] = self.gpr[rs1] | self.gpr[rs2];}
+      Instruction::Register(RegisterType::AND)  => {self.gpr[rd] = self.gpr[rs1] & self.gpr[rs2];}
+      Instruction::Register(RegisterType::SLL)  => {self.gpr[rd] = self.gpr[rs1] << self.gpr[rs2];}
+      Instruction::Register(RegisterType::SRL)  => {self.gpr[rd] = self.gpr[rs1] >> self.gpr[rs2];}
+      Instruction::Register(RegisterType::SLT)  => {self.gpr[rd] = if (self.gpr[rs1] as i64) < (self.gpr[rs2] as i64) {1} else {0};}
       Instruction::Register(RegisterType::SLTU) => {self.gpr[rd] = if self.gpr[rs1] < self.gpr[rs2] {1} else {0};}
 
-      Instruction::Immediate(ImmediateType::ADDI) => {self.gpr[rd] = (self.gpr[rs1] as i64 + imm) as u64;}
-      Instruction::Immediate(ImmediateType::XORI) => {self.gpr[rd] = self.gpr[rs1] ^ imm as u64;}
-      Instruction::Immediate(ImmediateType::ORI) => {self.gpr[rd] = self.gpr[rs1] | imm as u64;}
-      Instruction::Immediate(ImmediateType::ANDI) => {self.gpr[rd] = self.gpr[rs1] & imm as u64;}
-      Instruction::Immediate(ImmediateType::SLLI) => {self.gpr[rd] = self.gpr[rs1] << imm;}
-      Instruction::Immediate(ImmediateType::SRLI) => {self.gpr[rd] = self.gpr[rs1] >> imm;}
-      Instruction::Immediate(ImmediateType::SRAI) => {self.gpr[rd] = (self.gpr[rs1] as i64 >> imm) as u64;}
-      Instruction::Immediate(ImmediateType::SLTI) => {self.gpr[rd] = if (self.gpr[rs1] as i64) < imm {1} else {0};}
+      Instruction::Immediate(ImmediateType::ADDI)  => {self.gpr[rd] = (self.gpr[rs1] as i64 + imm) as u64;}
+      Instruction::Immediate(ImmediateType::XORI)  => {self.gpr[rd] = self.gpr[rs1] ^ imm as u64;}
+      Instruction::Immediate(ImmediateType::ORI)   => {self.gpr[rd] = self.gpr[rs1] | imm as u64;}
+      Instruction::Immediate(ImmediateType::ANDI)  => {self.gpr[rd] = self.gpr[rs1] & imm as u64;}
+      Instruction::Immediate(ImmediateType::SLLI)  => {self.gpr[rd] = self.gpr[rs1] << imm;}
+      Instruction::Immediate(ImmediateType::SRLI)  => {self.gpr[rd] = self.gpr[rs1] >> imm;}
+      Instruction::Immediate(ImmediateType::SRAI)  => {self.gpr[rd] = (self.gpr[rs1] as i64 >> imm) as u64;}
+      Instruction::Immediate(ImmediateType::SLTI)  => {self.gpr[rd] = if (self.gpr[rs1] as i64) < imm {1} else {0};}
       Instruction::Immediate(ImmediateType::SLTIU) => {self.gpr[rd] = if self.gpr[rs1] < imm as u64 {1} else {0};}
 
-      Instruction::Immediate(ImmediateType::LB) => {sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 1) as usize, 8);}
+      Instruction::Immediate(ImmediateType::LB)  => {sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 1) as usize, 8);}
       Instruction::Immediate(ImmediateType::LBU) => {read_data((self.gpr[rs1] as i64 + imm) as u64, 1);}
-      Instruction::Immediate(ImmediateType::LH) => {sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 2) as usize, 8);}
+      Instruction::Immediate(ImmediateType::LH)  => {sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 2) as usize, 8);}
       Instruction::Immediate(ImmediateType::LHU) => {read_data((self.gpr[rs1] as i64 + imm) as u64, 2);}
-      Instruction::Immediate(ImmediateType::LW) => {sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 4) as usize, 8);}
+      Instruction::Immediate(ImmediateType::LW)  => {sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 4) as usize, 8);}
       Instruction::Immediate(ImmediateType::LWU) => {read_data((self.gpr[rs1] as i64 + imm) as u64, 4);}
-      Instruction::Immediate(ImmediateType::LD) => {sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 8) as usize, 8);}
+      Instruction::Immediate(ImmediateType::LD)  => {sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 8) as usize, 8);}
       Instruction::Immediate(ImmediateType::LDU) => {read_data((self.gpr[rs1] as i64 + imm) as u64, 8);}
 
       Instruction::Store(StoreType::SB) => {write_data((self.gpr[rs1] as i64 + imm) as u64, 1, self.gpr[rs2]);}
@@ -168,21 +168,22 @@ impl Cpu {
       Instruction::Store(StoreType::SW) => {write_data((self.gpr[rs1] as i64 + imm) as u64, 4, self.gpr[rs2]);}
       Instruction::Store(StoreType::SD) => {write_data((self.gpr[rs1] as i64 + imm) as u64, 8, self.gpr[rs2]);}
 
-      Instruction::Branch(BranchType::BEQ) => {if self.gpr[rs1] == self.gpr[rs2] {self.pc = (self.pc as i64 + imm) as u64;}}
-      Instruction::Branch(BranchType::BNE) => {if self.gpr[rs1] != self.gpr[rs2] {self.pc = (self.pc as i64 + imm) as u64;}}
-      Instruction::Branch(BranchType::BLT) => {if (self.gpr[rs1] as i64) < (self.gpr[rs2] as i64) {self.pc = (self.pc as i64 + imm) as u64;}}
-      Instruction::Branch(BranchType::BGE) => {if (self.gpr[rs1] as i64) >= (self.gpr[rs2] as i64) {self.pc = (self.pc as i64 + imm) as u64;}}
+      Instruction::Branch(BranchType::BEQ)  => {if self.gpr[rs1] == self.gpr[rs2] {self.pc = (self.pc as i64 + imm) as u64;}}
+      Instruction::Branch(BranchType::BNE)  => {if self.gpr[rs1] != self.gpr[rs2] {self.pc = (self.pc as i64 + imm) as u64;}}
+      Instruction::Branch(BranchType::BLT)  => {if (self.gpr[rs1] as i64) < (self.gpr[rs2] as i64) {self.pc = (self.pc as i64 + imm) as u64;}}
+      Instruction::Branch(BranchType::BGE)  => {if (self.gpr[rs1] as i64) >= (self.gpr[rs2] as i64) {self.pc = (self.pc as i64 + imm) as u64;}}
       Instruction::Branch(BranchType::BLTU) => {if self.gpr[rs1] < self.gpr[rs2] {self.pc = (self.pc as i64 + imm) as u64;}}
       Instruction::Branch(BranchType::BGEU) => {if self.gpr[rs1] >= self.gpr[rs2] {self.pc = (self.pc as i64 + imm) as u64;}}
 
-      Instruction::Jump(JumpType::JAL) => {self.gpr[rd] = self.pc + 4; self.pc = (self.pc as i64 + imm) as u64;}
+      Instruction::Jump(JumpType::JAL)            => {self.gpr[rd] = self.pc + 4; self.pc = (self.pc as i64 + imm) as u64;}
       Instruction::Immediate(ImmediateType::JALR) => {self.gpr[rd] = self.pc + 4; self.pc = (self.gpr[rs1] as i64 + imm) as u64;}
 
-      Instruction::Upper(UpperType::LUI) => {self.gpr[rd] = self.gpr[rs1];}
+      Instruction::Upper(UpperType::LUI)   => {self.gpr[rd] = self.gpr[rs1];}
       Instruction::Upper(UpperType::AUIPC) => {self.gpr[rd] = (self.pc as i64 + imm) as u64;}
 
-      Instruction::Immediate(ImmediateType::ECALL) => {todo!();}
+      Instruction::Immediate(ImmediateType::ECALL)  => {todo!();}
       Instruction::Immediate(ImmediateType::EBREAK) => {self.hemu_trap();}
+
       _ => {todo!("{:?} not implemented", inst_type);}
     }
     self.gpr[0] = 0;

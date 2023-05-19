@@ -1,8 +1,9 @@
 use crate::cpu::{Cpu, CpuState};
+use atoi::atoi;
 use rustyline::Editor;
 
 struct CommandTable {
-  commands: [Command; 2],
+  commands: [Command; 3],
 }
 
 impl CommandTable {
@@ -11,6 +12,7 @@ impl CommandTable {
       commands: [
         Command::new("c", "Continue the execution", Command::r#continue),
         Command::new("q", "Exit hemu", Command::quit),
+        Command::new("s", "Single step execution", Command::step),
       ],
     }
   }
@@ -70,6 +72,19 @@ impl Command {
   fn r#continue(args: &str, cpu: &mut Cpu) -> i32 {
     crate::cpu::exec(cpu, usize::MAX);
     0
+  }
+
+  fn step(args: &str, cpu: &mut Cpu) -> i32 {
+    match args {
+      "" => {
+        crate::cpu::exec(cpu, 1);
+        0
+      }
+      _ => {
+        crate::cpu::exec(cpu, atoi::<usize>(args.as_bytes()).unwrap());
+        0
+      }
+    }
   }
 
   #[allow(unused_variables)]
