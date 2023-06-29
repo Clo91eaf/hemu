@@ -1,27 +1,26 @@
+use crate::constants::*;
 use lazy_static::lazy_static;
 use std::sync::Mutex;
 
-const CONFIG_MSIZE: u64 = 0x80000000;
-const CONFIG_MBASE: u64 = 0x80000000;
-
 lazy_static! {
-  static ref PMEM: Mutex<Vec<u8>> = Mutex::new(vec![0; CONFIG_MSIZE as usize]);
+  #[repr(align(4096))]
+  static ref PMEM: Mutex<Vec<u8>> = Mutex::new(vec![0; MEM_SIZE as usize]);
 }
 
 pub fn guest_to_host(paddr: u64) -> *mut u8 {
   let mut pmem = PMEM.lock().unwrap();
-  (pmem.as_mut_ptr() as u64 + paddr - CONFIG_MBASE) as *mut u8
+  (pmem.as_mut_ptr() as u64 + paddr - MEM_BASE) as *mut u8
 }
 
 #[allow(dead_code)]
 fn host_to_guest(haddr: *mut u8) -> u64 {
   let mut pmem = PMEM.lock().unwrap();
-  haddr as u64 - pmem.as_mut_ptr() as u64 + CONFIG_MBASE
+  haddr as u64 - pmem.as_mut_ptr() as u64 + MEM_BASE
 }
 
 #[allow(dead_code)]
 fn in_pmem(addr: u64) -> bool {
-  addr >= CONFIG_MBASE && addr + 1 < CONFIG_MBASE + CONFIG_MSIZE
+  addr >= MEM_BASE && addr + 1 < MEM_BASE + MEM_SIZE
 }
 
 #[allow(dead_code)]
@@ -29,8 +28,8 @@ fn out_of_bound(addr: u64) -> ! {
   panic!(
     "address = {:016X} is out of bound of pmem [{:016X}, {:016X}) at pc",
     addr,
-    CONFIG_MBASE,
-    CONFIG_MBASE + CONFIG_MSIZE,
+    MEM_BASE,
+    MEM_BASE + MEM_SIZE,
   );
 }
 

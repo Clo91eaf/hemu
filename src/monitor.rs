@@ -1,58 +1,46 @@
 pub mod sdb;
 
 use crate::debug::debug_init;
+use crate::constants::*;
 use crate::memory::paddr::guest_to_host;
-use getopt::Opt;
-use std::fs::File;
-use std::io::Read;
+use std::io::{Read, Seek, SeekFrom};
 
 fn welcome() {
   log::info!("Welcome to riscv64-HEMU!",);
   log::info!("For help, type \"help\"");
 }
 
-fn load_img(img_file: String) -> std::io::Result<usize> {
+// load img to memory(mmap)
+fn load_img(img_file: String) -> Result<usize, Box<dyn std::error::Error>> {
+  // open img file
   log::info!("img file:{}", img_file);
-  let mut file = File::open(img_file)?;
-  let mut buffer = [0; 0x1000];
-  let buffer_ptr = 0x80000000 as u64;
+  let mut file = std::fs::File::open(img_file)?;
 
+  // get img size
+  let size = file.seek(SeekFrom::End(0))?;
+  log::info!("img size:{}", size);
+
+  // read img to buffer
+  file.seek(SeekFrom::Start(0))?;
+  let mut buffer = vec![0; size as usize];
+  file.read_exact(&mut buffer)?;
+
+  // copy img to memory
+  let dst = guest_to_host(RESET_VECTOR);
+  let src = buffer.as_ptr() as *const u8;
   unsafe {
-    loop {
-      match file.read(&mut buffer) {
-        Ok(0) => return Ok(0),
-        Ok(n) => {
-          std::ptr::copy_nonoverlapping(
-            buffer.as_ptr(),
-            guest_to_host(buffer_ptr),
-            n,
-          );
-          return Ok(n);
-        }
-        Err(_) => panic!("Failed to read file"),
-      }
-    }
+    std::ptr::copy_nonoverlapping(src, dst, size as usize);
   }
+
+  Ok(size as usize)
 }
 
 pub fn init_monitor() -> Result<(), Box<dyn std::error::Error>> {
   debug_init();
 
-  let args: Vec<String> = std::env::args().collect();
-  let mut opts = getopt::Parser::new(&args, "f:");
+  let img_file =
+    String::from("/home/clo91eaf/proj/riscv-tests/benchmarks/dhrystone.riscv");
 
-  let mut img_file: String = String::from("system-tests/cpu-tests/build/dummy-riscv64-hemu.bin");
-  loop {
-    match opts.next().transpose()? {
-      None => break,
-      Some(opt) => match opt {
-        Opt('f', Some(file)) => {
-          img_file = file;
-        }
-        _ => unreachable!(),
-      },
-    }
-  }
   #[allow(unused_variables)]
   let img_size = load_img(img_file).unwrap();
 
@@ -68,7 +56,8 @@ mod tests {
 
   #[test]
   fn test_load_img() {
-    let file_path = PathBuf::from("system-tests/cpu-tests/build/dummy-riscv64-hemu.bin");
+    let file_path =
+      PathBuf::from("system-tests/cpu-tests/build/dummy-riscv64-hemu.bin");
     let result = load_img(file_path.to_str().unwrap().to_string()).unwrap();
     println!("result:{}", result)
   }
