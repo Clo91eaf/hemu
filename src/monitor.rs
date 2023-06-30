@@ -39,7 +39,7 @@ pub fn init_monitor() -> Result<(), Box<dyn std::error::Error>> {
   debug_init();
 
   let img_file =
-    String::from("/home/clo91eaf/proj/riscv-tests/benchmarks/dhrystone.riscv");
+    String::from("/home/clo91eaf/code/rust/hemu/tests/output/dummy.bin");
 
   #[allow(unused_variables)]
   let img_size = load_img(img_file).unwrap();
