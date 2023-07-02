@@ -1,7 +1,7 @@
 use crate::memory::vaddr;
 
 pub fn read_inst(addr: u64) -> u64 {
-  vaddr::vaddr_read(addr, 4)
+  read_data(addr, 4)
 }
 
 #[allow(dead_code)]

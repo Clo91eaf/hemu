@@ -43,6 +43,7 @@ impl Cpu {
   pub fn fetch(&mut self) {
     self.inst = read_inst(self.pc) as u32;
     log::info!("fetch: pc = 0x{:08x}, inst = 0x{:08x}", self.pc, self.inst);
+    self.pc += 4;
   }
 
   pub fn decode(&self, inst_type: &mut Instruction) {
