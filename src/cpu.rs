@@ -2,12 +2,15 @@ mod instruction;
 mod memory;
 mod utils;
 
+use std::time::{Duration, Instant};
+
 use instruction::{
   BranchType, ImmediateType, Instruction, JumpType, RegisterType, StoreType,
   UpperType,
 };
 use memory::{read_data, read_inst, write_data};
 use utils::{decode_operand, match_inst, sext};
+use ansi_term::Colour::{Green, Red};
 
 #[derive(PartialEq)]
 pub enum CpuState {
@@ -18,6 +21,43 @@ pub enum CpuState {
   Quit,
 }
 
+pub struct Statistic {
+  pub time: Duration, // execute time accumulate
+  pub count: u64, // inst count 
+}
+
+impl Statistic {
+  pub fn new() -> Statistic {
+    Statistic {
+      time: Duration::new(0, 0),
+      count: 0,
+    }
+  }
+
+  fn start_timer(&mut self) -> Instant {
+    Instant::now()
+  }
+
+  fn stop_timer(&mut self, start_timer: Instant) {
+    self.time += start_timer.elapsed();
+  }
+
+  fn inc_count(&mut self) {
+    self.count += 1;
+  }
+}
+
+pub struct Halt {
+  pc: u32,
+  ret: u32,
+}
+
+impl Halt {
+  pub fn new() -> Halt {
+    Halt { pc: 0, ret: 0 }
+  }
+}
+
 pub struct Cpu {
   gpr: [u64; 32],
   pc: u64,
@@ -25,8 +65,8 @@ pub struct Cpu {
   dnpc: u64,
   inst: u32,
   pub state: CpuState,
-  halt_pc: u32,
-  halt_ret: u32,
+  halt: Halt,
+  statistic: Statistic
 }
 
 impl Cpu {
@@ -38,15 +78,15 @@ impl Cpu {
       dnpc: 0x80000000,
       inst: 0,
       state: CpuState::Running,
-      halt_pc: 0x80000000,
-      halt_ret: 0,
+      halt: Halt::new(),
+      statistic: Statistic::new(),
     }
   }
 
   fn hemu_trap(&mut self) {
     self.state = CpuState::Ended;
-    self.halt_pc = self.pc as u32;
-    self.halt_ret = self.gpr[10] as u32;
+    self.halt.pc = self.pc as u32;
+    self.halt.ret = self.gpr[10] as u32;
 
     log::info!("hemu trap, pc = {:x}, ret = {}", self.pc, self.gpr[10]);
   }
@@ -231,32 +271,45 @@ fn exec_once(cpu: &mut Cpu) {
 fn exec_ntimes(cpu: &mut Cpu, n: usize) {
   for _ in 0..n {
     exec_once(cpu);
+    cpu.statistic.inc_count();
     if cpu.state != CpuState::Running {
       break;
     }
   }
 }
 
+fn statistic(cpu: &Cpu) {
+  log::info!("host time spend = {:?} ms", cpu.statistic.time);
+  log::info!("total guest instructions = {:?}", cpu.statistic.count);
+  log::info!("simulation frequency = {:?}", (cpu.statistic.count * 1000000) as f64 / (cpu.statistic.time.as_millis() as f64));
+}
+
 pub fn exec(cpu: &mut Cpu, n: usize) {
+  let start_time = cpu.statistic.start_timer();
+
   exec_ntimes(cpu, n);
+
+  cpu.statistic.stop_timer(start_time);
 
   match cpu.state {
     CpuState::Ended => {
       println!(
-        "hemu: {} at pc = 0x{:08x}",
-        if cpu.halt_ret == 0 {
-          "HIT GOOD TRAP"
+        "{} at pc = 0x{:08x}",
+        if cpu.halt.ret == 0 {
+          Green.bold().paint("HIT GOOD TRAP")
         } else {
-          "HIT BAD TRAP"
+          Red.bold().paint("HIT BAD TRAP")
         },
-        cpu.halt_pc
+        cpu.halt.pc
       );
+      statistic(cpu);
       log::info!("hemu ended");
     }
     CpuState::Running => {
       log::info!("hemu running");
     }
     CpuState::Quit => {
+      statistic(cpu);
       log::info!("hemu quit");
     }
   }
