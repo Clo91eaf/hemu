@@ -39,7 +39,7 @@ pub fn init_monitor() -> Result<(), Box<dyn std::error::Error>> {
   debug_init();
 
   let img_file =
-    String::from("./tests/build/dummy.bin");
+    String::from("./tests/build/dummy-riscv64-nemu.bin");
 
   #[allow(unused_variables)]
   let img_size = load_img(img_file).unwrap();

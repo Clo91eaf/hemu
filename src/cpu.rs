@@ -21,8 +21,12 @@ pub enum CpuState {
 pub struct Cpu {
   gpr: [u64; 32],
   pc: u64,
+  snpc: u64,
+  dnpc: u64,
   inst: u32,
   pub state: CpuState,
+  halt_pc: u32,
+  halt_ret: u32,
 }
 
 impl Cpu {
@@ -30,20 +34,28 @@ impl Cpu {
     Cpu {
       gpr: [0; 32],
       pc: 0x80000000,
+      snpc: 0x80000000,
+      dnpc: 0x80000000,
       inst: 0,
       state: CpuState::Running,
+      halt_pc: 0x80000000,
+      halt_ret: 0,
     }
   }
 
   fn hemu_trap(&mut self) {
     self.state = CpuState::Ended;
+    self.halt_pc = self.pc as u32;
+    self.halt_ret = self.gpr[10] as u32;
+
     log::info!("hemu trap, pc = {:x}, ret = {}", self.pc, self.gpr[10]);
   }
 
   pub fn fetch(&mut self) {
     self.inst = read_inst(self.pc) as u32;
+    self.snpc += 4;
+
     log::info!("fetch: pc = 0x{:08x}, inst = 0x{:08x}", self.pc, self.inst);
-    self.pc += 4;
   }
 
   pub fn decode(&self, inst_type: &mut Instruction) {
@@ -134,6 +146,7 @@ impl Cpu {
   #[rustfmt::skip]
   pub fn execute(&mut self, inst_type: Instruction) {
     let (rd, rs1, rs2, imm) = decode_operand(self.inst, inst_type);
+    self.dnpc = self.snpc;
     match inst_type {
       Instruction::Register(RegisterType::ADD)  => {self.gpr[rd] = (self.gpr[rs1] as i64 + self.gpr[rs2] as i64) as u64;}
       Instruction::Register(RegisterType::SUB)  => {self.gpr[rd] = (self.gpr[rs1] as i64 - self.gpr[rs2] as i64) as u64;}
@@ -176,8 +189,8 @@ impl Cpu {
       Instruction::Branch(BranchType::BLTU) => {if self.gpr[rs1] < self.gpr[rs2] {self.pc = (self.pc as i64 + imm) as u64;}}
       Instruction::Branch(BranchType::BGEU) => {if self.gpr[rs1] >= self.gpr[rs2] {self.pc = (self.pc as i64 + imm) as u64;}}
 
-      Instruction::Jump(JumpType::JAL)            => {self.gpr[rd] = self.pc + 4; self.pc = (self.pc as i64 + imm) as u64;}
-      Instruction::Immediate(ImmediateType::JALR) => {self.gpr[rd] = self.pc + 4; self.pc = (self.gpr[rs1] as i64 + imm) as u64;}
+      Instruction::Jump(JumpType::JAL)            => {self.gpr[rd] = self.pc + 4; self.dnpc = (self.pc as i64 + imm) as u64;}
+      Instruction::Immediate(ImmediateType::JALR) => {self.gpr[rd] = self.pc + 4; self.dnpc = (self.gpr[rs1] as i64 + imm) as u64;}
 
       Instruction::Upper(UpperType::LUI)   => {self.gpr[rd] = self.gpr[rs1];}
       Instruction::Upper(UpperType::AUIPC) => {self.gpr[rd] = (self.pc as i64 + imm) as u64;}
@@ -209,13 +222,18 @@ fn exec_once(cpu: &mut Cpu) {
   cpu.fetch();
   // decode stage
   cpu.decode(&mut inst_type);
-  // execute stage
+  // execute stage (including memory stage and write back stage)
   cpu.execute(inst_type);
+  // update pc
+  cpu.pc = cpu.dnpc;
 }
 
 fn exec_ntimes(cpu: &mut Cpu, n: usize) {
   for _ in 0..n {
     exec_once(cpu);
+    if cpu.state != CpuState::Running {
+      break;
+    }
   }
 }
 
@@ -224,6 +242,15 @@ pub fn exec(cpu: &mut Cpu, n: usize) {
 
   match cpu.state {
     CpuState::Ended => {
+      println!(
+        "hemu: {} at pc = 0x{:08x}",
+        if cpu.halt_ret == 0 {
+          "HIT GOOD TRAP"
+        } else {
+          "HIT BAD TRAP"
+        },
+        cpu.halt_pc
+      );
       log::info!("hemu ended");
     }
     CpuState::Running => {
