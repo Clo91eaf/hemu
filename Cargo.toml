@@ -17,3 +17,4 @@ env_logger = "0.10.0"
 atoi = "2.0.0"
 ansi_term = "0.12.1"
 clap = { version = "4.3.11", features = ["derive"] }
+regex = "1.9.0"

@@ -1,4 +1,5 @@
 pub mod sdb;
+pub mod expr;
 
 use crate::constants::*;
 use crate::log::init_log;
@@ -9,6 +10,7 @@ use std::{
 };
 
 use clap::Parser;
+use sdb::init_sdb;
 
 /// A riscv64 monitor write in Rust.
 #[derive(Parser, Debug)]
@@ -69,6 +71,8 @@ pub fn init_monitor() -> Result<(), Box<dyn std::error::Error>> {
   let args = Args::parse();
 
   init_log();
+
+  init_sdb();
 
   #[allow(unused_variables)]
   let img_size = load_img(args.img).unwrap();

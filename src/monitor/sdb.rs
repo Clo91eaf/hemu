@@ -1,6 +1,7 @@
 use crate::cpu::{Cpu, CpuState};
 use atoi::atoi;
 use rustyline::Editor;
+use crate::monitor::expr;
 
 struct CommandTable {
   commands: [Command; 4],
@@ -133,4 +134,8 @@ pub fn sdb_mainloop(cpu: &mut Cpu) {
       }
     }
   }
+}
+
+pub fn init_sdb() {
+  expr::init_regex();
 }
