@@ -70,18 +70,18 @@ impl Command {
   // use r# to tell the Rust compiler that this identifier should not be considered a keyword identifier.
   #[allow(unused_variables)]
   fn r#continue(args: &str, cpu: &mut Cpu) -> i32 {
-    crate::cpu::exec(cpu, usize::MAX);
+    cpu.exec(usize::MAX);
     0
   }
 
   fn step(args: &str, cpu: &mut Cpu) -> i32 {
     match args {
       "" => {
-        crate::cpu::exec(cpu, 1);
+        cpu.exec(1);
         0
       }
       _ => {
-        crate::cpu::exec(cpu, atoi::<usize>(args.as_bytes()).unwrap());
+        cpu.exec(atoi::<usize>(args.as_bytes()).unwrap());
         0
       }
     }
@@ -97,11 +97,8 @@ impl Command {
 pub fn sdb_mainloop(cpu: &mut Cpu) {
   let cmd_table = CommandTable::new();
   let mut rl = Editor::<()>::new();
-  if rl.load_history("history").is_err() {
-    println!("No previous history.");
-  }
   'out: loop {
-    let readline = rl.readline("sdb> ");
+    let readline = rl.readline("(hemu) ");
     match readline {
       Ok(line) => {
         rl.add_history_entry(line.trim());

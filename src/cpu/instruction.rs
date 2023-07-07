@@ -81,3 +81,14 @@ pub enum UpperType {
   LUI,
   AUIPC,
 }
+
+pub struct InstPattern {
+  pub pattern: &'static str,
+  pub itype: Instruction,
+}
+
+impl InstPattern {
+  pub fn new(pattern: &'static str, itype: Instruction) -> InstPattern {
+    InstPattern { pattern, itype }
+  }
+}

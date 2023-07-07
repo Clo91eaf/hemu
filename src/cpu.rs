@@ -1,16 +1,16 @@
 mod instruction;
 mod memory;
 mod utils;
+mod statistic;
 
-use std::time::{Duration, Instant};
-
+use ansi_term::Colour::{Green, Red};
 use instruction::{
   BranchType, ImmediateType, Instruction, JumpType, RegisterType, StoreType,
   UpperType,
 };
 use memory::{read_data, read_inst, write_data};
 use utils::{decode_operand, match_inst, sext};
-use ansi_term::Colour::{Green, Red};
+use instruction::InstPattern;
 
 #[derive(PartialEq)]
 pub enum CpuState {
@@ -19,32 +19,6 @@ pub enum CpuState {
   Ended,
   // Aborted,
   Quit,
-}
-
-pub struct Statistic {
-  pub time: Duration, // execute time accumulate
-  pub count: u64, // inst count 
-}
-
-impl Statistic {
-  pub fn new() -> Statistic {
-    Statistic {
-      time: Duration::new(0, 0),
-      count: 0,
-    }
-  }
-
-  fn start_timer(&mut self) -> Instant {
-    Instant::now()
-  }
-
-  fn stop_timer(&mut self, start_timer: Instant) {
-    self.time += start_timer.elapsed();
-  }
-
-  fn inc_count(&mut self) {
-    self.count += 1;
-  }
 }
 
 pub struct Halt {
@@ -66,7 +40,7 @@ pub struct Cpu {
   inst: u32,
   pub state: CpuState,
   halt: Halt,
-  statistic: Statistic
+  statistic: statistic::Statistic,
 }
 
 impl Cpu {
@@ -79,7 +53,7 @@ impl Cpu {
       inst: 0,
       state: CpuState::Running,
       halt: Halt::new(),
-      statistic: Statistic::new(),
+      statistic: statistic::Statistic::new(),
     }
   }
 
@@ -242,75 +216,63 @@ impl Cpu {
     }
     self.gpr[0] = 0;
   }
-}
 
-struct InstPattern {
-  pattern: &'static str,
-  itype: Instruction,
-}
-
-impl InstPattern {
-  fn new(pattern: &'static str, itype: Instruction) -> InstPattern {
-    InstPattern { pattern, itype }
+  fn exec_once(&mut self) {
+    // pipeline start
+    let mut inst_type = Instruction::Immediate(ImmediateType::EBREAK);
+    // fetch stage
+    self.fetch();
+    // decode stage
+    self.decode(&mut inst_type);
+    // execute stage (including memory stage and write back stage)
+    self.execute(inst_type);
+    // update pc
+    self.pc = self.dnpc;
   }
-}
 
-fn exec_once(cpu: &mut Cpu) {
-  // pipeline start
-  let mut inst_type = Instruction::Immediate(ImmediateType::EBREAK);
-  // fetch stage
-  cpu.fetch();
-  // decode stage
-  cpu.decode(&mut inst_type);
-  // execute stage (including memory stage and write back stage)
-  cpu.execute(inst_type);
-  // update pc
-  cpu.pc = cpu.dnpc;
-}
-
-fn exec_ntimes(cpu: &mut Cpu, n: usize) {
-  for _ in 0..n {
-    exec_once(cpu);
-    cpu.statistic.inc_count();
-    if cpu.state != CpuState::Running {
-      break;
+  fn exec_ntimes(&mut self, n: usize) {
+    for _ in 0..n {
+      self.exec_once();
+      self.statistic.inc_count();
+      if self.state != CpuState::Running {
+        break;
+      }
     }
   }
-}
 
-fn statistic(cpu: &Cpu) {
-  log::info!("host time spend = {:?} ms", cpu.statistic.time);
-  log::info!("total guest instructions = {:?}", cpu.statistic.count);
-  log::info!("simulation frequency = {:?}", (cpu.statistic.count * 1000000) as f64 / (cpu.statistic.time.as_millis() as f64));
-}
+  fn statistic(&self) {
+    log::info!("host time spend = {:?}", self.statistic.time);
+    log::info!("total guest instructions = {:?}", self.statistic.count);
+    log::info!(
+      "simulation frequency = {:?}",
+      (self.statistic.count) as f64 / (self.statistic.time.as_millis() as f64)
+    );
+  }
 
-pub fn exec(cpu: &mut Cpu, n: usize) {
-  let start_time = cpu.statistic.start_timer();
+  pub fn exec(&mut self, n: usize) {
+    let start_time = self.statistic.start_timer();
 
-  exec_ntimes(cpu, n);
+    self.exec_ntimes(n);
 
-  cpu.statistic.stop_timer(start_time);
+    self.statistic.stop_timer(start_time);
 
-  match cpu.state {
-    CpuState::Ended => {
-      println!(
-        "{} at pc = 0x{:08x}",
-        if cpu.halt.ret == 0 {
-          Green.bold().paint("HIT GOOD TRAP")
-        } else {
-          Red.bold().paint("HIT BAD TRAP")
-        },
-        cpu.halt.pc
-      );
-      statistic(cpu);
-      log::info!("hemu ended");
-    }
-    CpuState::Running => {
-      log::info!("hemu running");
-    }
-    CpuState::Quit => {
-      statistic(cpu);
-      log::info!("hemu quit");
+    match self.state {
+      CpuState::Ended => {
+        println!(
+          "{} at pc = 0x{:08x}",
+          if self.halt.ret == 0 {
+            Green.bold().paint("HIT GOOD TRAP")
+          } else {
+            Red.bold().paint("HIT BAD TRAP")
+          },
+          self.halt.pc
+        );
+        self.statistic();
+      }
+      CpuState::Running => {}
+      CpuState::Quit => {
+        self.statistic();
+      }
     }
   }
 }
