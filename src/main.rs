@@ -1,6 +1,6 @@
 mod engine;
 mod monitor;
-mod debug;
+mod log;
 mod cpu;
 mod memory;
 mod constants;

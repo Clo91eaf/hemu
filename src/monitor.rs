@@ -1,9 +1,39 @@
 pub mod sdb;
 
-use crate::debug::debug_init;
 use crate::constants::*;
+use crate::log::init_log;
 use crate::memory::paddr::guest_to_host;
-use std::io::{Read, Seek, SeekFrom};
+use std::{
+  io::{Read, Seek, SeekFrom},
+  path::PathBuf,
+};
+
+use clap::Parser;
+
+/// A riscv64 monitor write in Rust.
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+  /// Run in batch mode
+  #[arg(short, long, default_value = "false")]
+  batch: bool,
+
+  /// Log file
+  #[arg(short, long, default_value = "tests/build/dummy-riscv64-nemu.log")]
+  log: PathBuf,
+
+  /// Diff file
+  #[arg(short, long, default_value = "tests/build/dummy-riscv64-nemu.diff")]
+  diff: PathBuf,
+
+  /// Diff port
+  #[arg(short, long, default_value = "1234")]
+  port: u32,
+
+  /// Img file
+  #[arg(short, long, default_value = "tests/build/dummy-riscv64-nemu.bin")]
+  img: PathBuf,
+}
 
 fn welcome() {
   log::info!("Welcome to riscv64-HEMU!",);
@@ -11,9 +41,9 @@ fn welcome() {
 }
 
 // load img to memory(mmap)
-fn load_img(img_file: String) -> Result<usize, Box<dyn std::error::Error>> {
+fn load_img(img_file: PathBuf) -> Result<usize, Box<dyn std::error::Error>> {
   // open img file
-  log::info!("img file:{}", img_file);
+  log::info!("img file:{}", img_file.to_string_lossy());
   let mut file = std::fs::File::open(img_file)?;
 
   // get img size
@@ -36,13 +66,12 @@ fn load_img(img_file: String) -> Result<usize, Box<dyn std::error::Error>> {
 }
 
 pub fn init_monitor() -> Result<(), Box<dyn std::error::Error>> {
-  debug_init();
+  let args = Args::parse();
 
-  let img_file =
-    String::from("./tests/build/dummy-riscv64-nemu.bin");
+  init_log();
 
   #[allow(unused_variables)]
-  let img_size = load_img(img_file).unwrap();
+  let img_size = load_img(args.img).unwrap();
 
   welcome();
 
