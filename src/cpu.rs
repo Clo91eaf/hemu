@@ -275,4 +275,28 @@ impl Cpu {
       }
     }
   }
+
+  pub fn dump_registers(&self) {
+    for i in 0..32 {
+      print!("x{:02} = 0x{:016x} ", i, self.gpr[i]);
+      if i % 4 == 3 {
+        println!();
+      }
+    }
+    println!();
+  }
+
+  pub fn dump_memory(&self, addr: u64, size: usize) {
+    for i in 0..size {
+      print!("0x{:016x} ", addr + i as u64);
+      if i % 4 == 3 {
+        println!();
+      }
+    }
+    println!();
+  }
+
+  pub fn dump_watches(&self) {
+    todo!("watch points not implemented!");
+  }
 }

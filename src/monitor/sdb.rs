@@ -3,7 +3,7 @@ use atoi::atoi;
 use rustyline::Editor;
 
 struct CommandTable {
-  commands: [Command; 3],
+  commands: [Command; 4],
 }
 
 impl CommandTable {
@@ -13,6 +13,7 @@ impl CommandTable {
         Command::new("c", "Continue the execution", Command::r#continue),
         Command::new("q", "Exit hemu", Command::quit),
         Command::new("s", "Single step execution", Command::step),
+        Command::new("info", "Print register and watches info", Command::info),
       ],
     }
   }
@@ -75,16 +76,20 @@ impl Command {
   }
 
   fn step(args: &str, cpu: &mut Cpu) -> i32 {
-    match args {
-      "" => {
-        cpu.exec(1);
-        0
-      }
-      _ => {
-        cpu.exec(atoi::<usize>(args.as_bytes()).unwrap());
-        0
-      }
+    cpu.exec(atoi::<usize>(args.as_bytes()).unwrap_or(1));
+    0
+  }
+
+  fn info(args: &str, cpu: &mut Cpu) -> i32 {
+    if args == "r" {
+      cpu.dump_registers();
+    } else if args == "w" {
+      cpu.dump_watches();
+    } else {
+      println!("Unknown info '{}'", args);
     }
+
+    0
   }
 
   #[allow(unused_variables)]
