@@ -245,7 +245,7 @@ impl Cpu {
     log::info!("total guest instructions = {:?}", self.statistic.count);
     log::info!(
       "simulation frequency = {:?}",
-      (self.statistic.count) as f64 / (self.statistic.time.as_millis() as f64)
+      (self.statistic.count) as f64 / (self.statistic.time.as_secs_f64())
     );
   }
 
