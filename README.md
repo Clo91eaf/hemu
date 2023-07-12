@@ -62,6 +62,9 @@ There are several potential benefits to using Rust to rewrite Nemus's logic:
 - [ ] Simulated a bus.
 - [ ] Simulated cache functionality.
 
+- [ ] Add some emoji to make it look better.
+- [ ] Write document.
+ 
 ## Contributing 🤝
 
 Contributions to HEMU are welcome! If you find a bug or have a feature request, please open an issue on Github. If you would like to contribute code, you can make a fork of the repository and submit a pull request.
