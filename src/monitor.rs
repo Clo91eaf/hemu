@@ -33,7 +33,7 @@ struct Args {
   port: u32,
 
   /// Img file
-  #[arg(short, long, default_value = "tests/build/dummy-riscv64-nemu.bin")]
+  #[arg(short='f', long, default_value = "tests/build/dummy-riscv64-nemu.bin")]
   img: PathBuf,
 }
 
@@ -91,7 +91,7 @@ mod tests {
   fn test_load_img() {
     let file_path =
       PathBuf::from("system-tests/cpu-tests/build/dummy-riscv64-hemu.bin");
-    let result = load_img(file_path.to_str().unwrap().to_string()).unwrap();
+    let result = load_img(file_path).unwrap();
     println!("result:{}", result)
   }
 }

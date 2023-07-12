@@ -69,7 +69,7 @@ impl Cpu {
     self.inst = read_inst(self.pc) as u32;
     self.snpc += 4;
 
-    log::info!("fetch: pc = 0x{:08x}, inst = 0x{:08x}", self.pc, self.inst);
+    log::debug!("fetch: pc = 0x{:08x}, inst = 0x{:08x}", self.pc, self.inst);
   }
 
   pub fn decode(&self, inst_type: &mut Instruction) {
@@ -249,7 +249,7 @@ impl Cpu {
     );
   }
 
-  pub fn exec(&mut self, n: usize) {
+  pub fn exec(&mut self, n: usize) -> i32 {
     let start_time = self.statistic.start_timer();
 
     self.exec_ntimes(n);
@@ -258,22 +258,21 @@ impl Cpu {
 
     match self.state {
       CpuState::Ended => {
-        println!(
-          "{} at pc = 0x{:08x}",
-          if self.halt.ret == 0 {
-            Green.bold().paint("HIT GOOD TRAP")
-          } else {
-            Red.bold().paint("HIT BAD TRAP")
-          },
-          self.halt.pc
-        );
-        self.statistic();
+        if self.halt.ret == 0 {
+          println!("{}", Green.bold().paint("HIT GOOD TRAP"));
+          self.statistic();
+          return 0;
+        } else {
+          log::error!("{}", Red.bold().paint("HIT BAD TRAP"));
+          return -1;
+        }
       }
       CpuState::Running => {}
       CpuState::Quit => {
         self.statistic();
       }
     }
+    0
   }
 
   pub fn dump_registers(&self) {

@@ -1,10 +1,10 @@
 use crate::cpu::{Cpu, CpuState};
+use crate::monitor::expr;
 use atoi::atoi;
 use rustyline::Editor;
-use crate::monitor::expr;
 
 struct CommandTable {
-  commands: [Command; 4],
+  commands: [Command; 5],
 }
 
 impl CommandTable {
@@ -15,6 +15,7 @@ impl CommandTable {
         Command::new("q", "Exit hemu", Command::quit),
         Command::new("s", "Single step execution", Command::step),
         Command::new("info", "Print register and watches info", Command::info),
+        Command::new("p", "Calculate the expression", Command::expr),
       ],
     }
   }
@@ -72,13 +73,11 @@ impl Command {
   // use r# to tell the Rust compiler that this identifier should not be considered a keyword identifier.
   #[allow(unused_variables)]
   fn r#continue(args: &str, cpu: &mut Cpu) -> i32 {
-    cpu.exec(usize::MAX);
-    0
+    cpu.exec(usize::MAX)
   }
 
   fn step(args: &str, cpu: &mut Cpu) -> i32 {
-    cpu.exec(atoi::<usize>(args.as_bytes()).unwrap_or(1));
-    0
+    cpu.exec(atoi::<usize>(args.as_bytes()).unwrap_or(1))
   }
 
   fn info(args: &str, cpu: &mut Cpu) -> i32 {
@@ -89,7 +88,6 @@ impl Command {
     } else {
       println!("Unknown info '{}'", args);
     }
-
     0
   }
 
@@ -97,6 +95,12 @@ impl Command {
   fn quit(args: &str, cpu: &mut Cpu) -> i32 {
     cpu.state = CpuState::Quit;
     -1
+  }
+
+  #[allow(unused_variables)]
+  fn expr(args: &str, cpu: &mut Cpu) -> i32 {
+    println!("{:?}", {expr::expr(args)});
+    0
   }
 }
 
@@ -120,6 +124,7 @@ pub fn sdb_mainloop(cpu: &mut Cpu) {
         for cmd in cmd_table.commands.iter() {
           if input_cmd == cmd.name {
             if cmd.handle(input_args, cpu) < 0 {
+              log::info!("Quit hemu");
               break 'out;
             }
             continue 'out;
@@ -136,6 +141,4 @@ pub fn sdb_mainloop(cpu: &mut Cpu) {
   }
 }
 
-pub fn init_sdb() {
-  expr::init_regex();
-}
+pub fn init_sdb() {}
