@@ -33,8 +33,8 @@ impl Halt {
 }
 
 pub struct Cpu {
-  gpr: [u64; 32],
-  pc: u64,
+  pub gpr: [u64; 32],
+  pub pc: u64,
   snpc: u64,
   dnpc: u64,
   inst: u32,

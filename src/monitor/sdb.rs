@@ -99,7 +99,9 @@ impl Command {
 
   #[allow(unused_variables)]
   fn expr(args: &str, cpu: &mut Cpu) -> i32 {
-    println!("{:?}", {expr::expr(args)});
+    println!("0x{:08x}", unsafe {
+      expr::expr(args.to_string(), cpu).to_int_unchecked::<u32>()
+    });
     0
   }
 }
