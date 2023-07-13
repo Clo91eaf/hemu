@@ -1,7 +1,7 @@
 use crate::constants::*;
 use core::panic;
 use lazy_static::lazy_static;
-use std::{sync::Mutex};
+use std::sync::Mutex;
 use crate::memory::host::{host_read, host_write};
 
 lazy_static! {

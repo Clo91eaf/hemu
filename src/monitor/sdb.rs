@@ -1,10 +1,11 @@
 use crate::cpu::{Cpu, CpuState};
+use crate::cpu::memory::read_data;
 use crate::monitor::expr;
 use atoi::atoi;
 use rustyline::Editor;
 
 struct CommandTable {
-  commands: [Command; 5],
+  commands: [Command; 6],
 }
 
 impl CommandTable {
@@ -16,6 +17,7 @@ impl CommandTable {
         Command::new("s", "Single step execution", Command::step),
         Command::new("info", "Print register and watches info", Command::info),
         Command::new("p", "Calculate the expression", Command::expr),
+        Command::new("x", "Scan memory", Command::scan),
       ],
     }
   }
@@ -97,11 +99,26 @@ impl Command {
     -1
   }
 
-  #[allow(unused_variables)]
   fn expr(args: &str, cpu: &mut Cpu) -> i32 {
-    println!("0x{:08x}", unsafe {
-      expr::expr(args.to_string(), cpu).to_int_unchecked::<u32>()
+    println!("0x{:08x}", expr::expr(args.to_string(), cpu));
+    0
+  }
+
+  #[allow(unused_variables)]
+  fn scan(args: &str, cpu: &mut Cpu) -> i32 {
+    let mut parts = args.splitn(2, ' ');
+    let input_size = parts.next().unwrap_or("");
+    let input_addr = expr::expr(parts.next().unwrap_or("").to_string(), cpu);
+    (0..atoi::<usize>(input_size.as_bytes()).unwrap_or(1)).for_each(|i| {
+      if i % 4 == 0 {
+        print!("0x{:08x}: ", input_addr + i as u64 * 4);
+      }
+      print!("0x{:08x} ", read_data(input_addr + i as u64 * 4, 4));
+      if i % 4 == 3 {
+        println!();
+      }
     });
+    println!(); // buffer flush
     0
   }
 }

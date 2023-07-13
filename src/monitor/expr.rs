@@ -50,13 +50,16 @@ impl RegConversion for String {
   }
 }
 
-pub fn expr(expression: String, cpu: &Cpu) -> f64 {
+pub fn expr(expression: String, cpu: &Cpu) -> u64 {
   let expression = expression.hex().reg(cpu);
   log::debug!("expr: {}", expression);
-  eval(&expression)
-    .unwrap()
-    .as_f64()
-    .unwrap_or(114514.1919810)
+  let result = eval(&expression)
+  .unwrap()
+  .as_f64()
+  .unwrap_or(114514.1919810);
+  unsafe{ 
+      result.to_int_unchecked::<u64>()
+  }
 }
 
 #[cfg(test)]
@@ -66,20 +69,20 @@ mod tests {
   #[test]
   // add sub mul div
   fn test_expr_asmd() {
-    assert_eq!(expr("1 + 2".to_string(), cpu), 3.0);
-    assert_eq!(expr("1 + 2 + 3".to_string(), cpu), 6.0);
-    assert_eq!(expr("1 + 2 * 3".to_string(), cpu), 7.0);
-    assert_eq!(expr("1 / 2 * 3".to_string(), cpu), 1.5);
-    assert_eq!(expr("1 / (2 * 3)".to_string(), cpu), 1.0 / 6.0);
-    assert_eq!(expr("0".to_string(), cpu), 0.0);
+    assert_eq!(expr("1 + 2".to_string(), cpu), 3);
+    assert_eq!(expr("1 + 2 + 3".to_string(), cpu), 6);
+    assert_eq!(expr("1 + 2 * 3".to_string(), cpu), 7);
+    assert_eq!(expr("1 / 2 * 3".to_string(), cpu), 1);
+    assert_eq!(expr("1 / (2 * 3)".to_string(), cpu), 0);
+    assert_eq!(expr("0".to_string(), cpu), 0);
     // if the expression is invalid, return 114514.0
-    assert_eq!(expr("1 / 0".to_string(), cpu), 114514.1919810);
+    assert_eq!(expr("1 / 0".to_string(), cpu), 114514);
   }
 
   #[test]
   fn test_expr_hex() {
-    assert_eq!(expr("0x1".to_string(), cpu), 1.0);
-    assert_eq!(expr("0x10".to_string(), cpu), 16.0);
+    assert_eq!(expr("0x1".to_string(), cpu), 1);
+    assert_eq!(expr("0x10".to_string(), cpu), 16);
   }
 
   #[test]
