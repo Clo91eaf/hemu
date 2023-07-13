@@ -64,6 +64,12 @@ There are several potential benefits to using Rust to rewrite Nemus's logic:
 
 - [ ] Add some emoji to make it look better.
 - [ ] Write document.
+
+## NEMU and PAs 📚
+- [x] PA1 finish.
+- [ ] PA2 finish.
+- [ ] PA3 finish.
+- [ ] PA4 finish.
  
 ## Contributing 🤝
 
