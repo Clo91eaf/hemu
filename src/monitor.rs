@@ -67,19 +67,18 @@ fn load_img(img_file: PathBuf) -> Result<usize, Box<dyn std::error::Error>> {
   Ok(size as usize)
 }
 
-pub fn init_monitor() -> Result<(), Box<dyn std::error::Error>> {
+pub fn init_monitor() -> Result<usize, Box<dyn std::error::Error>> {
   let args = Args::parse();
 
   init_log();
 
   init_sdb();
 
-  #[allow(unused_variables)]
   let img_size = load_img(args.img).unwrap();
 
   welcome();
 
-  Ok(())
+  Ok(img_size)
 }
 
 #[cfg(test)]

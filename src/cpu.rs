@@ -2,6 +2,7 @@ mod instruction;
 pub mod memory;
 mod utils;
 mod statistic;
+mod difftest;
 
 use ansi_term::Colour::{Green, Red};
 use instruction::{
@@ -11,6 +12,7 @@ use instruction::{
 use memory::{read_data, read_inst, write_data};
 use utils::{decode_operand, match_inst, sext};
 use instruction::InstPattern;
+use qemu_difftest::Difftest;
 
 #[derive(PartialEq)]
 pub enum CpuState {
@@ -34,6 +36,7 @@ impl Halt {
 
 pub struct Cpu {
   pub gpr: [u64; 32],
+  pub fpr: [u64; 32],
   pub pc: u64,
   snpc: u64,
   dnpc: u64,
@@ -41,6 +44,8 @@ pub struct Cpu {
   pub state: CpuState,
   halt: Halt,
   statistic: statistic::Statistic,
+  difftest: Difftest,
+  pub img_size: usize,
 }
 
 impl Cpu {
@@ -54,6 +59,8 @@ impl Cpu {
       state: CpuState::Running,
       halt: Halt::new(),
       statistic: statistic::Statistic::new(),
+      difftest: Difftest::new(),
+      img_size: 0,
     }
   }
 
