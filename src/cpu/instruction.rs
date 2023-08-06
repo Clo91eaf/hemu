@@ -1,85 +1,142 @@
 #[derive(Copy, Clone, Debug)]
 pub enum Instruction {
-  Register(RegisterType),
-  Immediate(ImmediateType),
-  Store(StoreType),
-  Branch(BranchType),
-  Jump(JumpType),
-  Upper(UpperType),
+  LoadStore(LoadStoreType),
+  Computational(ComputationalType),
+  JumpBranch(JumpBranchType),
+  Miscellaneous(MiscellaneousType),
+  Privileged(PrivilegedType),
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum RegisterType {
-  ADD,
-  SUB,
-  XOR,
-  OR,
-  AND,
-  SLL,
-  SRL,
-  // SRA, // todo
-  SLT,
-  SLTU,
-  MUL,
-  MULW,
-  DIV,
-  DIVU,
-  REM,
-  REMU,
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum ImmediateType {
-  ADDI,
-  XORI,
-  ORI,
-  ANDI,
-  SLLI,
-  SRLI,
-  SRAI,
-  SLTI,
-  SLTIU,
+pub enum LoadStoreType {
+  // Load
   LB,
-  LH,
-  LW,
-  LD,
   LBU,
+  LH,
   LHU,
-  LWU,
-  LDU,
-  JALR,
-  ECALL,
-  EBREAK,
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum StoreType {
+  LW,
+  LWL,
+  LWR,
+  // Store
   SB,
   SH,
   SW,
-  SD,
+  SWL,
+  SWR,
+  // Unaligned CPU Load and store
+  LL,
+  SC,
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum ComputationalType {
+  // immediate
+  ADDI,
+  ADDIU,
+  ANDI,
+  LUI,
+  ORI,
+  SLTI,
+  SLTIU,
+  XORI,
+  // three register
+  ADD,
+  ADDU,
+  AND,
+  NOR,
+  OR,
+  SLT,
+  SLTU,
+  SUB,
+  SUBU,
+  XOR,
+  // two operand
+  CLO,
+  CLZ,
+  // shift instructions
+  SLL,
+  SLLV,
+  SRA,
+  SRAV,
+  SRL,
+  SRLV,
+  // MULT/DIV
+  DIV,
+  DIVU,
+  MADD,
+  MADDU,
+  MFHI,
+  MFLO,
+  MSUB,
+  MSUBU,
+  MTHI,
+  MTLO,
+  MUL,
+  MULT,
+  MULTU,
+}
 
 #[derive(Copy, Clone, Debug)]
-pub enum BranchType {
+pub enum JumpBranchType {
+  // unconditional
+  J,
+  JAL,
+  JALR,
+  JR,
+  // pc-relative conditianal branch comparing with register
   BEQ,
   BNE,
-  BLT,
-  BGE,
-  BLTU,
-  BGEU,
+  // pc-relative conditianal branch comparing with zero
+  BGEZ,
+  BGEZAL,
+  BGTZ,
+  BLEZ,
+  BLTZ,
+  BLTZAL,
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum JumpType {
-  JAL,
+pub enum MiscellaneousType {
+  // exception
+  BRAEAK,
+  SYSCALL,
+  // trap-on-condition instructions comparing two registers
+  TEQ,
+  TGE,
+  TGEU,
+  TLT,
+  TLTU,
+  TNE,
+  // trap-on-condition instructions comparing a immediate value
+  TEQI,
+  TGEI,
+  TGEIU,
+  TLTI,
+  TLTIU,
+  TNEI,
+  // CPU conditional move
+  MOVF,
+  MOVN,
+  MOVT,
+  MOVZ,
+  // Prefetch
+  PREF,
+  // NOP
+  NOP,
+  SSNOP,
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum UpperType {
-  LUI,
-  AUIPC,
+pub enum PrivilegedType {
+  CACHE,
+  ERET,
+  MFC0,
+  MTC0,
+  // TLB
+  TLBP,
+  TLBR,
+  TLBWI,
+  TLBWR,
 }
 
 pub struct InstPattern {
