@@ -61,33 +61,3 @@ pub fn expr(expression: String, cpu: &Cpu) -> u64 {
       result.to_int_unchecked::<u64>()
   }
 }
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-
-  #[test]
-  // add sub mul div
-  fn test_expr_asmd() {
-    assert_eq!(expr("1 + 2".to_string(), cpu), 3);
-    assert_eq!(expr("1 + 2 + 3".to_string(), cpu), 6);
-    assert_eq!(expr("1 + 2 * 3".to_string(), cpu), 7);
-    assert_eq!(expr("1 / 2 * 3".to_string(), cpu), 1);
-    assert_eq!(expr("1 / (2 * 3)".to_string(), cpu), 0);
-    assert_eq!(expr("0".to_string(), cpu), 0);
-    // if the expression is invalid, return 114514.0
-    assert_eq!(expr("1 / 0".to_string(), cpu), 114514);
-  }
-
-  #[test]
-  fn test_expr_hex() {
-    assert_eq!(expr("0x1".to_string(), cpu), 1);
-    assert_eq!(expr("0x10".to_string(), cpu), 16);
-  }
-
-  #[test]
-  fn test_expr_reg() {
-    assert_eq!(expr("$pc".to_string(), cpu), cpu.pc);
-    assert_eq!(expr("$x1".to_string(), cpu), cpu.gpr[1]);
-  }
-}

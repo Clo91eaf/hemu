@@ -9,33 +9,7 @@ use std::{
   path::PathBuf,
 };
 
-use clap::Parser;
 use sdb::init_sdb;
-
-/// A riscv64 monitor write in Rust.
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Args {
-  /// Run in batch mode
-  #[arg(short, long, default_value = "false")]
-  batch: bool,
-
-  /// Log file
-  #[arg(short, long, default_value = "tests/build/dummy-riscv64-nemu.log")]
-  log: PathBuf,
-
-  /// Diff file
-  #[arg(short, long, default_value = "tests/build/dummy-riscv64-nemu.diff")]
-  diff: PathBuf,
-
-  /// Diff port
-  #[arg(short, long, default_value = "1234")]
-  port: u32,
-
-  /// Img file
-  #[arg(short='f', long, default_value = "tests/build/dummy-riscv64-nemu.bin")]
-  img: PathBuf,
-}
 
 fn welcome() {
   log::info!("Welcome to riscv64-HEMU!",);
@@ -67,15 +41,13 @@ fn load_img(img_file: PathBuf) -> Result<usize, Box<dyn std::error::Error>> {
   Ok(size as usize)
 }
 
-pub fn init_monitor() -> Result<(), Box<dyn std::error::Error>> {
-  let args = Args::parse();
-
+pub fn init_monitor(img: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
   init_log();
 
   init_sdb();
 
   #[allow(unused_variables)]
-  let img_size = load_img(args.img).unwrap();
+  let img_size = load_img(img).unwrap();
 
   welcome();
 

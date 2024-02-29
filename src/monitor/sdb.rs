@@ -123,7 +123,12 @@ impl Command {
   }
 }
 
-pub fn sdb_mainloop(cpu: &mut Cpu) {
+pub fn sdb_mainloop(cpu: &mut Cpu, batch: bool) {
+  if batch {
+    cpu.exec(usize::MAX);
+    return;
+  }
+
   let cmd_table = CommandTable::new();
   let mut rl = Editor::<()>::new();
   'out: loop {
