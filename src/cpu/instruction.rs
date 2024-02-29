@@ -11,6 +11,7 @@ pub enum Instruction {
 #[derive(Copy, Clone, Debug)]
 pub enum RegisterType {
   ADD,
+  ADDW,
   SUB,
   XOR,
   OR,
@@ -26,11 +27,13 @@ pub enum RegisterType {
   DIVU,
   REM,
   REMU,
+  MERT,
 }
 
 #[derive(Copy, Clone, Debug)]
 pub enum ImmediateType {
   ADDI,
+  ADDIW,
   XORI,
   ORI,
   ANDI,
@@ -59,7 +62,6 @@ pub enum StoreType {
   SW,
   SD,
 }
-
 
 #[derive(Copy, Clone, Debug)]
 pub enum BranchType {

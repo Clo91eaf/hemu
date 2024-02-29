@@ -1,6 +1,7 @@
 use crate::constants::*;
 use core::panic;
 use lazy_static::lazy_static;
+use log::error;
 use std::sync::Mutex;
 use crate::memory::host::{host_read, host_write};
 
@@ -30,12 +31,13 @@ fn in_pmem(addr: u64) -> bool {
 }
 
 fn out_of_bound(addr: u64) -> ! {
-  panic!(
-    "address = {:016X} is out of bound of pmem [{:016X}, {:016X}) at pc",
+  error!(
+    "address = {:08X} is out of bound of pmem [{:08X}, {:08X}) at pc",
     addr,
     MEM_BASE,
     MEM_BASE + MEM_SIZE,
   );
+  panic!()
 }
 
 pub fn pmem_read(addr: u64, len: i32) -> u64 {

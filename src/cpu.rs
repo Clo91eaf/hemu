@@ -1,16 +1,16 @@
 mod instruction;
 pub mod memory;
-mod utils;
 mod statistic;
+mod utils;
 
 use ansi_term::Colour::{Green, Red};
+use instruction::InstPattern;
 use instruction::{
   BranchType, ImmediateType, Instruction, JumpType, RegisterType, StoreType,
   UpperType,
 };
 use memory::{read_data, read_inst, write_data};
 use utils::{decode_operand, match_inst, sext};
-use instruction::InstPattern;
 
 #[derive(PartialEq)]
 pub enum CpuState {
@@ -77,6 +77,7 @@ impl Cpu {
     let patterns = [
     // Register 
   InstPattern::new("0000000 ????? ????? 000 ????? 01100 11", Instruction::Register(RegisterType::ADD)),
+  InstPattern::new("0000000 ????? ????? 000 ????? 01110 11", Instruction::Register(RegisterType::ADDW)),
   InstPattern::new("0100000 ????? ????? 000 ????? 01100 11", Instruction::Register(RegisterType::SUB)),
   InstPattern::new("0000000 ????? ????? 100 ????? 01100 11", Instruction::Register(RegisterType::XOR)),
   InstPattern::new("0000000 ????? ????? 110 ????? 01100 11", Instruction::Register(RegisterType::OR)),
@@ -87,6 +88,7 @@ impl Cpu {
   InstPattern::new("0000000 ????? ????? 011 ????? 01100 11", Instruction::Register(RegisterType::SLTU)),
     // Immediate
   InstPattern::new("??????? ????? ????? 000 ????? 00100 11", Instruction::Immediate(ImmediateType::ADDI)),
+  InstPattern::new("??????? ????? ????? 000 ????? 00110 11", Instruction::Immediate(ImmediateType::ADDIW)),
   InstPattern::new("??????? ????? ????? 100 ????? 00100 11", Instruction::Immediate(ImmediateType::XORI)),
   InstPattern::new("??????? ????? ????? 110 ????? 00100 11", Instruction::Immediate(ImmediateType::ORI)),
   InstPattern::new("??????? ????? ????? 111 ????? 00100 11", Instruction::Immediate(ImmediateType::ANDI)),
@@ -132,22 +134,6 @@ impl Cpu {
   InstPattern::new("0000000 00001 00000 000 00000 11100 11", Instruction::Immediate(ImmediateType::EBREAK)),
   InstPattern::new("0000000 00000 00000 000 00000 11100 11", Instruction::Immediate(ImmediateType::ECALL)),
     // TODO: CSR
-  // InstPattern::new("0011000 00010 00000 000 00000 11100 11", Instruction::MRET),
-  // InstPattern::new("??????? ????? ????? 000 ????? 00110 11", Instruction::ADDIW),
-  // InstPattern::new("??????? ????? ????? 010 ????? 11100 11", Instruction::CSRRS),
-  // InstPattern::new("??????? ????? ????? 001 ????? 11100 11", Instruction::CSRRW),
-  // InstPattern::new("000000? ????? ????? 001 ????? 00110 11", Instruction::SLLIW),
-  // InstPattern::new("010000? ????? ????? 101 ????? 00110 11", Instruction::SRAIW),
-  // InstPattern::new("000000? ????? ????? 101 ????? 00110 11", Instruction::SRLIW),
-  // InstPattern::new("0000000 ????? ????? 000 ????? 01110 11", Instruction::ADDW),
-  // InstPattern::new("0000001 ????? ????? 100 ????? 01110 11", Instruction::DIVW),
-  // InstPattern::new("0000001 ????? ????? 101 ????? 01110 11", Instruction::DIVUW),
-  // InstPattern::new("0000001 ????? ????? 110 ????? 01110 11", Instruction::REMW),
-  // InstPattern::new("0000001 ????? ????? 111 ????? 01110 11", Instruction::REMUW),
-  // InstPattern::new("0000000 ????? ????? 001 ????? 01110 11", Instruction::SLLW),
-  // InstPattern::new("0100000 ????? ????? 101 ????? 01110 11", Instruction::SRAW),
-  // InstPattern::new("0000000 ????? ????? 101 ????? 01110 11", Instruction::SRLW),
-  // InstPattern::new("0100000 ????? ????? 000 ????? 01110 11", Instruction::SUBW),
     ];
     for pattern in patterns.iter() {
       if match_inst(self.inst, pattern.pattern) {
@@ -163,6 +149,7 @@ impl Cpu {
     self.dnpc = self.snpc;
     match inst_type {
       Instruction::Register(RegisterType::ADD)  => {self.gpr[rd] = (self.gpr[rs1] as i64 + self.gpr[rs2] as i64) as u64;}
+      Instruction::Register(RegisterType::ADDW) => {self.gpr[rd] = sext((self.gpr[rs1] as i64 + self.gpr[rs2] as i64) as usize, 32) as u64;}
       Instruction::Register(RegisterType::SUB)  => {self.gpr[rd] = (self.gpr[rs1] as i64 - self.gpr[rs2] as i64) as u64;}
       Instruction::Register(RegisterType::XOR)  => {self.gpr[rd] = self.gpr[rs1] ^ self.gpr[rs2];}
       Instruction::Register(RegisterType::OR)   => {self.gpr[rd] = self.gpr[rs1] | self.gpr[rs2];}
@@ -173,6 +160,7 @@ impl Cpu {
       Instruction::Register(RegisterType::SLTU) => {self.gpr[rd] = if self.gpr[rs1] < self.gpr[rs2] {1} else {0};}
 
       Instruction::Immediate(ImmediateType::ADDI)  => {self.gpr[rd] = (self.gpr[rs1] as i64 + imm) as u64;}
+      Instruction::Immediate(ImmediateType::ADDIW)  => {self.gpr[rd] = sext((self.gpr[rs1] as i64 + imm) as usize, 32) as u64;}
       Instruction::Immediate(ImmediateType::XORI)  => {self.gpr[rd] = self.gpr[rs1] ^ imm as u64;}
       Instruction::Immediate(ImmediateType::ORI)   => {self.gpr[rd] = self.gpr[rs1] | imm as u64;}
       Instruction::Immediate(ImmediateType::ANDI)  => {self.gpr[rd] = self.gpr[rs1] & imm as u64;}
