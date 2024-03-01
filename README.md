@@ -54,6 +54,7 @@ There are several potential benefits to using Rust to rewrite Nemus's logic:
 ## Progress 📈
 
 - [x] RISCV64IM instruction set architecture
+- [ ] Add tui
 - [ ] MIPS32 instruction set architecture
 - [ ] Added support for peripherals.
 - [ ] Added interrupt handling mechanisms.

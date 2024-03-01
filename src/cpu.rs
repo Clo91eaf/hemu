@@ -214,6 +214,8 @@ impl Cpu {
     self.decode(&mut inst_type);
     // execute stage (including memory stage and write back stage)
     self.execute(inst_type);
+    // print disassemble
+    log::info!("{:x}: {:x}\t{}", self.pc, self.inst, utils::disassemble(self.inst, inst_type));
     // update pc
     self.pc = self.dnpc;
   }

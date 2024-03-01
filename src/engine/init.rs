@@ -6,10 +6,10 @@ use std::path::PathBuf;
 /// A riscv64 monitor write in Rust.
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
-pub struct Args {
+struct Args {
   /// Run in batch mode
-  #[arg(short, long, default_value = "true")]
-  pub batch: bool,
+  #[arg(short, long, default_value = "false")]
+  batch: bool,
 
   /// Log file
   #[arg(short, long, default_value = "tests/build/dummy-riscv64-nemu.log")]
