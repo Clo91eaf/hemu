@@ -1,5 +1,5 @@
-use crate::cpu::{Cpu, CpuState};
 use crate::cpu::memory::read_data;
+use crate::cpu::{Cpu, CpuState};
 use crate::monitor::expr;
 use atoi::atoi;
 use rustyline::Editor;
@@ -131,6 +131,8 @@ pub fn sdb_mainloop(cpu: &mut Cpu, batch: bool) {
 
   let cmd_table = CommandTable::new();
   let mut rl = Editor::<()>::new();
+  let mut last_cmd = String::new();
+  let mut last_args = String::new();
   'out: loop {
     let readline = rl.readline("(hemu) ");
     match readline {
@@ -141,13 +143,23 @@ pub fn sdb_mainloop(cpu: &mut Cpu, batch: bool) {
         let input_cmd = parts.next().unwrap_or("");
         let input_args = parts.next().unwrap_or("");
 
-        if input_cmd == "" {
-          continue;
-        }
+        let effective_cmd = if input_cmd == "" {
+          last_cmd.to_string()
+        } else {
+          last_cmd = input_cmd.to_string();
+          input_cmd.to_string()
+        };
+
+        let effective_args = if input_args == "" {
+          last_args.to_string()
+        } else {
+          last_args = input_args.to_string();
+          input_args.to_string()
+        };
 
         for cmd in cmd_table.commands.iter() {
-          if input_cmd == cmd.name {
-            if cmd.handle(input_args, cpu) < 0 {
+          if effective_cmd == cmd.name {
+            if cmd.handle(&effective_args, cpu) < 0 {
               log::info!("Quit hemu");
               break 'out;
             }
