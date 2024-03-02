@@ -4,11 +4,15 @@ mod statistic;
 mod utils;
 
 use ansi_term::Colour::{Green, Red};
-use instruction::InstPattern;
-use instruction::{
-  BranchType, ImmediateType, Instruction, JumpType, RegisterType, StoreType,
-  UpperType,
-};
+use instruction::BranchType as B;
+use instruction::ImmediateType as I;
+use instruction::InstPattern as IP;
+use instruction::Instruction as Inst;
+use instruction::JumpType as J;
+use instruction::RegisterType as R;
+use instruction::StoreType as S;
+use instruction::UpperType as U;
+
 use memory::{read_data, read_inst, write_data};
 use utils::{decode_operand, match_inst, sext};
 
@@ -70,67 +74,67 @@ impl Cpu {
     self.snpc += 4;
   }
 
-  pub fn decode(&self, inst_type: &mut Instruction) {
+  pub fn decode(&self, inst_type: &mut Inst) {
     #[rustfmt::skip]
     let patterns = [
     // Register 
-  InstPattern::new("0000000 ????? ????? 000 ????? 01100 11", Instruction::Register(RegisterType::ADD)),
-  InstPattern::new("0000000 ????? ????? 000 ????? 01110 11", Instruction::Register(RegisterType::ADDW)),
-  InstPattern::new("0100000 ????? ????? 000 ????? 01100 11", Instruction::Register(RegisterType::SUB)),
-  InstPattern::new("0000000 ????? ????? 100 ????? 01100 11", Instruction::Register(RegisterType::XOR)),
-  InstPattern::new("0000000 ????? ????? 110 ????? 01100 11", Instruction::Register(RegisterType::OR)),
-  InstPattern::new("0000000 ????? ????? 111 ????? 01100 11", Instruction::Register(RegisterType::AND)),
-  InstPattern::new("0000000 ????? ????? 001 ????? 01100 11", Instruction::Register(RegisterType::SLL)),
-  InstPattern::new("0000000 ????? ????? 101 ????? 01100 11", Instruction::Register(RegisterType::SRL)),
-  InstPattern::new("0000000 ????? ????? 010 ????? 01100 11", Instruction::Register(RegisterType::SLT)),
-  InstPattern::new("0000000 ????? ????? 011 ????? 01100 11", Instruction::Register(RegisterType::SLTU)),
+  IP::new("0000000 ????? ????? 000 ????? 01100 11", Inst::Register(R::ADD)),
+  IP::new("0000000 ????? ????? 000 ????? 01110 11", Inst::Register(R::ADDW)),
+  IP::new("0100000 ????? ????? 000 ????? 01100 11", Inst::Register(R::SUB)),
+  IP::new("0000000 ????? ????? 100 ????? 01100 11", Inst::Register(R::XOR)),
+  IP::new("0000000 ????? ????? 110 ????? 01100 11", Inst::Register(R::OR)),
+  IP::new("0000000 ????? ????? 111 ????? 01100 11", Inst::Register(R::AND)),
+  IP::new("0000000 ????? ????? 001 ????? 01100 11", Inst::Register(R::SLL)),
+  IP::new("0000000 ????? ????? 101 ????? 01100 11", Inst::Register(R::SRL)),
+  IP::new("0000000 ????? ????? 010 ????? 01100 11", Inst::Register(R::SLT)),
+  IP::new("0000000 ????? ????? 011 ????? 01100 11", Inst::Register(R::SLTU)),
     // Immediate
-  InstPattern::new("??????? ????? ????? 000 ????? 00100 11", Instruction::Immediate(ImmediateType::ADDI)),
-  InstPattern::new("??????? ????? ????? 000 ????? 00110 11", Instruction::Immediate(ImmediateType::ADDIW)),
-  InstPattern::new("??????? ????? ????? 100 ????? 00100 11", Instruction::Immediate(ImmediateType::XORI)),
-  InstPattern::new("??????? ????? ????? 110 ????? 00100 11", Instruction::Immediate(ImmediateType::ORI)),
-  InstPattern::new("??????? ????? ????? 111 ????? 00100 11", Instruction::Immediate(ImmediateType::ANDI)),
-  InstPattern::new("000000? ????? ????? 001 ????? 00100 11", Instruction::Immediate(ImmediateType::SLLI)),
-  InstPattern::new("000000? ????? ????? 101 ????? 00100 11", Instruction::Immediate(ImmediateType::SRLI)),
-  InstPattern::new("010000? ????? ????? 101 ????? 00100 11", Instruction::Immediate(ImmediateType::SRAI)),
-  InstPattern::new("??????? ????? ????? 010 ????? 00100 11", Instruction::Immediate(ImmediateType::SLTI)),
-  InstPattern::new("??????? ????? ????? 011 ????? 00100 11", Instruction::Immediate(ImmediateType::SLTIU)),
-  InstPattern::new("??????? ????? ????? 000 ????? 00000 11", Instruction::Immediate(ImmediateType::LB)),
-  InstPattern::new("??????? ????? ????? 100 ????? 00000 11", Instruction::Immediate(ImmediateType::LBU)),
-  InstPattern::new("??????? ????? ????? 001 ????? 00000 11", Instruction::Immediate(ImmediateType::LH)),
-  InstPattern::new("??????? ????? ????? 101 ????? 00000 11", Instruction::Immediate(ImmediateType::LHU)),
-  InstPattern::new("??????? ????? ????? 010 ????? 00000 11", Instruction::Immediate(ImmediateType::LW)),
-  InstPattern::new("??????? ????? ????? 110 ????? 00000 11", Instruction::Immediate(ImmediateType::LWU)),
-  InstPattern::new("??????? ????? ????? 011 ????? 00000 11", Instruction::Immediate(ImmediateType::LD)),
-  InstPattern::new("??????? ????? ????? 111 ????? 00000 11", Instruction::Immediate(ImmediateType::LDU)),
-  InstPattern::new("??????? ????? ????? 000 ????? 11001 11", Instruction::Immediate(ImmediateType::JALR)),
+  IP::new("??????? ????? ????? 000 ????? 00100 11", Inst::Immediate(I::ADDI)),
+  IP::new("??????? ????? ????? 000 ????? 00110 11", Inst::Immediate(I::ADDIW)),
+  IP::new("??????? ????? ????? 100 ????? 00100 11", Inst::Immediate(I::XORI)),
+  IP::new("??????? ????? ????? 110 ????? 00100 11", Inst::Immediate(I::ORI)),
+  IP::new("??????? ????? ????? 111 ????? 00100 11", Inst::Immediate(I::ANDI)),
+  IP::new("000000? ????? ????? 001 ????? 00100 11", Inst::Immediate(I::SLLI)),
+  IP::new("000000? ????? ????? 101 ????? 00100 11", Inst::Immediate(I::SRLI)),
+  IP::new("010000? ????? ????? 101 ????? 00100 11", Inst::Immediate(I::SRAI)),
+  IP::new("??????? ????? ????? 010 ????? 00100 11", Inst::Immediate(I::SLTI)),
+  IP::new("??????? ????? ????? 011 ????? 00100 11", Inst::Immediate(I::SLTIU)),
+  IP::new("??????? ????? ????? 000 ????? 00000 11", Inst::Immediate(I::LB)),
+  IP::new("??????? ????? ????? 100 ????? 00000 11", Inst::Immediate(I::LBU)),
+  IP::new("??????? ????? ????? 001 ????? 00000 11", Inst::Immediate(I::LH)),
+  IP::new("??????? ????? ????? 101 ????? 00000 11", Inst::Immediate(I::LHU)),
+  IP::new("??????? ????? ????? 010 ????? 00000 11", Inst::Immediate(I::LW)),
+  IP::new("??????? ????? ????? 110 ????? 00000 11", Inst::Immediate(I::LWU)),
+  IP::new("??????? ????? ????? 011 ????? 00000 11", Inst::Immediate(I::LD)),
+  IP::new("??????? ????? ????? 111 ????? 00000 11", Inst::Immediate(I::LDU)),
+  IP::new("??????? ????? ????? 000 ????? 11001 11", Inst::Immediate(I::JALR)),
     // Store
-  InstPattern::new("??????? ????? ????? 000 ????? 01000 11", Instruction::Store(StoreType::SB)),
-  InstPattern::new("??????? ????? ????? 001 ????? 01000 11", Instruction::Store(StoreType::SH)),
-  InstPattern::new("??????? ????? ????? 010 ????? 01000 11", Instruction::Store(StoreType::SW)),
-  InstPattern::new("??????? ????? ????? 011 ????? 01000 11", Instruction::Store(StoreType::SD)),
+  IP::new("??????? ????? ????? 000 ????? 01000 11", Inst::Store(S::SB)),
+  IP::new("??????? ????? ????? 001 ????? 01000 11", Inst::Store(S::SH)),
+  IP::new("??????? ????? ????? 010 ????? 01000 11", Inst::Store(S::SW)),
+  IP::new("??????? ????? ????? 011 ????? 01000 11", Inst::Store(S::SD)),
     // Branch
-  InstPattern::new("??????? ????? ????? 000 ????? 11000 11", Instruction::Branch(BranchType::BEQ)),
-  InstPattern::new("??????? ????? ????? 001 ????? 11000 11", Instruction::Branch(BranchType::BNE)),
-  InstPattern::new("??????? ????? ????? 100 ????? 11000 11", Instruction::Branch(BranchType::BLT)),
-  InstPattern::new("??????? ????? ????? 101 ????? 11000 11", Instruction::Branch(BranchType::BGE)),
-  InstPattern::new("??????? ????? ????? 110 ????? 11000 11", Instruction::Branch(BranchType::BLTU)),
-  InstPattern::new("??????? ????? ????? 111 ????? 11000 11", Instruction::Branch(BranchType::BGEU)),
+  IP::new("??????? ????? ????? 000 ????? 11000 11", Inst::Branch(B::BEQ)),
+  IP::new("??????? ????? ????? 001 ????? 11000 11", Inst::Branch(B::BNE)),
+  IP::new("??????? ????? ????? 100 ????? 11000 11", Inst::Branch(B::BLT)),
+  IP::new("??????? ????? ????? 101 ????? 11000 11", Inst::Branch(B::BGE)),
+  IP::new("??????? ????? ????? 110 ????? 11000 11", Inst::Branch(B::BLTU)),
+  IP::new("??????? ????? ????? 111 ????? 11000 11", Inst::Branch(B::BGEU)),
     // Jump
-  InstPattern::new("??????? ????? ????? ??? ????? 11011 11", Instruction::Jump(JumpType::JAL)),
+  IP::new("??????? ????? ????? ??? ????? 11011 11", Inst::Jump(J::JAL)),
     // Upper
-  InstPattern::new("??????? ????? ????? ??? ????? 01101 11", Instruction::Upper(UpperType::LUI)),
-  InstPattern::new("??????? ????? ????? ??? ????? 00101 11", Instruction::Upper(UpperType::AUIPC)),
+  IP::new("??????? ????? ????? ??? ????? 01101 11", Inst::Upper(U::LUI)),
+  IP::new("??????? ????? ????? ??? ????? 00101 11", Inst::Upper(U::AUIPC)),
     // RV32M
-  InstPattern::new("0000001 ????? ????? 000 ????? 01100 11", Instruction::Register(RegisterType::MUL)),
-  InstPattern::new("0000001 ????? ????? 000 ????? 01110 11", Instruction::Register(RegisterType::MULW)),
-  InstPattern::new("0000001 ????? ????? 100 ????? 01100 11", Instruction::Register(RegisterType::DIV)),
-  InstPattern::new("0000001 ????? ????? 101 ????? 01100 11", Instruction::Register(RegisterType::DIVU)),
-  InstPattern::new("0000001 ????? ????? 110 ????? 01100 11", Instruction::Register(RegisterType::REM)),
-  InstPattern::new("0000001 ????? ????? 111 ????? 01100 11", Instruction::Register(RegisterType::REMU)),
+  IP::new("0000001 ????? ????? 000 ????? 01100 11", Inst::Register(R::MUL)),
+  IP::new("0000001 ????? ????? 000 ????? 01110 11", Inst::Register(R::MULW)),
+  IP::new("0000001 ????? ????? 100 ????? 01100 11", Inst::Register(R::DIV)),
+  IP::new("0000001 ????? ????? 101 ????? 01100 11", Inst::Register(R::DIVU)),
+  IP::new("0000001 ????? ????? 110 ????? 01100 11", Inst::Register(R::REM)),
+  IP::new("0000001 ????? ????? 111 ????? 01100 11", Inst::Register(R::REMU)),
     // Transfer Control
-  InstPattern::new("0000000 00001 00000 000 00000 11100 11", Instruction::Immediate(ImmediateType::EBREAK)),
-  InstPattern::new("0000000 00000 00000 000 00000 11100 11", Instruction::Immediate(ImmediateType::ECALL)),
+  IP::new("0000000 00001 00000 000 00000 11100 11", Inst::Immediate(I::EBREAK)),
+  IP::new("0000000 00000 00000 000 00000 11100 11", Inst::Immediate(I::ECALL)),
     // TODO: CSR
     ];
     for pattern in patterns.iter() {
@@ -142,61 +146,61 @@ impl Cpu {
   }
 
   #[rustfmt::skip]
-  pub fn execute(&mut self, inst_type: Instruction) {
+  pub fn execute(&mut self, inst_type: Inst) {
     let (rd, rs1, rs2, imm) = decode_operand(self.inst, inst_type);
     self.dnpc = self.snpc;
     match inst_type {
-      Instruction::Register(RegisterType::ADD)  => {self.gpr[rd] = (self.gpr[rs1] as i64 + self.gpr[rs2] as i64) as u64;}
-      Instruction::Register(RegisterType::ADDW) => {self.gpr[rd] = sext((self.gpr[rs1] as i64 + self.gpr[rs2] as i64) as usize, 32) as u64;}
-      Instruction::Register(RegisterType::SUB)  => {self.gpr[rd] = (self.gpr[rs1] as i64 - self.gpr[rs2] as i64) as u64;}
-      Instruction::Register(RegisterType::XOR)  => {self.gpr[rd] = self.gpr[rs1] ^ self.gpr[rs2];}
-      Instruction::Register(RegisterType::OR)   => {self.gpr[rd] = self.gpr[rs1] | self.gpr[rs2];}
-      Instruction::Register(RegisterType::AND)  => {self.gpr[rd] = self.gpr[rs1] & self.gpr[rs2];}
-      Instruction::Register(RegisterType::SLL)  => {self.gpr[rd] = self.gpr[rs1] << self.gpr[rs2];}
-      Instruction::Register(RegisterType::SRL)  => {self.gpr[rd] = self.gpr[rs1] >> self.gpr[rs2];}
-      Instruction::Register(RegisterType::SLT)  => {self.gpr[rd] = if (self.gpr[rs1] as i64) < (self.gpr[rs2] as i64) {1} else {0};}
-      Instruction::Register(RegisterType::SLTU) => {self.gpr[rd] = if self.gpr[rs1] < self.gpr[rs2] {1} else {0};}
+      Inst::Register(R::ADD)  => {self.gpr[rd] = (self.gpr[rs1] as i64 + self.gpr[rs2] as i64) as u64;}
+      Inst::Register(R::ADDW) => {self.gpr[rd] = sext((self.gpr[rs1] as i64 + self.gpr[rs2] as i64) as usize, 32) as u64;}
+      Inst::Register(R::SUB)  => {self.gpr[rd] = (self.gpr[rs1] as i64 - self.gpr[rs2] as i64) as u64;}
+      Inst::Register(R::XOR)  => {self.gpr[rd] = self.gpr[rs1] ^ self.gpr[rs2];}
+      Inst::Register(R::OR)   => {self.gpr[rd] = self.gpr[rs1] | self.gpr[rs2];}
+      Inst::Register(R::AND)  => {self.gpr[rd] = self.gpr[rs1] & self.gpr[rs2];}
+      Inst::Register(R::SLL)  => {self.gpr[rd] = self.gpr[rs1] << self.gpr[rs2];}
+      Inst::Register(R::SRL)  => {self.gpr[rd] = self.gpr[rs1] >> self.gpr[rs2];}
+      Inst::Register(R::SLT)  => {self.gpr[rd] = if (self.gpr[rs1] as i64) < (self.gpr[rs2] as i64) {1} else {0};}
+      Inst::Register(R::SLTU) => {self.gpr[rd] = if self.gpr[rs1] < self.gpr[rs2] {1} else {0};}
 
-      Instruction::Immediate(ImmediateType::ADDI)  => {self.gpr[rd] = (self.gpr[rs1] as i64 + imm) as u64;}
-      Instruction::Immediate(ImmediateType::ADDIW) => {self.gpr[rd] = sext((self.gpr[rs1] as i64 + imm) as usize, 32) as u64;}
-      Instruction::Immediate(ImmediateType::XORI)  => {self.gpr[rd] = self.gpr[rs1] ^ imm as u64;}
-      Instruction::Immediate(ImmediateType::ORI)   => {self.gpr[rd] = self.gpr[rs1] | imm as u64;}
-      Instruction::Immediate(ImmediateType::ANDI)  => {self.gpr[rd] = self.gpr[rs1] & imm as u64;}
-      Instruction::Immediate(ImmediateType::SLLI)  => {self.gpr[rd] = self.gpr[rs1] << imm;}
-      Instruction::Immediate(ImmediateType::SRLI)  => {self.gpr[rd] = self.gpr[rs1] >> imm;}
-      Instruction::Immediate(ImmediateType::SRAI)  => {self.gpr[rd] = (self.gpr[rs1] as i64 >> (if imm < 64 {imm as i64} else {64})) as u64;}
-      Instruction::Immediate(ImmediateType::SLTI)  => {self.gpr[rd] = if (self.gpr[rs1] as i64) < imm {1} else {0};}
-      Instruction::Immediate(ImmediateType::SLTIU) => {self.gpr[rd] = if self.gpr[rs1] < imm as u64 {1} else {0};}
+      Inst::Immediate(I::ADDI)  => {self.gpr[rd] = (self.gpr[rs1] as i64 + imm) as u64;}
+      Inst::Immediate(I::ADDIW) => {self.gpr[rd] = sext((self.gpr[rs1] as i64 + imm) as usize, 32) as u64;}
+      Inst::Immediate(I::XORI)  => {self.gpr[rd] = self.gpr[rs1] ^ imm as u64;}
+      Inst::Immediate(I::ORI)   => {self.gpr[rd] = self.gpr[rs1] | imm as u64;}
+      Inst::Immediate(I::ANDI)  => {self.gpr[rd] = self.gpr[rs1] & imm as u64;}
+      Inst::Immediate(I::SLLI)  => {self.gpr[rd] = self.gpr[rs1] << imm;}
+      Inst::Immediate(I::SRLI)  => {self.gpr[rd] = self.gpr[rs1] >> imm;}
+      Inst::Immediate(I::SRAI)  => {self.gpr[rd] = (self.gpr[rs1] as i64 >> (if imm < 64 {imm as i64} else {64})) as u64;}
+      Inst::Immediate(I::SLTI)  => {self.gpr[rd] = if (self.gpr[rs1] as i64) < imm {1} else {0};}
+      Inst::Immediate(I::SLTIU) => {self.gpr[rd] = if self.gpr[rs1] < imm as u64 {1} else {0};}
 
-      Instruction::Immediate(ImmediateType::LB)  => {sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 1) as usize, 8);}
-      Instruction::Immediate(ImmediateType::LBU) => {read_data((self.gpr[rs1] as i64 + imm) as u64, 1);}
-      Instruction::Immediate(ImmediateType::LH)  => {sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 2) as usize, 8);}
-      Instruction::Immediate(ImmediateType::LHU) => {read_data((self.gpr[rs1] as i64 + imm) as u64, 2);}
-      Instruction::Immediate(ImmediateType::LW)  => {sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 4) as usize, 8);}
-      Instruction::Immediate(ImmediateType::LWU) => {read_data((self.gpr[rs1] as i64 + imm) as u64, 4);}
-      Instruction::Immediate(ImmediateType::LD)  => {sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 8) as usize, 8);}
-      Instruction::Immediate(ImmediateType::LDU) => {read_data((self.gpr[rs1] as i64 + imm) as u64, 8);}
+      Inst::Immediate(I::LB)  => {sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 1) as usize, 8);}
+      Inst::Immediate(I::LBU) => {read_data((self.gpr[rs1] as i64 + imm) as u64, 1);}
+      Inst::Immediate(I::LH)  => {sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 2) as usize, 8);}
+      Inst::Immediate(I::LHU) => {read_data((self.gpr[rs1] as i64 + imm) as u64, 2);}
+      Inst::Immediate(I::LW)  => {sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 4) as usize, 8);}
+      Inst::Immediate(I::LWU) => {read_data((self.gpr[rs1] as i64 + imm) as u64, 4);}
+      Inst::Immediate(I::LD)  => {sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 8) as usize, 8);}
+      Inst::Immediate(I::LDU) => {read_data((self.gpr[rs1] as i64 + imm) as u64, 8);}
 
-      Instruction::Store(StoreType::SB) => {write_data((self.gpr[rs1] as i64 + imm) as u64, 1, self.gpr[rs2]);}
-      Instruction::Store(StoreType::SH) => {write_data((self.gpr[rs1] as i64 + imm) as u64, 2, self.gpr[rs2]);}
-      Instruction::Store(StoreType::SW) => {write_data((self.gpr[rs1] as i64 + imm) as u64, 4, self.gpr[rs2]);}
-      Instruction::Store(StoreType::SD) => {write_data((self.gpr[rs1] as i64 + imm) as u64, 8, self.gpr[rs2]);}
+      Inst::Store(S::SB) => {write_data((self.gpr[rs1] as i64 + imm) as u64, 1, self.gpr[rs2]);}
+      Inst::Store(S::SH) => {write_data((self.gpr[rs1] as i64 + imm) as u64, 2, self.gpr[rs2]);}
+      Inst::Store(S::SW) => {write_data((self.gpr[rs1] as i64 + imm) as u64, 4, self.gpr[rs2]);}
+      Inst::Store(S::SD) => {write_data((self.gpr[rs1] as i64 + imm) as u64, 8, self.gpr[rs2]);}
 
-      Instruction::Branch(BranchType::BEQ)  => {if self.gpr[rs1] == self.gpr[rs2] {self.dnpc = (self.pc as i64 + imm) as u64;}}
-      Instruction::Branch(BranchType::BNE)  => {if self.gpr[rs1] != self.gpr[rs2] {self.dnpc = (self.pc as i64 + imm) as u64;}}
-      Instruction::Branch(BranchType::BLT)  => {if (self.gpr[rs1] as i64) < (self.gpr[rs2] as i64) {self.dnpc = (self.pc as i64 + imm) as u64;}}
-      Instruction::Branch(BranchType::BGE)  => {if (self.gpr[rs1] as i64) >= (self.gpr[rs2] as i64) {self.dnpc = (self.pc as i64 + imm) as u64;}}
-      Instruction::Branch(BranchType::BLTU) => {if self.gpr[rs1] < self.gpr[rs2] {self.dnpc = (self.pc as i64 + imm) as u64;}}
-      Instruction::Branch(BranchType::BGEU) => {if self.gpr[rs1] >= self.gpr[rs2] {self.dnpc = (self.pc as i64 + imm) as u64;}}
+      Inst::Branch(B::BEQ)  => {if self.gpr[rs1] == self.gpr[rs2] {self.dnpc = (self.pc as i64 + imm) as u64;}}
+      Inst::Branch(B::BNE)  => {if self.gpr[rs1] != self.gpr[rs2] {self.dnpc = (self.pc as i64 + imm) as u64;}}
+      Inst::Branch(B::BLT)  => {if (self.gpr[rs1] as i64) < (self.gpr[rs2] as i64) {self.dnpc = (self.pc as i64 + imm) as u64;}}
+      Inst::Branch(B::BGE)  => {if (self.gpr[rs1] as i64) >= (self.gpr[rs2] as i64) {self.dnpc = (self.pc as i64 + imm) as u64;}}
+      Inst::Branch(B::BLTU) => {if self.gpr[rs1] < self.gpr[rs2] {self.dnpc = (self.pc as i64 + imm) as u64;}}
+      Inst::Branch(B::BGEU) => {if self.gpr[rs1] >= self.gpr[rs2] {self.dnpc = (self.pc as i64 + imm) as u64;}}
 
-      Instruction::Jump(JumpType::JAL)            => {self.gpr[rd] = self.pc + 4; self.dnpc = (self.pc as i64 + imm) as u64;}
-      Instruction::Immediate(ImmediateType::JALR) => {self.gpr[rd] = self.pc + 4; self.dnpc = (self.gpr[rs1] as i64 + imm) as u64;}
+      Inst::Jump(J::JAL)            => {self.gpr[rd] = self.pc + 4; self.dnpc = (self.pc as i64 + imm) as u64;}
+      Inst::Immediate(I::JALR) => {self.gpr[rd] = self.pc + 4; self.dnpc = (self.gpr[rs1] as i64 + imm) as u64;}
 
-      Instruction::Upper(UpperType::LUI)   => {self.gpr[rd] = self.gpr[rs1];}
-      Instruction::Upper(UpperType::AUIPC) => {self.gpr[rd] = (self.pc as i64 + imm) as u64;}
+      Inst::Upper(U::LUI)   => {self.gpr[rd] = self.gpr[rs1];}
+      Inst::Upper(U::AUIPC) => {self.gpr[rd] = (self.pc as i64 + imm) as u64;}
 
-      Instruction::Immediate(ImmediateType::ECALL)  => {todo!();}
-      Instruction::Immediate(ImmediateType::EBREAK) => {self.hemu_trap();}
+      Inst::Immediate(I::ECALL)  => {todo!();}
+      Inst::Immediate(I::EBREAK) => {self.hemu_trap();}
 
       _ => {todo!("{:?} not implemented", inst_type);}
     }
@@ -205,7 +209,7 @@ impl Cpu {
 
   fn exec_once(&mut self) {
     // pipeline start
-    let mut inst_type = Instruction::Immediate(ImmediateType::EBREAK);
+    let mut inst_type = Inst::Immediate(I::EBREAK);
     self.snpc = self.pc;
     // fetch stage
     self.fetch();
