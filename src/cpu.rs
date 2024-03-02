@@ -158,13 +158,13 @@ impl Cpu {
       Instruction::Register(RegisterType::SLTU) => {self.gpr[rd] = if self.gpr[rs1] < self.gpr[rs2] {1} else {0};}
 
       Instruction::Immediate(ImmediateType::ADDI)  => {self.gpr[rd] = (self.gpr[rs1] as i64 + imm) as u64;}
-      Instruction::Immediate(ImmediateType::ADDIW)  => {self.gpr[rd] = sext((self.gpr[rs1] as i64 + imm) as usize, 32) as u64;}
+      Instruction::Immediate(ImmediateType::ADDIW) => {self.gpr[rd] = sext((self.gpr[rs1] as i64 + imm) as usize, 32) as u64;}
       Instruction::Immediate(ImmediateType::XORI)  => {self.gpr[rd] = self.gpr[rs1] ^ imm as u64;}
       Instruction::Immediate(ImmediateType::ORI)   => {self.gpr[rd] = self.gpr[rs1] | imm as u64;}
       Instruction::Immediate(ImmediateType::ANDI)  => {self.gpr[rd] = self.gpr[rs1] & imm as u64;}
       Instruction::Immediate(ImmediateType::SLLI)  => {self.gpr[rd] = self.gpr[rs1] << imm;}
       Instruction::Immediate(ImmediateType::SRLI)  => {self.gpr[rd] = self.gpr[rs1] >> imm;}
-      Instruction::Immediate(ImmediateType::SRAI)  => {self.gpr[rd] = (self.gpr[rs1] as i64 >> imm as i64) as u64;}
+      Instruction::Immediate(ImmediateType::SRAI)  => {self.gpr[rd] = (self.gpr[rs1] as i64 >> (if imm < 64 {imm as i64} else {64})) as u64;}
       Instruction::Immediate(ImmediateType::SLTI)  => {self.gpr[rd] = if (self.gpr[rs1] as i64) < imm {1} else {0};}
       Instruction::Immediate(ImmediateType::SLTIU) => {self.gpr[rd] = if self.gpr[rs1] < imm as u64 {1} else {0};}
 
@@ -206,6 +206,7 @@ impl Cpu {
   fn exec_once(&mut self) {
     // pipeline start
     let mut inst_type = Instruction::Immediate(ImmediateType::EBREAK);
+    self.snpc = self.pc;
     // fetch stage
     self.fetch();
     // decode stage
@@ -213,12 +214,7 @@ impl Cpu {
     // execute stage (including memory stage and write back stage)
     self.execute(inst_type);
     // print disassemble
-    log::info!(
-      "{:08x}: {:08x}\t{}",
-      self.pc,
-      self.inst,
-      utils::disassemble(self.inst, inst_type)
-    );
+    log::info!("{:08x}: {:08x}\t{}", self.pc, self.inst, utils::disassemble(self.inst, inst_type));
     // update pc
     self.pc = self.dnpc;
   }

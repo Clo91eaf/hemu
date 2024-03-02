@@ -27,7 +27,6 @@ pub enum RegisterType {
   DIVU,
   REM,
   REMU,
-  MERT,
 }
 
 #[derive(Copy, Clone, Debug)]
