@@ -281,4 +281,8 @@ impl Cpu {
   pub fn dump_watches(&self) {
     todo!("watch points not implemented!");
   }
+
+  fn difftest(&self) -> bool {
+    todo!("difftest not implemented!");
+  }
 }
