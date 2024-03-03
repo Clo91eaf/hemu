@@ -3,6 +3,7 @@ pub mod memory;
 mod statistic;
 mod utils;
 
+use std::io::prelude::*;
 use ansi_term::Colour::{Green, Red};
 use instruction::BranchType as B;
 use instruction::ImmediateType as I;
@@ -219,6 +220,7 @@ impl Cpu {
     self.execute(inst_type);
     // print disassemble
     log::info!("{:08x}: {:08x}\t{}", self.pc, self.inst, utils::disassemble(self.inst, inst_type));
+    self.difftest().unwrap();
     // update pc
     self.pc = self.dnpc;
   }
@@ -282,7 +284,19 @@ impl Cpu {
     todo!("watch points not implemented!");
   }
 
-  fn difftest(&self) -> bool {
-    todo!("difftest not implemented!");
+  fn difftest(&self) -> anyhow::Result<()> {
+    let mut file = std::fs::OpenOptions::new()
+      .write(true)
+      .create(true)
+      .append(true)
+      .open("logs/log.diff")?;
+
+    file.write_all(format!("{:x} ", self.pc).as_bytes())?;
+    for i in 0..32 {
+      file.write_all(format!("{:x} ", self.gpr[i]).as_bytes())?;
+    }
+    file.write_all(b"\n")?;
+
+    Ok(())
   }
 }
