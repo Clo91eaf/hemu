@@ -12,11 +12,11 @@ struct Args {
   batch: bool,
 
   /// Log file
-  #[arg(short, long, default_value = "tests/build/dummy-riscv64-nemu.log")]
+  #[arg(short, long, default_value = "resources/build/add-riscv64-nemu.log")]
   log: PathBuf,
 
   /// Diff file
-  #[arg(short, long, default_value = "tests/build/dummy-riscv64-nemu.diff")]
+  #[arg(short, long, default_value = "resources/build/add-riscv64-nemu.diff")]
   diff: PathBuf,
 
   /// Diff port
@@ -27,7 +27,7 @@ struct Args {
   #[arg(
     short = 'f',
     long,
-    default_value = "tests/build/dummy-riscv64-nemu.bin"
+    default_value = "resources/build/add-riscv64-nemu.bin"
   )]
   img: PathBuf,
 }

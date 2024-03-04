@@ -1,7 +1,7 @@
 use crate::constants::*;
 use core::panic;
 use lazy_static::lazy_static;
-use log::error;
+use log::{error, info};
 use std::sync::Mutex;
 use crate::memory::host::{host_read, host_write};
 
@@ -50,13 +50,16 @@ pub fn pmem_write(addr: u64, len: i32, data: u64) {
 
 pub fn paddr_read(addr: u64, len: i32) -> u64 {
   if in_pmem(addr) {
-    return pmem_read(addr, len)
+    let data = pmem_read(addr, len);
+    info!("R addr = {:08x}, len = {}, data = {:08x}", addr, len, data);
+    return data;
   }
   out_of_bound(addr)
 }
 
 pub fn paddr_write(addr: u64, len: i32, data: u64) {
   if in_pmem(addr) {
+    info!("W addr = {:08x}, len = {}, data = {:08x}", addr, len, data);
     return pmem_write(addr, len, data)
   }
   out_of_bound(addr)

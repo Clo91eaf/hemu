@@ -173,14 +173,14 @@ impl Cpu {
       Inst::Immediate(I::SLTI)  => {self.gpr[rd] = if (self.gpr[rs1] as i64) < imm {1} else {0};}
       Inst::Immediate(I::SLTIU) => {self.gpr[rd] = if self.gpr[rs1] < imm as u64 {1} else {0};}
 
-      Inst::Immediate(I::LB)  => {sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 1) as usize, 8);}
-      Inst::Immediate(I::LBU) => {read_data((self.gpr[rs1] as i64 + imm) as u64, 1);}
-      Inst::Immediate(I::LH)  => {sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 2) as usize, 16);}
-      Inst::Immediate(I::LHU) => {read_data((self.gpr[rs1] as i64 + imm) as u64, 2);}
-      Inst::Immediate(I::LW)  => {sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 4) as usize, 32);}
-      Inst::Immediate(I::LWU) => {read_data((self.gpr[rs1] as i64 + imm) as u64, 4);}
-      Inst::Immediate(I::LD)  => {sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 8) as usize, 64);}
-      Inst::Immediate(I::LDU) => {read_data((self.gpr[rs1] as i64 + imm) as u64, 8);}
+      Inst::Immediate(I::LB)  => {self.gpr[rd] = sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 1) as usize, 8) as u64;}
+      Inst::Immediate(I::LBU) => {self.gpr[rd] = read_data((self.gpr[rs1] as i64 + imm) as u64, 1);}
+      Inst::Immediate(I::LH)  => {self.gpr[rd] = sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 2) as usize, 16) as u64;}
+      Inst::Immediate(I::LHU) => {self.gpr[rd] = read_data((self.gpr[rs1] as i64 + imm) as u64, 2);}
+      Inst::Immediate(I::LW)  => {self.gpr[rd] = sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 4) as usize, 32) as u64;}
+      Inst::Immediate(I::LWU) => {self.gpr[rd] = read_data((self.gpr[rs1] as i64 + imm) as u64, 4);}
+      Inst::Immediate(I::LD)  => {self.gpr[rd] = sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 8) as usize, 64) as u64;}
+      Inst::Immediate(I::LDU) => {self.gpr[rd] = read_data((self.gpr[rs1] as i64 + imm) as u64, 8);}
 
       Inst::Store(S::SB) => {write_data((self.gpr[rs1] as i64 + imm) as u64, 1, self.gpr[rs2]);}
       Inst::Store(S::SH) => {write_data((self.gpr[rs1] as i64 + imm) as u64, 2, self.gpr[rs2]);}
