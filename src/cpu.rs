@@ -13,6 +13,7 @@ use instruction::RegisterType as R;
 use instruction::StoreType as S;
 use instruction::UpperType as U;
 use std::io::prelude::*;
+use std::io::BufReader;
 use std::path::PathBuf;
 
 use memory::{read_data, read_inst, write_data};
@@ -47,11 +48,13 @@ pub struct Cpu {
   pub state: CpuState,
   pub halt: Halt,
   statistic: statistic::Statistic,
-  log: PathBuf,
+  diff: BufReader<std::fs::File>,
 }
 
 impl Cpu {
-  pub fn new(log: PathBuf) -> Cpu {
+  pub fn new(diff: PathBuf) -> Cpu {
+    let file = std::fs::File::open(&diff).unwrap();
+    let diff = BufReader::new(file);
     Cpu {
       gpr: [0; 32],
       pc: 0x80000000,
@@ -61,7 +64,7 @@ impl Cpu {
       state: CpuState::Running,
       halt: Halt::new(),
       statistic: statistic::Statistic::new(),
-      log,
+      diff,
     }
   }
 
@@ -150,12 +153,10 @@ impl Cpu {
   IP::new("0000000 00000 00000 000 00000 11100 11", Inst::Immediate(I::ECALL)),
     // TODO: CSR
     ];
-    for pattern in patterns.iter() {
-      if match_inst(self.inst, pattern.pattern) {
-        *inst_type = pattern.itype;
-        return;
-      }
-    }
+    patterns
+      .iter()
+      .find(|pattern| match_inst(self.inst, pattern.pattern))
+      .map(|pattern| *inst_type = pattern.itype);
   }
 
   #[rustfmt::skip]
@@ -318,18 +319,29 @@ impl Cpu {
     todo!("watch points not implemented!");
   }
 
-  fn difftest(&self) -> anyhow::Result<()> {
-    let mut file = std::fs::OpenOptions::new()
-      .write(true)
-      .create(true)
-      .append(true)
-      .open(&self.log)?;
+  fn difftest(&mut self) -> anyhow::Result<()> {
+    // get numbers from diff file
+    let mut line = String::new();
+    self.diff.read_line(&mut line)?;
+    let numbers = line
+      .split_whitespace()
+      .map(|s| u64::from_str_radix(&s, 16).unwrap())
+      .collect::<Vec<u64>>();
 
-    file.write_all(format!("{:x} ", self.pc).as_bytes())?;
-    for i in 0..32 {
-      file.write_all(format!("{:x} ", self.gpr[i]).as_bytes())?;
+    // if numbers.len() == 0, there maybe a empty line
+    if numbers.len() == 0 {
+      return Ok(());
     }
-    file.write_all(b"\n")?;
+
+    // difftest check
+    if numbers[0] != self.pc {
+      panic!("pc = {:x}, ref = {:x}", self.pc, numbers[0]);
+    }
+    (0..32).for_each(|i| {
+      if numbers[i + 1] != self.gpr[i] {
+        panic!("x{:02} = {:x}, ref = {:x}", i, self.gpr[i], numbers[i + 1]);
+      }
+    });
 
     Ok(())
   }

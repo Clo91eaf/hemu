@@ -11,20 +11,12 @@ struct Args {
   #[arg(short, long, default_value = "false")]
   batch: bool,
 
-  /// Log file
-  #[arg(short, long, default_value = "logs/log.diff")]
-  log: PathBuf,
-
   /// Diff file
-  #[arg(short, long, default_value = "resources/am-tests/bit-riscv64-nemu.diff")]
+  #[arg(short, long, default_value = "resources/am-tests/add-riscv64-nemu.diff")]
   diff: PathBuf,
 
-  /// Diff port
-  #[arg(short, long, default_value = "1234")]
-  port: u32,
-
   /// Img file
-  #[arg(short = 'f', long, default_value = "resources/am-tests/bit-riscv64-nemu.bin")]
+  #[arg(short = 'f', long, default_value = "resources/am-tests/add-riscv64-nemu.bin")]
   img: PathBuf,
 }
 
@@ -33,7 +25,7 @@ pub fn engine_start() {
 
   let _ = init_monitor(args.img, "info".to_string());
 
-  let cpu = &mut Cpu::new(args.log);
+  let cpu = &mut Cpu::new(args.diff);
 
   sdb::sdb_mainloop(cpu, args.batch);
 }

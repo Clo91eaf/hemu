@@ -40,19 +40,7 @@ cargo run -- -f ./resources/am-tests/add-riscv64-nemu.bin
 To test HEMU, you can use the following command:
 
 ```sh
-RUST_TEST_THREADS=1 cargo test --test all
-```
-
-To run the specific test, you can use the following command:
-
-```sh
-cargo test --test <test_name>
-```
-
-Where `<test_name>` is the name of the test that you want to run. for example:
-
-```sh
-cargo test --test add
+RUST_TEST_THREADS=1 cargo test --test am-tests
 ```
 
 ## Why rust ❓
