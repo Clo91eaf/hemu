@@ -16,7 +16,7 @@ use std::io::prelude::*;
 use std::path::PathBuf;
 
 use memory::{read_data, read_inst, write_data};
-use utils::{decode_operand, match_inst, sext};
+use utils::{bits, decode_operand, match_inst, sext};
 
 #[derive(PartialEq, Debug)]
 pub enum CpuState {
@@ -174,7 +174,7 @@ impl Cpu {
       Inst::Immediate(I::ANDI)  => {self.gpr[rd] = self.gpr[rs1] & imm as u64;}
       Inst::Immediate(I::SLLI)  => {self.gpr[rd] = self.gpr[rs1] << imm;}
       Inst::Immediate(I::SRLI)  => {self.gpr[rd] = self.gpr[rs1] >> imm;}
-      Inst::Immediate(I::SRAI)  => {self.gpr[rd] = (self.gpr[rs1] as i64 >> (if imm < 64 {imm as i64} else {63})) as u64;}
+      Inst::Immediate(I::SRAI)  => {self.gpr[rd] = (self.gpr[rs1] as i64 >> bits(imm as u32, 0, 6)) as u64;}
       Inst::Immediate(I::SLTI)  => {self.gpr[rd] = if (self.gpr[rs1] as i64) < imm {1} else {0};}
       Inst::Immediate(I::SLTIU) => {self.gpr[rd] = if self.gpr[rs1] < imm as u64 {1} else {0};}
 
@@ -281,13 +281,14 @@ impl Cpu {
   }
 
   pub fn dump_registers(&self) {
-    for i in 0..32 {
-      print!("x{:02} = 0x{:016x} ", i, self.gpr[i]);
-      if i % 4 == 3 {
-        println!();
+    for i in 0..8 {
+      let mut line = String::with_capacity(80);
+      for j in 0..4 {
+        let index = i * 4 + j;
+        line.push_str(&format!("x{:02} = 0x{:08x} ", index, self.gpr[index]));
       }
+      log::info!("{}", line);
     }
-    println!();
   }
 
   pub fn dump_watches(&self) {

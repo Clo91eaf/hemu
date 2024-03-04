@@ -19,7 +19,7 @@ fn bitmask(bits: u32) -> u32 {
 }
 
 // [lo, hi)
-fn bits(x: u32, lo: u32, hi: u32) -> usize {
+pub fn bits(x: u32, lo: u32, hi: u32) -> usize {
   assert!(hi >= lo);
   ((x >> lo) & bitmask(hi - lo)) as usize
 }

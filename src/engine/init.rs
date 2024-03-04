@@ -35,7 +35,7 @@ struct Args {
 pub fn engine_start() {
   let args = Args::parse();
 
-  let _ = init_monitor(args.img);
+  let _ = init_monitor(args.img, "info".to_string());
 
   let cpu = &mut Cpu::new(args.log);
 

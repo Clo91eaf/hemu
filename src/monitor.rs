@@ -41,8 +41,8 @@ fn load_img(img_file: PathBuf) -> Result<usize, Box<dyn std::error::Error>> {
   Ok(size as usize)
 }
 
-pub fn init_monitor(img: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
-  init_log();
+pub fn init_monitor(img: PathBuf, log_level: String) -> Result<(), Box<dyn std::error::Error>> {
+  init_log(log_level);
 
   init_sdb();
 

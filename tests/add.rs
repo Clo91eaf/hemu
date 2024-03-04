@@ -4,13 +4,13 @@ use hemu::monitor::sdb;
 use std::path::PathBuf;
 
 #[test]
-fn test_bit() {
+fn test_add() {
   // prepare the log file
-  let log = PathBuf::from("logs/bit-riscv64-hemu.diff");
+  let log = PathBuf::from("logs/add-riscv64-hemu.diff");
   let _ = std::fs::remove_file(&log);
 
   // prepare the img file
-  let img = PathBuf::from("resources/build/bit-riscv64-nemu.bin");
+  let img = PathBuf::from("resources/build/add-riscv64-nemu.bin");
 
   // start the monitor
   let _ = init_monitor(img, "error".to_string());

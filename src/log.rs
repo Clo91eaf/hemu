@@ -1,7 +1,7 @@
 use std::env;
 
-pub fn init_log() {
-  let log_level = env::var("LOG_LEVEL").unwrap_or_else(|_| "info".to_string());
+pub fn init_log(log_level: String) {
+  let log_level = env::var("LOG_LEVEL").unwrap_or_else(|_| log_level);
 
   let filter_level = match log_level.as_str() {
     "error" => log::LevelFilter::Error,
