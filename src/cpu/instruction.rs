@@ -13,6 +13,7 @@ pub enum RegisterType {
   ADD,
   ADDW,
   SUB,
+  SUBW,
   XOR,
   OR,
   AND,
@@ -20,14 +21,18 @@ pub enum RegisterType {
   SLLW,
   SRL,
   // SRA, // todo
+  SRAW,
+  SRLW,
   SLT,
   SLTU,
   MUL,
   MULW,
   DIV,
   DIVU,
+  DIVW,
   REM,
   REMU,
+  REMW,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -38,8 +43,11 @@ pub enum ImmediateType {
   ORI,
   ANDI,
   SLLI,
+  SLLIW,
   SRLI,
+  SRLIW,
   SRAI,
+  SRAIW,
   SLTI,
   SLTIU,
   LB,

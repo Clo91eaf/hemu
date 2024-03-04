@@ -85,12 +85,15 @@ impl Cpu {
   IP::new("0000000 ????? ????? 000 ????? 01100 11", Inst::Register(R::ADD)),
   IP::new("0000000 ????? ????? 000 ????? 01110 11", Inst::Register(R::ADDW)),
   IP::new("0100000 ????? ????? 000 ????? 01100 11", Inst::Register(R::SUB)),
+  IP::new("0100000 ????? ????? 000 ????? 01110 11", Inst::Register(R::SUBW)),
   IP::new("0000000 ????? ????? 100 ????? 01100 11", Inst::Register(R::XOR)),
   IP::new("0000000 ????? ????? 110 ????? 01100 11", Inst::Register(R::OR)),
   IP::new("0000000 ????? ????? 111 ????? 01100 11", Inst::Register(R::AND)),
   IP::new("0000000 ????? ????? 001 ????? 01100 11", Inst::Register(R::SLL)),
   IP::new("0000000 ????? ????? 001 ????? 01110 11", Inst::Register(R::SLLW)),
   IP::new("0000000 ????? ????? 101 ????? 01100 11", Inst::Register(R::SRL)),
+  IP::new("0000000 ????? ????? 101 ????? 01110 11", Inst::Register(R::SRLW)),
+  IP::new("0100000 ????? ????? 101 ????? 01110 11", Inst::Register(R::SRAW)),
   IP::new("0000000 ????? ????? 010 ????? 01100 11", Inst::Register(R::SLT)),
   IP::new("0000000 ????? ????? 011 ????? 01100 11", Inst::Register(R::SLTU)),
     // Immediate
@@ -100,8 +103,11 @@ impl Cpu {
   IP::new("??????? ????? ????? 110 ????? 00100 11", Inst::Immediate(I::ORI)),
   IP::new("??????? ????? ????? 111 ????? 00100 11", Inst::Immediate(I::ANDI)),
   IP::new("000000? ????? ????? 001 ????? 00100 11", Inst::Immediate(I::SLLI)),
+  IP::new("000000? ????? ????? 001 ????? 00110 11", Inst::Immediate(I::SLLIW)),
   IP::new("000000? ????? ????? 101 ????? 00100 11", Inst::Immediate(I::SRLI)),
+  IP::new("000000? ????? ????? 101 ????? 00110 11", Inst::Immediate(I::SRLIW)),
   IP::new("010000? ????? ????? 101 ????? 00100 11", Inst::Immediate(I::SRAI)),
+  IP::new("010000? ????? ????? 101 ????? 00110 11", Inst::Immediate(I::SRAIW)),
   IP::new("??????? ????? ????? 010 ????? 00100 11", Inst::Immediate(I::SLTI)),
   IP::new("??????? ????? ????? 011 ????? 00100 11", Inst::Immediate(I::SLTIU)),
   IP::new("??????? ????? ????? 000 ????? 00000 11", Inst::Immediate(I::LB)),
@@ -135,8 +141,10 @@ impl Cpu {
   IP::new("0000001 ????? ????? 000 ????? 01110 11", Inst::Register(R::MULW)),
   IP::new("0000001 ????? ????? 100 ????? 01100 11", Inst::Register(R::DIV)),
   IP::new("0000001 ????? ????? 101 ????? 01100 11", Inst::Register(R::DIVU)),
+  IP::new("0000001 ????? ????? 100 ????? 01110 11", Inst::Register(R::DIVW)),
   IP::new("0000001 ????? ????? 110 ????? 01100 11", Inst::Register(R::REM)),
   IP::new("0000001 ????? ????? 111 ????? 01100 11", Inst::Register(R::REMU)),
+  IP::new("0000001 ????? ????? 110 ????? 01110 11", Inst::Register(R::REMW)),
     // Transfer Control
   IP::new("0000000 00001 00000 000 00000 11100 11", Inst::Immediate(I::EBREAK)),
   IP::new("0000000 00000 00000 000 00000 11100 11", Inst::Immediate(I::ECALL)),
@@ -155,26 +163,32 @@ impl Cpu {
     let (rd, rs1, rs2, imm) = decode_operand(self.inst, inst_type);
     self.dnpc = self.snpc;
     match inst_type {
-      Inst::Register(R::ADD)  => {self.gpr[rd] = (self.gpr[rs1] as i64 + self.gpr[rs2] as i64) as u64;}
-      Inst::Register(R::ADDW) => {self.gpr[rd] = sext((self.gpr[rs1] as i64 + self.gpr[rs2] as i64) as usize, 32) as u64;}
-      Inst::Register(R::SUB)  => {self.gpr[rd] = (self.gpr[rs1] as i64 - self.gpr[rs2] as i64) as u64;}
+      Inst::Register(R::ADD)  => {self.gpr[rd] = (self.gpr[rs1] as i64).wrapping_add(self.gpr[rs2] as i64) as u64;}
+      Inst::Register(R::ADDW) => {self.gpr[rd] = sext((self.gpr[rs1] as i64).wrapping_add(self.gpr[rs2] as i64) as usize, 32) as u64;}
+      Inst::Register(R::SUB)  => {self.gpr[rd] = (self.gpr[rs1] as i64).wrapping_sub(self.gpr[rs2] as i64) as u64;}
+      Inst::Register(R::SUBW) => {self.gpr[rd] = sext((self.gpr[rs1] as i64).wrapping_sub(self.gpr[rs2] as i64) as usize, 32) as u64;}
       Inst::Register(R::XOR)  => {self.gpr[rd] = self.gpr[rs1] ^ self.gpr[rs2];}
       Inst::Register(R::OR)   => {self.gpr[rd] = self.gpr[rs1] | self.gpr[rs2];}
       Inst::Register(R::AND)  => {self.gpr[rd] = self.gpr[rs1] & self.gpr[rs2];}
       Inst::Register(R::SLL)  => {self.gpr[rd] = self.gpr[rs1] << self.gpr[rs2];}
       Inst::Register(R::SLLW) => {self.gpr[rd] = sext((self.gpr[rs1] << self.gpr[rs2]) as usize, 32) as u64;}
       Inst::Register(R::SRL)  => {self.gpr[rd] = self.gpr[rs1] >> self.gpr[rs2];}
+      Inst::Register(R::SRLW) => {self.gpr[rd] = sext((self.gpr[rs1] as u32 >> bits(self.gpr[rs2] as u32, 0, 5)) as usize, 32) as u64;}
+      Inst::Register(R::SRAW) => {self.gpr[rd] = sext((self.gpr[rs1] as i32 >> bits(self.gpr[rs2] as u32, 0, 5)) as usize, 32) as u64;}
       Inst::Register(R::SLT)  => {self.gpr[rd] = if (self.gpr[rs1] as i64) < (self.gpr[rs2] as i64) {1} else {0};}
       Inst::Register(R::SLTU) => {self.gpr[rd] = if self.gpr[rs1] < self.gpr[rs2] {1} else {0};}
 
-      Inst::Immediate(I::ADDI)  => {self.gpr[rd] = (self.gpr[rs1] as i64 + imm) as u64;}
+      Inst::Immediate(I::ADDI)  => {self.gpr[rd] = (self.gpr[rs1] as i64).wrapping_add(imm) as u64;}
       Inst::Immediate(I::ADDIW) => {self.gpr[rd] = sext((self.gpr[rs1] as i64 + imm) as usize, 32) as u64;}
       Inst::Immediate(I::XORI)  => {self.gpr[rd] = self.gpr[rs1] ^ imm as u64;}
       Inst::Immediate(I::ORI)   => {self.gpr[rd] = self.gpr[rs1] | imm as u64;}
       Inst::Immediate(I::ANDI)  => {self.gpr[rd] = self.gpr[rs1] & imm as u64;}
-      Inst::Immediate(I::SLLI)  => {self.gpr[rd] = self.gpr[rs1] << imm;}
-      Inst::Immediate(I::SRLI)  => {self.gpr[rd] = self.gpr[rs1] >> imm;}
+      Inst::Immediate(I::SLLI)  => {self.gpr[rd] = self.gpr[rs1] << bits(imm as u32, 0, 6);}
+      Inst::Immediate(I::SLLIW) => {self.gpr[rd] = sext((self.gpr[rs1] << bits(imm as u32, 0, 6)) as usize, 32) as u64;}
+      Inst::Immediate(I::SRLI)  => {self.gpr[rd] = self.gpr[rs1] >> bits(imm as u32, 0, 6);}
+      Inst::Immediate(I::SRLIW) => {self.gpr[rd] = sext((self.gpr[rs1] as u32 >> bits(imm as u32, 0, 6)) as usize, 32) as u64;}
       Inst::Immediate(I::SRAI)  => {self.gpr[rd] = (self.gpr[rs1] as i64 >> bits(imm as u32, 0, 6)) as u64;}
+      Inst::Immediate(I::SRAIW) => {self.gpr[rd] = sext((self.gpr[rs1] as i32 >> bits(imm as u32, 0, 6)) as usize, 32) as u64;}
       Inst::Immediate(I::SLTI)  => {self.gpr[rd] = if (self.gpr[rs1] as i64) < imm {1} else {0};}
       Inst::Immediate(I::SLTIU) => {self.gpr[rd] = if self.gpr[rs1] < imm as u64 {1} else {0};}
 
@@ -202,8 +216,17 @@ impl Cpu {
       Inst::Jump(J::JAL)            => {self.gpr[rd] = self.pc + 4; self.dnpc = (self.pc as i64 + imm) as u64;}
       Inst::Immediate(I::JALR) => {self.gpr[rd] = self.pc + 4; self.dnpc = (self.gpr[rs1] as i64 + imm) as u64;}
 
-      Inst::Upper(U::LUI)   => {self.gpr[rd] = self.gpr[rs1];}
+      Inst::Upper(U::LUI)   => {self.gpr[rd] = imm as u64;}
       Inst::Upper(U::AUIPC) => {self.gpr[rd] = (self.pc as i64 + imm) as u64;}
+
+      Inst::Register(R::MUL)  => {self.gpr[rd] = self.gpr[rs1].wrapping_mul(self.gpr[rs2]);}
+      Inst::Register(R::MULW) => {self.gpr[rd] = sext(self.gpr[rs1].wrapping_mul(self.gpr[rs2]) as usize, 32) as u64;}
+      Inst::Register(R::DIV)  => {self.gpr[rd] = (self.gpr[rs1] as i32 / self.gpr[rs2] as i32) as u64;}
+      Inst::Register(R::DIVU) => {self.gpr[rd] = self.gpr[rs1] / self.gpr[rs2];}
+      Inst::Register(R::DIVW) => {self.gpr[rd] = sext((self.gpr[rs1] as i32 / self.gpr[rs2] as i32) as usize, 32) as u64;}
+      Inst::Register(R::REM)  => {self.gpr[rd] = (self.gpr[rs1] as i32 % self.gpr[rs2] as i32) as u64;}
+      Inst::Register(R::REMU) => {self.gpr[rd] = self.gpr[rs1] % self.gpr[rs2];}
+      Inst::Register(R::REMW) => {self.gpr[rd] = sext((self.gpr[rs1] as i32 % self.gpr[rs2] as i32) as usize, 32) as u64;}
 
       Inst::Immediate(I::ECALL)  => {todo!();}
       Inst::Immediate(I::EBREAK) => {self.hemu_trap();}
