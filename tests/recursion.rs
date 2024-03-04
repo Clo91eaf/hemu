@@ -1,6 +1,5 @@
 use hemu::cpu;
-use hemu::init_monitor;
-use hemu::monitor::sdb;
+use hemu::monitor::*;
 use std::path::PathBuf;
 
 #[test]
@@ -10,10 +9,10 @@ fn test_recursion() {
   let _ = std::fs::remove_file(&log);
 
   // prepare the img file
-  let img = PathBuf::from("resources/build/recursion-riscv64-nemu.bin");
+  let img = PathBuf::from("resources/am-tests/recursion-riscv64-nemu.bin");
 
   // start the monitor
-  let _ = init_monitor(img, "error".to_string());
+  let _ = load_img(img).unwrap();
   let cpu = &mut cpu::Cpu::new(log);
   sdb::sdb_mainloop(cpu, true);
 

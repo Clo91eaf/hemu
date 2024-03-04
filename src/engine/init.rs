@@ -16,7 +16,7 @@ struct Args {
   log: PathBuf,
 
   /// Diff file
-  #[arg(short, long, default_value = "resources/build/bit-riscv64-nemu.diff")]
+  #[arg(short, long, default_value = "resources/am-tests/bit-riscv64-nemu.diff")]
   diff: PathBuf,
 
   /// Diff port
@@ -24,11 +24,7 @@ struct Args {
   port: u32,
 
   /// Img file
-  #[arg(
-    short = 'f',
-    long,
-    default_value = "resources/build/bit-riscv64-nemu.bin"
-  )]
+  #[arg(short = 'f', long, default_value = "resources/am-tests/bit-riscv64-nemu.bin")]
   img: PathBuf,
 }
 

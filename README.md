@@ -21,22 +21,40 @@ git clone https://github.com/Clo91eaf/hemu.git
 cd hemu
 ```
 
+### Runing
+
 To run HEMU, you can use the following command:
 
 ```sh
-cargo run --release --bin
+cargo run -- -f <path_to_binary>
 ```
 
-<!-- ## Usage 📝
-
-HEMU currently supports running RISCV64IM binaries. To run a binary using HEMU, you can use the following command:
+Where `<path_to_binary>` is the path to the binary file that you want to run. For example:
 
 ```sh
-cargo run --release --bin
+cargo run -- -f ./resources/am-tests/add-riscv64-nemu.bin
 ```
 
-Where `<filename>` is the path to the binary file that you want to execute.
- -->
+### Testing
+
+To test HEMU, you can use the following command:
+
+```sh
+RUST_TEST_THREADS=1 cargo test --test all
+```
+
+To run the specific test, you can use the following command:
+
+```sh
+cargo test --test <test_name>
+```
+
+Where `<test_name>` is the name of the test that you want to run. for example:
+
+```sh
+cargo test --test add
+```
+
 ## Why rust ❓
 
 There are several potential benefits to using Rust to rewrite Nemus's logic:
@@ -54,7 +72,9 @@ There are several potential benefits to using Rust to rewrite Nemus's logic:
 ## Progress 📈
 
 - [x] RISCV64IM instruction set architecture
-- [ ] Add tui
+- [ ] RISCV64IMAFD instruction set architecture
+- [ ] Support for opensbi
+- [ ] Add TUI for debugging
 - [ ] MIPS32 instruction set architecture
 - [ ] Added support for peripherals.
 - [ ] Added interrupt handling mechanisms.
@@ -66,12 +86,6 @@ There are several potential benefits to using Rust to rewrite Nemus's logic:
 - [ ] Add some emoji to make it look better.
 - [ ] Write document.
 
-## NEMU and PAs 📚
-- [x] PA1 finish.
-- [ ] PA2 finish.
-- [ ] PA3 finish.
-- [ ] PA4 finish.
- 
 ## Contributing 🤝
 
 Contributions to HEMU are welcome! If you find a bug or have a feature request, please open an issue on Github. If you would like to contribute code, you can make a fork of the repository and submit a pull request.

@@ -17,7 +17,7 @@ fn welcome() {
 }
 
 // load img to memory(mmap)
-fn load_img(img_file: PathBuf) -> Result<usize, Box<dyn std::error::Error>> {
+pub fn load_img(img_file: PathBuf) -> Result<usize, Box<dyn std::error::Error>> {
   // open img file
   log::info!("img file:{}", img_file.to_string_lossy());
   let mut file = std::fs::File::open(img_file)?;
@@ -46,8 +46,7 @@ pub fn init_monitor(img: PathBuf, log_level: String) -> Result<(), Box<dyn std::
 
   init_sdb();
 
-  #[allow(unused_variables)]
-  let img_size = load_img(img).unwrap();
+  let _ = load_img(img).unwrap();
 
   welcome();
 

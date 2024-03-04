@@ -61,7 +61,7 @@ impl Cpu {
       state: CpuState::Running,
       halt: Halt::new(),
       statistic: statistic::Statistic::new(),
-      log: log,
+      log,
     }
   }
 
@@ -213,7 +213,7 @@ impl Cpu {
       Inst::Branch(B::BLTU) => {if self.gpr[rs1] < self.gpr[rs2] {self.dnpc = (self.pc as i64 + imm) as u64;}}
       Inst::Branch(B::BGEU) => {if self.gpr[rs1] >= self.gpr[rs2] {self.dnpc = (self.pc as i64 + imm) as u64;}}
 
-      Inst::Jump(J::JAL)            => {self.gpr[rd] = self.pc + 4; self.dnpc = (self.pc as i64 + imm) as u64;}
+      Inst::Jump(J::JAL)       => {self.gpr[rd] = self.pc + 4; self.dnpc = (self.pc as i64 + imm) as u64;}
       Inst::Immediate(I::JALR) => {self.gpr[rd] = self.pc + 4; self.dnpc = (self.gpr[rs1] as i64 + imm) as u64;}
 
       Inst::Upper(U::LUI)   => {self.gpr[rd] = imm as u64;}
