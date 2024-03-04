@@ -85,6 +85,7 @@ pub fn disassemble(inst: u32, inst_type: Instruction) -> String {
     Instruction::Register(RegisterType::OR)   => format!("or    {}, {}, {}", rd, rs1, rs2),
     Instruction::Register(RegisterType::AND)  => format!("and   {}, {}, {}", rd, rs1, rs2),
     Instruction::Register(RegisterType::SLL)  => format!("sll   {}, {}, {}", rd, rs1, rs2),
+    Instruction::Register(RegisterType::SLLW) => format!("sllw  {}, {}, {}", rd, rs1, rs2),
     Instruction::Register(RegisterType::SRL)  => format!("srl   {}, {}, {}", rd, rs1, rs2),
     Instruction::Register(RegisterType::SLT)  => format!("slt   {}, {}, {}", rd, rs1, rs2),
     Instruction::Register(RegisterType::SLTU) => format!("sltu  {}, {}, {}", rd, rs1, rs2),

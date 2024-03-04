@@ -12,11 +12,11 @@ struct Args {
   batch: bool,
 
   /// Log file
-  #[arg(short, long, default_value = "resources/build/add-riscv64-nemu.log")]
+  #[arg(short, long, default_value = "logs/log.diff")]
   log: PathBuf,
 
   /// Diff file
-  #[arg(short, long, default_value = "resources/build/add-riscv64-nemu.diff")]
+  #[arg(short, long, default_value = "resources/build/bit-riscv64-nemu.diff")]
   diff: PathBuf,
 
   /// Diff port
@@ -27,7 +27,7 @@ struct Args {
   #[arg(
     short = 'f',
     long,
-    default_value = "resources/build/add-riscv64-nemu.bin"
+    default_value = "resources/build/bit-riscv64-nemu.bin"
   )]
   img: PathBuf,
 }
@@ -37,7 +37,7 @@ pub fn engine_start() {
 
   let _ = init_monitor(args.img);
 
-  let cpu = &mut Cpu::new();
+  let cpu = &mut Cpu::new(args.log);
 
   sdb::sdb_mainloop(cpu, args.batch);
 }

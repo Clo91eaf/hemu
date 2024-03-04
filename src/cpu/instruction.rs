@@ -17,6 +17,7 @@ pub enum RegisterType {
   OR,
   AND,
   SLL,
+  SLLW,
   SRL,
   // SRA, // todo
   SLT,
@@ -52,6 +53,7 @@ pub enum ImmediateType {
   JALR,
   ECALL,
   EBREAK,
+  ERROR,
 }
 
 #[derive(Copy, Clone, Debug)]

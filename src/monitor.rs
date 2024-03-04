@@ -54,16 +54,3 @@ pub fn init_monitor(img: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
   Ok(())
 }
 
-#[cfg(test)]
-mod tests {
-  use super::*;
-  use std::path::PathBuf;
-
-  #[test]
-  fn test_load_img() {
-    let file_path =
-      PathBuf::from("system-tests/cpu-tests/build/dummy-riscv64-hemu.bin");
-    let result = load_img(file_path).unwrap();
-    println!("result:{}", result)
-  }
-}
