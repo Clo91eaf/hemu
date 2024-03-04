@@ -150,7 +150,7 @@ pub fn sdb_mainloop(cpu: &mut Cpu, batch: bool) {
           input_cmd.to_string()
         };
 
-        let effective_args = if input_args == "" {
+        let effective_args = if input_cmd == "" {
           last_args.to_string()
         } else {
           last_args = input_args.to_string();
