@@ -12,8 +12,8 @@ struct Args {
   batch: bool,
 
   /// Diff file
-  #[arg(short, long, default_value = "resources/am-tests/add-riscv64-nemu.diff")]
-  diff: PathBuf,
+  #[arg(short, long)]
+  diff: Option<PathBuf>,
 
   /// Img file
   #[arg(short = 'f', long, default_value = "resources/am-tests/add-riscv64-nemu.bin")]

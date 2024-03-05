@@ -48,13 +48,16 @@ pub struct Cpu {
   pub state: CpuState,
   pub halt: Halt,
   statistic: statistic::Statistic,
-  diff: BufReader<std::fs::File>,
+  diff: Option<BufReader<std::fs::File>>,
 }
 
 impl Cpu {
-  pub fn new(diff: PathBuf) -> Cpu {
-    let file = std::fs::File::open(&diff).unwrap();
-    let diff = BufReader::new(file);
+  pub fn new(diff: Option<PathBuf>) -> Cpu {
+    let diff = diff.map(|diff_file_path| {
+      let file = std::fs::File::open(&diff_file_path).unwrap();
+      BufReader::new(file)
+    });
+
     Cpu {
       gpr: [0; 32],
       pc: 0x80000000,
@@ -322,7 +325,13 @@ impl Cpu {
   fn difftest(&mut self) -> anyhow::Result<()> {
     // get numbers from diff file
     let mut line = String::new();
-    self.diff.read_line(&mut line)?;
+
+    if let Some(diff) = self.diff.as_mut() {
+      diff.read_line(&mut line)?;
+    } else {
+      return Ok(());
+    }
+
     let numbers = line
       .split_whitespace()
       .map(|s| u64::from_str_radix(&s, 16).unwrap())
