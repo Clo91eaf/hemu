@@ -83,12 +83,10 @@ impl Command {
   }
 
   fn info(args: &str, cpu: &mut Cpu) -> i32 {
-    if args == "r" {
-      cpu.dump_registers();
-    } else if args == "w" {
-      cpu.dump_watches();
-    } else {
-      println!("Unknown info '{}'", args);
+    match args {
+      "r" => cpu.dump_registers(),
+      "w" => cpu.dump_watches(),
+      _ => println!("Unknown info '{}'", args),
     }
     0
   }
