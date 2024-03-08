@@ -22,11 +22,11 @@ pub enum RegisterType {
   SRA,
   SLT,
   SLTU,
-  // RV32M
+  // RV32M (RV64M)
   MUL,
   MULH,
-  MULSH,
-  MULU,
+  MULHSU,
+  MULHU,
   DIV,
   DIVU,
   REM,
