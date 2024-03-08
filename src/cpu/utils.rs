@@ -24,10 +24,10 @@ pub fn bits(x: u32, lo: u32, hi: u32) -> usize {
   ((x >> lo) & bitmask(hi - lo)) as usize
 }
 
-pub fn sext(x: usize, len: u32) -> i64 {
+pub fn sext(x: usize, len: u32) -> u64 {
   assert!(len <= 64);
   let extend_bits = 64 - len;
-  ((x as i64) << extend_bits) >> extend_bits
+  (((x as i64) << extend_bits) >> extend_bits) as u64
 }
 
 pub fn decode_operand(
@@ -38,12 +38,12 @@ pub fn decode_operand(
     (bits(inst, 7, 12), bits(inst, 15, 20), bits(inst, 20, 25));
   match inst_type {
     Instruction::Register(_) => (rd, rs1, rs2, 0),
-    Instruction::Immediate(_) => (rd, rs1, 0, sext(bits(inst, 20, 32), 12)),
+    Instruction::Immediate(_) => (rd, rs1, 0, sext(bits(inst, 20, 32), 12) as i64),
     Instruction::Store(_) => (
       0,
       rs1,
       rs2,
-      sext(bits(inst, 25, 32) << 5 | bits(inst, 7, 12), 12),
+      sext(bits(inst, 25, 32) << 5 | bits(inst, 7, 12), 12) as i64,
     ),
     Instruction::Branch(_) => (
       0,
@@ -55,9 +55,9 @@ pub fn decode_operand(
           | bits(inst, 25, 31) << 5
           | bits(inst, 8, 12) << 1,
         13,
-      ),
+      ) as i64,
     ),
-    Instruction::Upper(_) => (rd, 0, 0, sext(bits(inst, 12, 32) << 12, 32)),
+    Instruction::Upper(_) => (rd, 0, 0, sext(bits(inst, 12, 32) << 12, 32) as i64),
     Instruction::Jump(_) => (
       rd,
       0,
@@ -68,7 +68,7 @@ pub fn decode_operand(
           | bits(inst, 20, 21) << 11
           | bits(inst, 12, 20) << 12,
         21,
-      ),
+      ) as i64,
     ),
     Instruction::ERROR => {todo!("ERROR")},
   }
