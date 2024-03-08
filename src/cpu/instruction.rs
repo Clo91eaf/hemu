@@ -6,74 +6,90 @@ pub enum Instruction {
   Branch(BranchType),
   Jump(JumpType),
   Upper(UpperType),
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum RegisterType {
-  ADD,
-  ADDW,
-  SUB,
-  SUBW,
-  XOR,
-  OR,
-  AND,
-  SLL,
-  SLLW,
-  SRL,
-  // SRA, // todo
-  SRAW,
-  SRLW,
-  SLT,
-  SLTU,
-  MUL,
-  MULW,
-  DIV,
-  DIVU,
-  DIVW,
-  REM,
-  REMU,
-  REMW,
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum ImmediateType {
-  ADDI,
-  ADDIW,
-  XORI,
-  ORI,
-  ANDI,
-  SLLI,
-  SLLIW,
-  SRLI,
-  SRLIW,
-  SRAI,
-  SRAIW,
-  SLTI,
-  SLTIU,
-  LB,
-  LH,
-  LW,
-  LD,
-  LBU,
-  LHU,
-  LWU,
-  LDU,
-  JALR,
-  ECALL,
-  EBREAK,
   ERROR,
 }
 
 #[derive(Copy, Clone, Debug)]
+pub enum RegisterType {
+  // RV32I
+  ADD,
+  SUB,
+  XOR,
+  OR,
+  AND,
+  SLL,
+  SRL,
+  SRA,
+  SLT,
+  SLTU,
+  // RV32M
+  MUL,
+  MULH,
+  MULSH,
+  MULU,
+  DIV,
+  DIVU,
+  REM,
+  REMU,
+  // RV64I
+  ADDW,
+  SUBW,
+  SLLW,
+  SRLW,
+  SRAW,
+  // RV64M
+  MULW,
+  DIVW,
+  DIVUW,
+  REMW,
+  REMUW,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum ImmediateType {
+  // RV32I
+  ADDI,
+  XORI,
+  ORI,
+  ANDI,
+  SLLI, // both rv64
+  SRLI, // both rv64
+  SRAI, // both rv64
+  SLTI,
+  SLTIU,
+
+  LB,
+  LH,
+  LW,
+  LBU,
+  LHU,
+
+  JALR,
+
+  ECALL,
+  EBREAK,
+  // RV64I
+  LWU,
+  LD,
+  ADDIW,
+  SLLIW,
+  SRLIW,
+  SRAIW,
+}
+
+#[derive(Copy, Clone, Debug)]
 pub enum StoreType {
+  // RV32I
   SB,
   SH,
   SW,
+  // RV64I
   SD,
 }
 
 #[derive(Copy, Clone, Debug)]
 pub enum BranchType {
+  // RV32I
   BEQ,
   BNE,
   BLT,
@@ -84,11 +100,13 @@ pub enum BranchType {
 
 #[derive(Copy, Clone, Debug)]
 pub enum JumpType {
+  // RV32I
   JAL,
 }
 
 #[derive(Copy, Clone, Debug)]
 pub enum UpperType {
+  // RV32I
   LUI,
   AUIPC,
 }

@@ -70,12 +70,13 @@ pub fn decode_operand(
         21,
       ),
     ),
+    Instruction::ERROR => {todo!("ERROR")},
   }
 }
 
 #[rustfmt::skip]
 /// Decode operands from instruction
-pub fn disassemble(inst: u32, inst_type: Instruction) -> String {
+pub fn disassemble(inst: u32, inst_type: Instruction, pc: u64) -> String {
   let (rd, rs1, rs2, imm) = decode_operand(inst, inst_type);
   let gpr = vec!["zero", "ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0", "s1", "a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6"];
   match inst_type {
@@ -113,25 +114,24 @@ pub fn disassemble(inst: u32, inst_type: Instruction) -> String {
     Instruction::Immediate(ImmediateType::LW)  => format!("lw    {}, {:x}({})", gpr[rd], imm, gpr[rs1]),
     Instruction::Immediate(ImmediateType::LWU) => format!("lwu   {}, {:x}({})", gpr[rd], imm, gpr[rs1]),
     Instruction::Immediate(ImmediateType::LD)  => format!("ld    {}, {:x}({})", gpr[rd], imm, gpr[rs1]),
-    Instruction::Immediate(ImmediateType::LDU) => format!("ldu   {}, {:x}({})", gpr[rd], imm, gpr[rs1]),
 
-    Instruction::Store(StoreType::SB) => format!("sb    {}, {:x}({})", gpr[rs2], imm, gpr[rs1]),
-    Instruction::Store(StoreType::SH) => format!("sh    {}, {:x}({})", gpr[rs2], imm, gpr[rs1]),
-    Instruction::Store(StoreType::SW) => format!("sw    {}, {:x}({})", gpr[rs2], imm, gpr[rs1]),
-    Instruction::Store(StoreType::SD) => format!("sd    {}, {:x}({})", gpr[rs2], imm, gpr[rs1]),
+    Instruction::Store(StoreType::SB) => format!("sb    {}, {}({})", gpr[rs2], imm, gpr[rs1]),
+    Instruction::Store(StoreType::SH) => format!("sh    {}, {}({})", gpr[rs2], imm, gpr[rs1]),
+    Instruction::Store(StoreType::SW) => format!("sw    {}, {}({})", gpr[rs2], imm, gpr[rs1]),
+    Instruction::Store(StoreType::SD) => format!("sd    {}, {}({})", gpr[rs2], imm, gpr[rs1]),
 
-    Instruction::Branch(BranchType::BEQ)  => format!("beq   {}, {}, {:x}", gpr[rs1], gpr[rs2], imm),
-    Instruction::Branch(BranchType::BNE)  => format!("bne   {}, {}, {:x}", gpr[rs1], gpr[rs2], imm),
-    Instruction::Branch(BranchType::BLT)  => format!("blt   {}, {}, {:x}", gpr[rs1], gpr[rs2], imm),
-    Instruction::Branch(BranchType::BGE)  => format!("bge   {}, {}, {:x}", gpr[rs1], gpr[rs2], imm),
-    Instruction::Branch(BranchType::BLTU) => format!("bltu  {}, {}, {:x}", gpr[rs1], gpr[rs2], imm),
-    Instruction::Branch(BranchType::BGEU) => format!("bgeu  {}, {}, {:x}", gpr[rs1], gpr[rs2], imm),
+    Instruction::Branch(BranchType::BEQ)  => format!("beq   {}, {}, {:x}", gpr[rs1], gpr[rs2], (pc as i64).wrapping_add(imm)),
+    Instruction::Branch(BranchType::BNE)  => format!("bne   {}, {}, {:x}", gpr[rs1], gpr[rs2], (pc as i64).wrapping_add(imm)),
+    Instruction::Branch(BranchType::BLT)  => format!("blt   {}, {}, {:x}", gpr[rs1], gpr[rs2], (pc as i64).wrapping_add(imm)),
+    Instruction::Branch(BranchType::BGE)  => format!("bge   {}, {}, {:x}", gpr[rs1], gpr[rs2], (pc as i64).wrapping_add(imm)),
+    Instruction::Branch(BranchType::BLTU) => format!("bltu  {}, {}, {:x}", gpr[rs1], gpr[rs2], (pc as i64).wrapping_add(imm)),
+    Instruction::Branch(BranchType::BGEU) => format!("bgeu  {}, {}, {:x}", gpr[rs1], gpr[rs2], (pc as i64).wrapping_add(imm)),
 
-    Instruction::Jump(JumpType::JAL)            => format!("jal   {}, {:x}", gpr[rd], imm),
+    Instruction::Jump(JumpType::JAL)            => format!("jal   {}, {:x}", gpr[rd], (imm as u64).wrapping_add(pc)),
     Instruction::Immediate(ImmediateType::JALR) => format!("jalr  {}, {}, {:x}", gpr[rd], gpr[rs1], imm),
 
     Instruction::Upper(UpperType::LUI)   => format!("lui   {}, {:x}", gpr[rd], imm),
-    Instruction::Upper(UpperType::AUIPC) => format!("auipc {}, {:x}", gpr[rd], imm),
+    Instruction::Upper(UpperType::AUIPC) => format!("auipc {}, {:x}", gpr[rd], (pc as i64).wrapping_add(imm)),
 
     Instruction::Register(RegisterType::MUL)  => format!("mul   {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
     Instruction::Register(RegisterType::MULW) => format!("mulw  {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),

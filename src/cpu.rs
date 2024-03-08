@@ -123,7 +123,6 @@ impl Cpu {
   IP::new("??????? ????? ????? 010 ????? 00000 11", Inst::Immediate(I::LW)),
   IP::new("??????? ????? ????? 110 ????? 00000 11", Inst::Immediate(I::LWU)),
   IP::new("??????? ????? ????? 011 ????? 00000 11", Inst::Immediate(I::LD)),
-  IP::new("??????? ????? ????? 111 ????? 00000 11", Inst::Immediate(I::LDU)),
   IP::new("??????? ????? ????? 000 ????? 11001 11", Inst::Immediate(I::JALR)),
     // Store
   IP::new("??????? ????? ????? 000 ????? 01000 11", Inst::Store(S::SB)),
@@ -183,7 +182,7 @@ impl Cpu {
       Inst::Register(R::SLTU) => {self.gpr[rd] = if self.gpr[rs1] < self.gpr[rs2] {1} else {0};}
 
       Inst::Immediate(I::ADDI)  => {self.gpr[rd] = (self.gpr[rs1] as i64).wrapping_add(imm) as u64;}
-      Inst::Immediate(I::ADDIW) => {self.gpr[rd] = sext((self.gpr[rs1] as i64 + imm) as usize, 32) as u64;}
+      Inst::Immediate(I::ADDIW) => {self.gpr[rd] = sext((self.gpr[rs1] as i64).wrapping_add(imm) as usize, 32) as u64;}
       Inst::Immediate(I::XORI)  => {self.gpr[rd] = self.gpr[rs1] ^ imm as u64;}
       Inst::Immediate(I::ORI)   => {self.gpr[rd] = self.gpr[rs1] | imm as u64;}
       Inst::Immediate(I::ANDI)  => {self.gpr[rd] = self.gpr[rs1] & imm as u64;}
@@ -196,32 +195,31 @@ impl Cpu {
       Inst::Immediate(I::SLTI)  => {self.gpr[rd] = if (self.gpr[rs1] as i64) < imm {1} else {0};}
       Inst::Immediate(I::SLTIU) => {self.gpr[rd] = if self.gpr[rs1] < imm as u64 {1} else {0};}
 
-      Inst::Immediate(I::LB)  => {self.gpr[rd] = sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 1) as usize, 8) as u64;}
-      Inst::Immediate(I::LBU) => {self.gpr[rd] = read_data((self.gpr[rs1] as i64 + imm) as u64, 1);}
-      Inst::Immediate(I::LH)  => {self.gpr[rd] = sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 2) as usize, 16) as u64;}
-      Inst::Immediate(I::LHU) => {self.gpr[rd] = read_data((self.gpr[rs1] as i64 + imm) as u64, 2);}
-      Inst::Immediate(I::LW)  => {self.gpr[rd] = sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 4) as usize, 32) as u64;}
-      Inst::Immediate(I::LWU) => {self.gpr[rd] = read_data((self.gpr[rs1] as i64 + imm) as u64, 4);}
-      Inst::Immediate(I::LD)  => {self.gpr[rd] = sext(read_data((self.gpr[rs1] as i64 + imm) as u64, 8) as usize, 64) as u64;}
-      Inst::Immediate(I::LDU) => {self.gpr[rd] = read_data((self.gpr[rs1] as i64 + imm) as u64, 8);}
+      Inst::Immediate(I::LB)  => {self.gpr[rd] = sext(read_data((self.gpr[rs1] as i64).wrapping_add(imm) as u64, 1) as usize, 8) as u64;}
+      Inst::Immediate(I::LBU) => {self.gpr[rd] = read_data((self.gpr[rs1] as i64).wrapping_add(imm) as u64, 1);}
+      Inst::Immediate(I::LH)  => {self.gpr[rd] = sext(read_data((self.gpr[rs1] as i64).wrapping_add(imm) as u64, 2) as usize, 16) as u64;}
+      Inst::Immediate(I::LHU) => {self.gpr[rd] = read_data((self.gpr[rs1] as i64).wrapping_add(imm) as u64, 2);}
+      Inst::Immediate(I::LW)  => {self.gpr[rd] = sext(read_data((self.gpr[rs1] as i64).wrapping_add(imm) as u64, 4) as usize, 32) as u64;}
+      Inst::Immediate(I::LWU) => {self.gpr[rd] = read_data((self.gpr[rs1] as i64).wrapping_add(imm) as u64, 4);}
+      Inst::Immediate(I::LD)  => {self.gpr[rd] = sext(read_data((self.gpr[rs1] as i64).wrapping_add(imm) as u64, 8) as usize, 64) as u64;}
 
-      Inst::Store(S::SB) => {write_data((self.gpr[rs1] as i64 + imm) as u64, 1, self.gpr[rs2]);}
-      Inst::Store(S::SH) => {write_data((self.gpr[rs1] as i64 + imm) as u64, 2, self.gpr[rs2]);}
-      Inst::Store(S::SW) => {write_data((self.gpr[rs1] as i64 + imm) as u64, 4, self.gpr[rs2]);}
-      Inst::Store(S::SD) => {write_data((self.gpr[rs1] as i64 + imm) as u64, 8, self.gpr[rs2]);}
+      Inst::Store(S::SB) => {write_data((self.gpr[rs1] as i64).wrapping_add(imm) as u64, 1, self.gpr[rs2]);}
+      Inst::Store(S::SH) => {write_data((self.gpr[rs1] as i64).wrapping_add(imm) as u64, 2, self.gpr[rs2]);}
+      Inst::Store(S::SW) => {write_data((self.gpr[rs1] as i64).wrapping_add(imm) as u64, 4, self.gpr[rs2]);}
+      Inst::Store(S::SD) => {write_data((self.gpr[rs1] as i64).wrapping_add(imm) as u64, 8, self.gpr[rs2]);}
 
-      Inst::Branch(B::BEQ)  => {if self.gpr[rs1] == self.gpr[rs2] {self.dnpc = (self.pc as i64 + imm) as u64;}}
-      Inst::Branch(B::BNE)  => {if self.gpr[rs1] != self.gpr[rs2] {self.dnpc = (self.pc as i64 + imm) as u64;}}
-      Inst::Branch(B::BLT)  => {if (self.gpr[rs1] as i64) < (self.gpr[rs2] as i64) {self.dnpc = (self.pc as i64 + imm) as u64;}}
-      Inst::Branch(B::BGE)  => {if (self.gpr[rs1] as i64) >= (self.gpr[rs2] as i64) {self.dnpc = (self.pc as i64 + imm) as u64;}}
-      Inst::Branch(B::BLTU) => {if self.gpr[rs1] < self.gpr[rs2] {self.dnpc = (self.pc as i64 + imm) as u64;}}
-      Inst::Branch(B::BGEU) => {if self.gpr[rs1] >= self.gpr[rs2] {self.dnpc = (self.pc as i64 + imm) as u64;}}
+      Inst::Branch(B::BEQ)  => {if self.gpr[rs1] == self.gpr[rs2] {self.dnpc = (self.pc as i64).wrapping_add(imm) as u64;}}
+      Inst::Branch(B::BNE)  => {if self.gpr[rs1] != self.gpr[rs2] {self.dnpc = (self.pc as i64).wrapping_add(imm) as u64;}}
+      Inst::Branch(B::BLT)  => {if (self.gpr[rs1] as i64) < (self.gpr[rs2] as i64) {self.dnpc = (self.pc as i64).wrapping_add(imm) as u64;}}
+      Inst::Branch(B::BGE)  => {if (self.gpr[rs1] as i64) >= (self.gpr[rs2] as i64) {self.dnpc = (self.pc as i64).wrapping_add(imm) as u64;}}
+      Inst::Branch(B::BLTU) => {if self.gpr[rs1] < self.gpr[rs2] {self.dnpc = (self.pc as i64).wrapping_add(imm) as u64;}}
+      Inst::Branch(B::BGEU) => {if self.gpr[rs1] >= self.gpr[rs2] {self.dnpc = (self.pc as i64).wrapping_add(imm) as u64;}}
 
-      Inst::Jump(J::JAL)       => {self.gpr[rd] = self.pc + 4; self.dnpc = (self.pc as i64 + imm) as u64;}
-      Inst::Immediate(I::JALR) => {self.gpr[rd] = self.pc + 4; self.dnpc = (self.gpr[rs1] as i64 + imm) as u64;}
+      Inst::Jump(J::JAL)       => {self.gpr[rd] = self.pc + 4; self.dnpc = (self.pc as i64).wrapping_add(imm) as u64;}
+      Inst::Immediate(I::JALR) => {self.gpr[rd] = self.pc + 4; self.dnpc = (self.gpr[rs1] as i64).wrapping_add(imm) as u64;}
 
       Inst::Upper(U::LUI)   => {self.gpr[rd] = imm as u64;}
-      Inst::Upper(U::AUIPC) => {self.gpr[rd] = (self.pc as i64 + imm) as u64;}
+      Inst::Upper(U::AUIPC) => {self.gpr[rd] = (self.pc as i64).wrapping_add(imm) as u64;}
 
       Inst::Register(R::MUL)  => {self.gpr[rd] = self.gpr[rs1].wrapping_mul(self.gpr[rs2]);}
       Inst::Register(R::MULW) => {self.gpr[rd] = sext(self.gpr[rs1].wrapping_mul(self.gpr[rs2]) as usize, 32) as u64;}
@@ -242,7 +240,7 @@ impl Cpu {
 
   fn exec_once(&mut self) {
     // pipeline start
-    let mut inst_type = Inst::Immediate(I::ERROR);
+    let mut inst_type = Inst::ERROR;
     self.snpc = self.pc;
     // fetch stage
     self.fetch();
@@ -255,7 +253,7 @@ impl Cpu {
       "{:08x}: {:08x}\t{}",
       self.pc,
       self.inst,
-      utils::disassemble(self.inst, inst_type)
+      utils::disassemble(self.inst, inst_type, self.pc)
     );
     self.difftest().unwrap();
     // update pc
