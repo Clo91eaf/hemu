@@ -308,11 +308,12 @@ impl Cpu {
   }
 
   pub fn dump_registers(&self) {
+    let gpr = vec!["zero", "ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0", "s1", "a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6"];
     for i in 0..8 {
       let mut line = String::with_capacity(80);
       for j in 0..4 {
         let index = i * 4 + j;
-        line.push_str(&format!("x{:02} = 0x{:08x} ", index, self.gpr[index]));
+        line.push_str(&format!("{:4}=0x{:08x}|", gpr[index], self.gpr[index]));
       }
       log::info!("{}", line);
     }
