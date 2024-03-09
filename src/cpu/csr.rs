@@ -1,0 +1,11 @@
+pub enum CSR {
+  MIE = 0x304,
+  MTVEC = 0x305,
+  MSCRATCH = 0x340,
+  MEPC = 0x341,
+  MCAUSE = 0x342,
+  MTVAL = 0x343,
+  MIP = 0x344,
+  MTINST = 0x34a,
+  MTVAL2 = 0x34b,
+}

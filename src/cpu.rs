@@ -1,3 +1,4 @@
+mod csr;
 mod instruction;
 pub mod memory;
 mod statistic;
@@ -16,6 +17,7 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::PathBuf;
 
+use csr::CSR;
 use memory::{read_data, read_inst, write_data};
 use utils::{bits, decode_operand, match_inst, sext};
 
@@ -41,6 +43,7 @@ impl Halt {
 
 pub struct Cpu {
   pub gpr: [u64; 32],
+  pub csr: [u64; 4096],
   pub pc: u64,
   snpc: u64,
   dnpc: u64,
@@ -60,6 +63,7 @@ impl Cpu {
 
     Cpu {
       gpr: [0; 32],
+      csr: [0; 4096],
       pc: 0x80000000,
       snpc: 0x80000000,
       dnpc: 0x80000000,
@@ -114,6 +118,8 @@ impl Cpu {
   IP::new("0000000 ????? ????? 001 ????? 01110 11", Inst::Register(R::SLLW)),
   IP::new("0000000 ????? ????? 101 ????? 01110 11", Inst::Register(R::SRLW)),
   IP::new("0100000 ????? ????? 101 ????? 01110 11", Inst::Register(R::SRAW)),
+
+  IP::new("0011000 00010 00000 000 00000 11100 11", Inst::Register(R::MRET)),
   // rv64M
   IP::new("0000001 ????? ????? 000 ????? 01110 11", Inst::Register(R::MULW)),
   IP::new("0000001 ????? ????? 100 ????? 01110 11", Inst::Register(R::DIVW)),
@@ -143,6 +149,14 @@ impl Cpu {
 
   IP::new("0000000 00001 00000 000 00000 11100 11", Inst::Immediate(I::EBREAK)),
   IP::new("0000000 00000 00000 000 00000 11100 11", Inst::Immediate(I::ECALL)),
+  IP::new("0000??? ????? 00000 000 00000 00011 11", Inst::Immediate(I::EBREAK)),
+
+  IP::new("??????? ????? ????? 001 ????? 11100 11", Inst::Immediate(I::CSRRW)),
+  IP::new("??????? ????? ????? 010 ????? 11100 11", Inst::Immediate(I::CSRRS)),
+  IP::new("??????? ????? ????? 011 ????? 11100 11", Inst::Immediate(I::CSRRC)),
+  IP::new("??????? ????? ????? 101 ????? 11100 11", Inst::Immediate(I::CSRRWI)),
+  IP::new("??????? ????? ????? 110 ????? 11100 11", Inst::Immediate(I::CSRRSI)),
+  IP::new("??????? ????? ????? 111 ????? 11100 11", Inst::Immediate(I::CSRRCI)),
   // rv64I
   IP::new("??????? ????? ????? 110 ????? 00000 11", Inst::Immediate(I::LWU)),
   IP::new("??????? ????? ????? 011 ????? 00000 11", Inst::Immediate(I::LD)),
@@ -150,6 +164,7 @@ impl Cpu {
   IP::new("000000? ????? ????? 001 ????? 00110 11", Inst::Immediate(I::SLLIW)),
   IP::new("000000? ????? ????? 101 ????? 00110 11", Inst::Immediate(I::SRLIW)),
   IP::new("010000? ????? ????? 101 ????? 00110 11", Inst::Immediate(I::SRAIW)),
+
   // Store
   // rv32I
   IP::new("??????? ????? ????? 000 ????? 01000 11", Inst::Store(S::SB)),
@@ -183,6 +198,7 @@ impl Cpu {
   pub fn execute(&mut self, inst_type: Inst) {
     let (rd, rs1, rs2, imm) = decode_operand(self.inst, inst_type).expect(&format!("Invalid instruction: pc = {:x}", self.pc)); // todo: error handle
     self.dnpc = self.snpc;
+    let csr = bits(self.inst, 20, 31);
     match inst_type {
       Inst::Register(R::ADD)  => {self.gpr[rd] = (self.gpr[rs1] as i64).wrapping_add(self.gpr[rs2] as i64) as u64;}
       Inst::Register(R::ADDW) => {self.gpr[rd] = sext((self.gpr[rs1] as i64).wrapping_add(self.gpr[rs2] as i64) as usize, 32);}
@@ -254,8 +270,18 @@ impl Cpu {
       Inst::Register(R::REMUW)  => {self.gpr[rd] = sext((self.gpr[rs1] as u32 % self.gpr[rs2] as u32) as usize, 64);}
       Inst::Register(R::REMW)   => {self.gpr[rd] = sext((self.gpr[rs1] as i32 % self.gpr[rs2] as i32) as usize, 32);}
 
+      Inst::Register(R::MRET)   => {self.dnpc = self.csr[CSR::MEPC as usize];}
+
       Inst::Immediate(I::ECALL)  => {todo!();}
       Inst::Immediate(I::EBREAK) => {self.hemu_trap();}
+      Inst::Immediate(I::FENCE)  => {}
+
+      Inst::Immediate(I::CSRRW)  => {let t = self.csr[csr]; self.csr[csr] = self.gpr[rs1]; self.gpr[rd] = t;}
+      Inst::Immediate(I::CSRRS)  => {let t = self.csr[csr]; self.csr[csr] = t | self.gpr[rs1]; self.gpr[rd] = t;}
+      Inst::Immediate(I::CSRRC)  => {let t = self.csr[csr]; self.csr[csr] = t &!self.gpr[rs1]; self.gpr[rd] = t;}
+      Inst::Immediate(I::CSRRWI) => {self.gpr[rd] = self.csr[csr]; self.csr[csr] = rs1 as u64;}
+      Inst::Immediate(I::CSRRSI) => {let t = self.csr[csr]; self.csr[csr] = t | rs1 as u64; self.gpr[rd] = t;}
+      Inst::Immediate(I::CSRRCI) => {let t = self.csr[csr]; self.csr[csr] = t & !(rs1 as u64); self.gpr[rd] = t;}
 
       _ => {todo!("{:?} not implemented", inst_type);}
     }

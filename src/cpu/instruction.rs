@@ -37,6 +37,8 @@ pub enum RegisterType {
   SLLW,
   SRLW,
   SRAW,
+
+  MRET,
   // RV64M
   MULW,
   DIVW,
@@ -68,6 +70,14 @@ pub enum ImmediateType {
 
   ECALL,
   EBREAK,
+  FENCE,
+
+  CSRRW,
+  CSRRS,
+  CSRRC,
+  CSRRWI,
+  CSRRSI,
+  CSRRCI,
   // RV64I
   LWU,
   LD,
