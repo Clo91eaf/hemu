@@ -341,18 +341,18 @@ impl Cpu {
         if self.halt.ret == 0 {
           println!("{}", Green.bold().paint("HIT GOOD TRAP"));
           self.statistic();
-          return 0;
+          0
         } else {
           log::error!("{}", Red.bold().paint("HIT BAD TRAP"));
-          return -1;
+          -1
         }
       }
-      CpuState::Running => {}
+      CpuState::Running => 0,
       CpuState::Quit => {
         self.statistic();
+        0
       }
     }
-    0
   }
 
   pub fn dump_registers(&self) {
