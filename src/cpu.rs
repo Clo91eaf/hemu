@@ -181,7 +181,7 @@ impl Cpu {
 
   #[rustfmt::skip]
   pub fn execute(&mut self, inst_type: Inst) {
-    let (rd, rs1, rs2, imm) = decode_operand(self.inst, inst_type);
+    let (rd, rs1, rs2, imm) = decode_operand(self.inst, inst_type).expect(&format!("Invalid instruction: pc = {:x}", self.pc)); // todo: error handle
     self.dnpc = self.snpc;
     match inst_type {
       Inst::Register(R::ADD)  => {self.gpr[rd] = (self.gpr[rs1] as i64).wrapping_add(self.gpr[rs2] as i64) as u64;}
