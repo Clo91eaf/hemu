@@ -66,6 +66,8 @@ pub fn disassemble(inst: u32, inst_type: Inst, pc: u64) -> String {
     Inst::Register(RegisterType::SLL)  => format!("sll   {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
     Inst::Register(RegisterType::SLLW) => format!("sllw  {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
     Inst::Register(RegisterType::SRL)  => format!("srl   {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
+    Inst::Register(RegisterType::SRA)  => format!("sra   {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
+    Inst::Register(RegisterType::SRLW) => format!("srlw  {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
     Inst::Register(RegisterType::SRAW) => format!("sraw  {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
     Inst::Register(RegisterType::SLT)  => format!("slt   {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
     Inst::Register(RegisterType::SLTU) => format!("sltu  {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
@@ -80,6 +82,7 @@ pub fn disassemble(inst: u32, inst_type: Inst, pc: u64) -> String {
     Inst::Immediate(ImmediateType::SRLI)  => format!("srli  {}, {}, {}", gpr[rd], gpr[rs1], imm),
     Inst::Immediate(ImmediateType::SRLIW) => format!("srliw {}, {}, {}", gpr[rd], gpr[rs1], imm),
     Inst::Immediate(ImmediateType::SRAI)  => format!("srai  {}, {}, {}", gpr[rd], gpr[rs1], imm),
+    Inst::Immediate(ImmediateType::SRAIW) => format!("sraiw {}, {}, {}", gpr[rd], gpr[rs1], imm),
     Inst::Immediate(ImmediateType::SLTI)  => format!("slti  {}, {}, {}", gpr[rd], gpr[rs1], imm),
     Inst::Immediate(ImmediateType::SLTIU) => format!("sltiu {}, {}, {}", gpr[rd], gpr[rs1], imm),
 
@@ -109,17 +112,33 @@ pub fn disassemble(inst: u32, inst_type: Inst, pc: u64) -> String {
     Inst::Upper(UpperType::LUI)   => format!("lui   {}, {:x}", gpr[rd], imm),
     Inst::Upper(UpperType::AUIPC) => format!("auipc {}, {:x}", gpr[rd], (pc as i64).wrapping_add(imm)),
 
-    Inst::Register(RegisterType::MUL)  => format!("mul   {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Inst::Register(RegisterType::MULW) => format!("mulw  {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Inst::Register(RegisterType::DIV)  => format!("div   {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Inst::Register(RegisterType::DIVU) => format!("divu  {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Inst::Register(RegisterType::DIVW) => format!("divw  {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Inst::Register(RegisterType::REM)  => format!("rem   {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Inst::Register(RegisterType::REMU) => format!("remu  {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Inst::Register(RegisterType::REMW) => format!("remw  {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
+    Inst::Register(RegisterType::MUL)    => format!("mul      {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
+    Inst::Register(RegisterType::MULH)   => format!("mulh     {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
+    Inst::Register(RegisterType::MULHU)  => format!("mulhu    {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
+    Inst::Register(RegisterType::MULHSU) => format!("mulhsu   {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
+    Inst::Register(RegisterType::MULW)   => format!("mulw     {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
+    Inst::Register(RegisterType::DIV)    => format!("div      {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
+    Inst::Register(RegisterType::DIVU)   => format!("divu     {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
+    Inst::Register(RegisterType::DIVUW)  => format!("divuw    {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
+    Inst::Register(RegisterType::DIVW)   => format!("divw     {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
+    Inst::Register(RegisterType::REM)    => format!("rem      {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
+    Inst::Register(RegisterType::REMU)   => format!("remu     {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
+    Inst::Register(RegisterType::REMUW)  => format!("remuw    {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
+    Inst::Register(RegisterType::REMW)   => format!("remw     {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
+
+    Inst::Register(RegisterType::MRET)   => format!("mret"),
 
     Inst::Immediate(ImmediateType::ECALL)  => format!("ecall"),
     Inst::Immediate(ImmediateType::EBREAK) => format!("ebreak"),
+
+    Inst::Immediate(ImmediateType::FENCE) => format!("fence"),
+
+    Inst::Immediate(ImmediateType::CSRRW)  => format!("csrrw  {}, {}", gpr[rd], gpr[rs1]),
+    Inst::Immediate(ImmediateType::CSRRS)  => format!("csrrs  {}, {}", gpr[rd], gpr[rs1]),
+    Inst::Immediate(ImmediateType::CSRRC)  => format!("csrrc  {}, {}", gpr[rd], gpr[rs1]),
+    Inst::Immediate(ImmediateType::CSRRWI) => format!("csrrwi {}, 0x{:x}, {}", gpr[rd], imm, rs1),
+    Inst::Immediate(ImmediateType::CSRRSI) => format!("csrrsi {}, 0x{:x}, {}", gpr[rd], imm, rs1),
+    Inst::Immediate(ImmediateType::CSRRCI) => format!("csrrci {}, 0x{:x}, {}", gpr[rd], imm, rs1),
 
     _ => format!("Unknown instruction")
   }
