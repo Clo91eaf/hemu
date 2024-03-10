@@ -1,4 +1,3 @@
-mod csr;
 mod instruction;
 pub mod memory;
 mod statistic;
@@ -17,7 +16,6 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::PathBuf;
 
-use csr::CSR;
 use memory::{read_data, read_inst, write_data};
 use utils::{bits, decode_operand, match_inst, sext};
 
@@ -270,7 +268,7 @@ impl Cpu {
       Inst::Register(R::REMUW)  => {self.gpr[rd] = sext((self.gpr[rs1] as u32 % self.gpr[rs2] as u32) as usize, 64);}
       Inst::Register(R::REMW)   => {self.gpr[rd] = sext((self.gpr[rs1] as i32 % self.gpr[rs2] as i32) as usize, 32);}
 
-      Inst::Register(R::MRET)   => {self.dnpc = self.csr[CSR::MEPC as usize];}
+      // Inst::Register(R::MRET)   => {self.dnpc = self.csr[CSR::MEPC as usize];}
 
       Inst::Immediate(I::ECALL)  => {todo!();}
       Inst::Immediate(I::EBREAK) => {self.hemu_trap();}
