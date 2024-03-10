@@ -1,0 +1,11 @@
+name: test
+on: push
+jobs:
+  am-test:
+    name: am-test
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@master
+    - name: test
+      run: RUST_TEST_THREADS=1 cargo test --test riscv-tests
