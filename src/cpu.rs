@@ -1,9 +1,11 @@
+mod csr;
 mod instruction;
 pub mod memory;
 mod statistic;
 mod utils;
 
 use ansi_term::Colour::{Green, Red};
+use csr::*;
 use instruction::BranchType as B;
 use instruction::ImmediateType as I;
 use instruction::InstPattern as IP;
@@ -41,7 +43,7 @@ impl Halt {
 
 pub struct Cpu {
   pub gpr: [u64; 32],
-  pub csr: [u64; 4096],
+  pub csr: Csr,
   pub pc: u64,
   snpc: u64,
   dnpc: u64,
@@ -61,7 +63,7 @@ impl Cpu {
 
     Cpu {
       gpr: [0; 32],
-      csr: [0; 4096],
+      csr: Csr::new(),
       pc: 0x80000000,
       snpc: 0x80000000,
       dnpc: 0x80000000,
@@ -196,7 +198,7 @@ impl Cpu {
   pub fn execute(&mut self, inst_type: Inst) {
     let (rd, rs1, rs2, imm) = decode_operand(self.inst, inst_type).expect(&format!("Invalid instruction: pc = {:x}", self.pc)); // todo: error handle
     self.dnpc = self.snpc;
-    let csr = bits(self.inst, 20, 31);
+    let csr = bits(self.inst, 20, 31) as u16;
     match inst_type {
       Inst::Register(R::ADD)  => {self.gpr[rd] = (self.gpr[rs1] as i64).wrapping_add(self.gpr[rs2] as i64) as u64;}
       Inst::Register(R::ADDW) => {self.gpr[rd] = sext((self.gpr[rs1] as i64).wrapping_add(self.gpr[rs2] as i64) as usize, 32);}
@@ -268,18 +270,18 @@ impl Cpu {
       Inst::Register(R::REMUW)  => {self.gpr[rd] = sext((self.gpr[rs1] as u32 % self.gpr[rs2] as u32) as usize, 64);}
       Inst::Register(R::REMW)   => {self.gpr[rd] = sext((self.gpr[rs1] as i32 % self.gpr[rs2] as i32) as usize, 32);}
 
-      // Inst::Register(R::MRET)   => {self.dnpc = self.csr[CSR::MEPC as usize];}
+      Inst::Register(R::MRET)   => {self.dnpc = self.csr.read(MEPC).wrapping_add(4);}
 
       Inst::Immediate(I::ECALL)  => {todo!();}
       Inst::Immediate(I::EBREAK) => {self.hemu_trap();}
       Inst::Immediate(I::FENCE)  => {}
 
-      Inst::Immediate(I::CSRRW)  => {let t = self.csr[csr]; self.csr[csr] = self.gpr[rs1]; self.gpr[rd] = t;}
-      Inst::Immediate(I::CSRRS)  => {let t = self.csr[csr]; self.csr[csr] = t | self.gpr[rs1]; self.gpr[rd] = t;}
-      Inst::Immediate(I::CSRRC)  => {let t = self.csr[csr]; self.csr[csr] = t &!self.gpr[rs1]; self.gpr[rd] = t;}
-      Inst::Immediate(I::CSRRWI) => {self.gpr[rd] = self.csr[csr]; self.csr[csr] = rs1 as u64;}
-      Inst::Immediate(I::CSRRSI) => {let t = self.csr[csr]; self.csr[csr] = t | rs1 as u64; self.gpr[rd] = t;}
-      Inst::Immediate(I::CSRRCI) => {let t = self.csr[csr]; self.csr[csr] = t & !(rs1 as u64); self.gpr[rd] = t;}
+      Inst::Immediate(I::CSRRW)  => {let t = self.csr.read(csr); self.csr.write(csr, self.gpr[rs1]); self.gpr[rd] = t;}
+      Inst::Immediate(I::CSRRS)  => {let t = self.csr.read(csr); self.csr.write(csr, t | self.gpr[rs1]); self.gpr[rd] = t;}
+      Inst::Immediate(I::CSRRC)  => {let t = self.csr.read(csr); self.csr.write(csr, t &!self.gpr[rs1]); self.gpr[rd] = t;}
+      Inst::Immediate(I::CSRRWI) => {self.gpr[rd] = self.csr.read(csr); self.csr.write(csr, rs1 as u64);}
+      Inst::Immediate(I::CSRRSI) => {let t = self.csr.read(csr); self.csr.write(csr, t | rs1 as u64); self.gpr[rd] = t;}
+      Inst::Immediate(I::CSRRCI) => {let t = self.csr.read(csr); self.csr.write(csr, t & !(rs1 as u64)); self.gpr[rd] = t;}
 
       _ => {todo!("{:?} not implemented", inst_type);}
     }
