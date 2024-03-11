@@ -26,7 +26,7 @@ macro_rules! add_test {
       sdb::sdb_mainloop(cpu, true);
 
       // check the result
-      assert_eq!(cpu.state, cpu::CpuState::Ended);
+      assert_eq!(cpu.state, cpu::State::Ended);
       assert_eq!(cpu.halt.ret, 0);
     }
   };

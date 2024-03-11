@@ -1,5 +1,5 @@
 use crate::cpu::memory::read_data;
-use crate::cpu::{Cpu, CpuState};
+use crate::cpu::{Cpu, State};
 use crate::monitor::expr;
 use atoi::atoi;
 use rustyline::Editor;
@@ -25,20 +25,14 @@ impl CommandTable {
   fn help(&self, args: &str) -> i32 {
     if args == "" {
       for i in 0..self.commands.len() {
-        println!(
-          "{} - {}",
-          self.commands[i].name, self.commands[i].description
-        );
+        println!("{} - {}", self.commands[i].name, self.commands[i].description);
       }
       return 0;
     }
 
     for i in 0..self.commands.len() {
       if args == self.commands[i].name {
-        println!(
-          "{} - {}",
-          self.commands[i].name, self.commands[i].description
-        );
+        println!("{} - {}", self.commands[i].name, self.commands[i].description);
         return 0;
       }
     }
@@ -56,11 +50,7 @@ struct Command {
 }
 
 impl Command {
-  fn new(
-    name: &'static str,
-    description: &'static str,
-    handler: fn(&str, &mut Cpu) -> i32,
-  ) -> Command {
+  fn new(name: &'static str, description: &'static str, handler: fn(&str, &mut Cpu) -> i32) -> Command {
     Command {
       name,
       description,
@@ -93,7 +83,7 @@ impl Command {
 
   #[allow(unused_variables)]
   fn quit(args: &str, cpu: &mut Cpu) -> i32 {
-    cpu.state = CpuState::Quit;
+    cpu.state = State::Quit;
     -1
   }
 

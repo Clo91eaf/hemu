@@ -8,8 +8,8 @@ use ansi_term::Colour::{Green, Red};
 use csr::*;
 use instruction::BranchType as B;
 use instruction::ImmediateType as I;
-use instruction::Instruction as Insn;
 use instruction::Inst;
+use instruction::Instruction as Insn;
 use instruction::JumpType as J;
 use instruction::RegisterType as R;
 use instruction::StoreType as S;
@@ -22,7 +22,7 @@ use memory::{read_data, read_inst, write_data};
 use utils::{bits, sext};
 
 #[derive(PartialEq, Debug)]
-pub enum CpuState {
+pub enum State {
   Running,
   // Stopped,
   Ended,
@@ -45,10 +45,8 @@ pub struct Cpu {
   pub gpr: [u64; 32],
   pub csr: Csr,
   pub pc: u64,
-  snpc: u64,
-  dnpc: u64,
   inst: Inst,
-  pub state: CpuState,
+  pub state: State,
   pub halt: Halt,
   statistic: statistic::Statistic,
   diff: Option<BufReader<std::fs::File>>,
@@ -65,10 +63,8 @@ impl Cpu {
       gpr: [0; 32],
       csr: Csr::new(),
       pc: 0x80000000,
-      snpc: 0x80000000,
-      dnpc: 0x80000000,
       inst: Inst::new(),
-      state: CpuState::Running,
+      state: State::Running,
       halt: Halt::new(),
       statistic: statistic::Statistic::new(),
       diff,
@@ -76,7 +72,7 @@ impl Cpu {
   }
 
   fn hemu_trap(&mut self) {
-    self.state = CpuState::Ended;
+    self.state = State::Ended;
     self.halt.pc = self.pc as u32;
     self.halt.ret = self.gpr[10] as u32;
 
@@ -84,15 +80,13 @@ impl Cpu {
   }
 
   pub fn fetch(&mut self) {
-    let bits = read_inst(self.snpc) as u32;
+    let bits = read_inst(self.pc) as u32;
     self.inst.set_bits(bits);
-    self.snpc += 4;
   }
 
   #[rustfmt::skip]
   pub fn execute(&mut self) {
     let (rd, rs1, rs2, imm) = (self.inst.rd, self.inst.rs1, self.inst.rs2, self.inst.imm);
-    self.dnpc = self.snpc;
     let csr = bits(self.inst.bits, 20, 31) as u16;
     match self.inst.typ {
       Insn::Register(R::ADD)  => {self.gpr[rd] = (self.gpr[rs1] as i64).wrapping_add(self.gpr[rs2] as i64) as u64;}
@@ -138,15 +132,15 @@ impl Cpu {
       Insn::Store(S::SW) => {write_data((self.gpr[rs1] as i64).wrapping_add(imm) as u64, 4, self.gpr[rs2]);}
       Insn::Store(S::SD) => {write_data((self.gpr[rs1] as i64).wrapping_add(imm) as u64, 8, self.gpr[rs2]);}
 
-      Insn::Branch(B::BEQ)  => {if self.gpr[rs1] == self.gpr[rs2] {self.dnpc = (self.pc as i64).wrapping_add(imm) as u64;}}
-      Insn::Branch(B::BNE)  => {if self.gpr[rs1] != self.gpr[rs2] {self.dnpc = (self.pc as i64).wrapping_add(imm) as u64;}}
-      Insn::Branch(B::BLT)  => {if (self.gpr[rs1] as i64) < (self.gpr[rs2] as i64) {self.dnpc = (self.pc as i64).wrapping_add(imm) as u64;}}
-      Insn::Branch(B::BGE)  => {if (self.gpr[rs1] as i64) >= (self.gpr[rs2] as i64) {self.dnpc = (self.pc as i64).wrapping_add(imm) as u64;}}
-      Insn::Branch(B::BLTU) => {if self.gpr[rs1] < self.gpr[rs2] {self.dnpc = (self.pc as i64).wrapping_add(imm) as u64;}}
-      Insn::Branch(B::BGEU) => {if self.gpr[rs1] >= self.gpr[rs2] {self.dnpc = (self.pc as i64).wrapping_add(imm) as u64;}}
+      Insn::Branch(B::BEQ)  => {if self.gpr[rs1] == self.gpr[rs2] {self.pc = (self.pc as i64).wrapping_add(imm).wrapping_sub(4) as u64;}}
+      Insn::Branch(B::BNE)  => {if self.gpr[rs1] != self.gpr[rs2] {self.pc = (self.pc as i64).wrapping_add(imm).wrapping_sub(4) as u64;}}
+      Insn::Branch(B::BLT)  => {if (self.gpr[rs1] as i64) < (self.gpr[rs2] as i64) {self.pc = (self.pc as i64).wrapping_add(imm).wrapping_sub(4) as u64;}}
+      Insn::Branch(B::BGE)  => {if (self.gpr[rs1] as i64) >= (self.gpr[rs2] as i64) {self.pc = (self.pc as i64).wrapping_add(imm).wrapping_sub(4) as u64;}}
+      Insn::Branch(B::BLTU) => {if self.gpr[rs1] < self.gpr[rs2] {self.pc = (self.pc as i64).wrapping_add(imm).wrapping_sub(4) as u64;}}
+      Insn::Branch(B::BGEU) => {if self.gpr[rs1] >= self.gpr[rs2] {self.pc = (self.pc as i64).wrapping_add(imm).wrapping_sub(4) as u64;}}
 
-      Insn::Jump(J::JAL)       => {self.gpr[rd] = self.pc + 4; self.dnpc = (self.pc as i64).wrapping_add(imm) as u64;}
-      Insn::Immediate(I::JALR) => {self.gpr[rd] = self.pc + 4; self.dnpc = (self.gpr[rs1] as i64).wrapping_add(imm) as u64;}
+      Insn::Jump(J::JAL)       => {self.gpr[rd] = self.pc + 4; self.pc = (self.pc as i64).wrapping_add(imm).wrapping_sub(4) as u64;}
+      Insn::Immediate(I::JALR) => {self.gpr[rd] = self.pc + 4; self.pc = (self.gpr[rs1] as i64).wrapping_add(imm).wrapping_sub(4) as u64;}
 
       Insn::Upper(U::LUI)   => {self.gpr[rd] = imm as u64;}
       Insn::Upper(U::AUIPC) => {self.gpr[rd] = (self.pc as i64).wrapping_add(imm) as u64;}
@@ -165,7 +159,7 @@ impl Cpu {
       Insn::Register(R::REMUW)  => {self.gpr[rd] = sext((self.gpr[rs1] as u32 % self.gpr[rs2] as u32) as usize, 64);}
       Insn::Register(R::REMW)   => {self.gpr[rd] = sext((self.gpr[rs1] as i32 % self.gpr[rs2] as i32) as usize, 32);}
 
-      Insn::Register(R::MRET)   => {self.dnpc = self.csr.read(MEPC).wrapping_add(4);}
+      Insn::Register(R::MRET)   => {self.pc = self.csr.read(MEPC);}
 
       Insn::Immediate(I::ECALL)  => {todo!();}
       Insn::Immediate(I::EBREAK) => {self.hemu_trap();}
@@ -184,29 +178,24 @@ impl Cpu {
   }
 
   fn exec_once(&mut self) {
-    // pipeline start
-    self.snpc = self.pc;
     // fetch stage
     self.fetch();
+    //disassemble
+    log::info!("{:08x}: {:08x}\t{}", self.pc, &self.inst.bits, self.inst.disassemble(self.pc));
+    let pc = self.pc;
     // execute stage (including memory stage and write back stage)
     self.execute();
     // print disassemble
-    log::info!(
-      "{:08x}: {:08x}\t{}",
-      self.pc,
-      &self.inst.bits,
-      self.inst.disassemble(self.pc)
-    );
-    self.difftest().unwrap();
+    self.difftest(pc).unwrap();
     // update pc
-    self.pc = self.dnpc;
+    self.pc += 4;
   }
 
   fn exec_ntimes(&mut self, n: usize) {
     for _ in 0..n {
       self.exec_once();
       self.statistic.inc_count();
-      if self.state != CpuState::Running {
+      if self.state != State::Running {
         break;
       }
     }
@@ -229,7 +218,7 @@ impl Cpu {
     self.statistic.stop_timer(start_time);
 
     match self.state {
-      CpuState::Ended => {
+      State::Ended => {
         if self.halt.ret == 0 {
           println!("{}", Green.bold().paint("HIT GOOD TRAP"));
           self.statistic();
@@ -239,8 +228,8 @@ impl Cpu {
           -1
         }
       }
-      CpuState::Running => 0,
-      CpuState::Quit => {
+      State::Running => 0,
+      State::Quit => {
         self.statistic();
         0
       }
@@ -266,7 +255,7 @@ impl Cpu {
     todo!("watch points not implemented!");
   }
 
-  fn difftest(&mut self) -> anyhow::Result<()> {
+  fn difftest(&mut self, pc: u64) -> anyhow::Result<()> {
     // get numbers from diff file
     let mut line = String::new();
 
@@ -287,12 +276,12 @@ impl Cpu {
     }
 
     // difftest check
-    if numbers[0] != self.pc {
-      panic!("pc = {:x}, ref = {:x}", self.pc, numbers[0]);
+    if numbers[0] != pc {
+      panic!("pc = {:x}, ref = {:x}", pc, numbers[0]);
     }
     (0..32).for_each(|i| {
       if numbers[i + 1] != self.gpr[i] {
-        panic!("x{:02} = {:x}, ref = {:x}", i, self.gpr[i], numbers[i + 1]);
+        panic!("pc = {:x}, x{:02} = {:x}, ref = {:x}", pc, i, self.gpr[i], numbers[i + 1]);
       }
     });
 
