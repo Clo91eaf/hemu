@@ -8,21 +8,21 @@ use std::num::FpCategory;
 use crate::{
   bus::{Bus, DRAM_BASE},
   devices::{
+    dram::DRAM_SIZE,
     uart::UART_IRQ,
     virtio_blk::{Virtio, VIRTIO_IRQ},
   },
-  dram::DRAM_SIZE,
   exception::Exception,
   interrupt::Interrupt,
 };
 
 pub mod csr;
-pub mod gpr;
 pub mod fpg;
+pub mod gpr;
 
 use csr::*;
-use gpr::*;
 use fpg::*;
+use gpr::*;
 
 /// The number of registers.
 pub const REGISTERS_COUNT: usize = 32;
