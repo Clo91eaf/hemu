@@ -1,8 +1,8 @@
-use std::path::PathBuf;
 use std::fs::File;
 use std::io::prelude::*;
+use std::path::PathBuf;
 
-use rvemu::{bus::DRAM_BASE, cpu::Mode, emulator::Emulator};
+use hemu::{bus::DRAM_BASE, cpu::Mode, emulator::Emulator};
 
 #[macro_export]
 macro_rules! add_test {

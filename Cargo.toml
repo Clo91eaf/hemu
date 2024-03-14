@@ -15,4 +15,3 @@ clap = { version = "4.3.11", features = ["derive"] }
 regex = "1.9.0"
 eval = "0.4.3"
 anyhow = "1.0.80"
-rvemu = "0.0.11"

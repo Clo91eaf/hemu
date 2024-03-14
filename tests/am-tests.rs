@@ -1,32 +1,37 @@
+use std::fs::File;
+use std::io::prelude::*;
 use std::path::PathBuf;
+
+use hemu::{bus::DRAM_BASE, cpu::Mode, emulator::Emulator};
 
 #[macro_export]
 macro_rules! add_test {
   ($name: ident) => {
-    // #[test]
-    // fn $name() {
-    //   let mut root = String::from(env!("CARGO_MANIFEST_DIR"));
-    //   root.push_str("/tests/resources/am-tests/");
-    //   root.push_str(&stringify!($name).replace("_", "-"));
-    //   root.push_str("-riscv64-nemu");
+    #[test]
+    fn $name() -> anyhow::Result<()> {
+      let mut root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+      root.push("tests/resources/am-tests");
+      root.push(stringify!($name).to_owned().replace("_", "-") + "-riscv64-nemu.bin");
 
-    //   println!("root: {}", root);
+      let mut file = File::open(root.as_path())?;
+      let mut data = Vec::new();
+      file.read_to_end(&mut data)?;
 
-    //   // prepare the diff file
-    //   let diff = Some(PathBuf::from(root.to_string() + ".diff"));
+      let mut emu = Emulator::new();
+      emu.initialize_dram(data);
+      emu.initialize_pc(DRAM_BASE);
 
-    //   // prepare the img file
-    //   let img = PathBuf::from(root.to_string() + ".bin");
+      emu.start();
 
-    //   // start the monitor
-    //   let _ = load_img(img).unwrap();
-    //   let cpu = &mut cpu::Cpu::new(diff);
-    //   sdb::sdb_mainloop(cpu, true);
+      // Test result is stored at a0 (x10), a function argument and a return value.
+      // The riscv-tests set a0 to 0 when all tests pass.
+      assert_eq!(0, emu.cpu.xregs.read(10));
 
-    //   // check the result
-    //   assert_eq!(cpu.state, cpu::State::Ended);
-    //   assert_eq!(cpu.halt.ret, 0);
-    // }
+      // All tests start the user mode and finish with the instruction `ecall`, independently
+      // of it succeeds or fails.
+      assert_eq!(Mode::Machine, emu.cpu.mode);
+      Ok(())
+    }
   };
 }
 

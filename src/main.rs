@@ -3,9 +3,9 @@ use std::io::prelude::*;
 use std::iter::FromIterator;
 use std::path::PathBuf;
 
-use rvemu::bus::DRAM_BASE;
-use rvemu::cpu::Cpu;
-use rvemu::emulator::Emulator;
+use hemu::bus::DRAM_BASE;
+use hemu::cpu::Cpu;
+use hemu::emulator::Emulator;
 
 use clap::Parser;
 
