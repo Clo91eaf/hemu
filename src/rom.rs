@@ -8,8 +8,8 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::process::Command;
 
-const DTS_FILE_NAME: &str = "hemu.dts";
-const DTB_FILE_NAME: &str = "hemu.dtb";
+const DTS_FILE_NAME: &str = "dependencies/opensbi/hemu.dts";
+const DTB_FILE_NAME: &str = "dependencies/opensbi/hemu.dtb";
 
 /// Create a new dts file. If the file already existed, the old content is destroyed. Otherwise, a new file is created.
 fn create_dts() -> std::io::Result<()> {

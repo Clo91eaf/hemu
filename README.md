@@ -35,6 +35,22 @@ Where `<path_to_binary>` is the path to the binary file that you want to run. Fo
 cargo run -- -k ./resources/am-tests/add-riscv64-nemu.bin
 ```
 
+#### Run opensbi
+
+You should run HEMU first to generate the dtb with whatever binary. Then you can run HEMU with opensbi, you can use the following command:
+
+```sh
+# prepare the opensbi
+git clone https://github.com/riscv-software-src/opensbi.git
+# build the opensbi
+cd opensbi
+make PLATFORM=generic CROSS_COMPILE=riscv64-unknown-elf- FW_FDT_PATH=<path/to>/hemu/dependencies/opensbi/hemu.dtb
+# run the opensbi
+cp build/platform/generic/firmware/fw_payload.elf <path/to>/hemu
+cd <path/to>/hemu
+cargo run -- -k ./resources/opensbi.bin
+```
+
 ### Testing
 
 To test HEMU, you can use the following command:
