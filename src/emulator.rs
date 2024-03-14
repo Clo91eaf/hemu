@@ -12,9 +12,7 @@ pub struct Emulator {
 impl Emulator {
   /// Constructor for an emulator.
   pub fn new() -> Emulator {
-    Self {
-      cpu: Cpu::new(),
-    }
+    Self { cpu: Cpu::new() }
   }
 
   /// Reset CPU state.
@@ -37,26 +35,28 @@ impl Emulator {
     self.cpu.pc = pc;
   }
 
+  fn execute(&mut self) -> Trap {
+    // Run a cycle on peripheral devices.
+    self.cpu.devices_increment();
+
+    // Take an interrupt.
+    match self.cpu.check_pending_interrupt() {
+      Some(interrupt) => interrupt.take_trap(&mut self.cpu),
+      None => {}
+    }
+
+    // Execute an instruction.
+    match self.cpu.execute() {
+      // Return a placeholder trap.
+      Ok(_) => Trap::Requested,
+      Err(exception) => exception.take_trap(&mut self.cpu),
+    }
+  }
+
   /// Start executing the emulator.
   pub fn start(&mut self) {
     loop {
-      // Run a cycle on peripheral devices.
-      self.cpu.devices_increment();
-
-      // Take an interrupt.
-      match self.cpu.check_pending_interrupt() {
-        Some(interrupt) => interrupt.take_trap(&mut self.cpu),
-        None => {}
-      }
-
-      // Execute an instruction.
-      let trap = match self.cpu.execute() {
-        Ok(_) => {
-          // Return a placeholder trap.
-          Trap::Requested
-        }
-        Err(exception) => exception.take_trap(&mut self.cpu),
-      };
+      let trap = self.execute();
 
       match trap {
         Trap::Fatal => {

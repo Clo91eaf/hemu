@@ -2,7 +2,6 @@
 
 use std::cmp;
 use std::cmp::PartialEq;
-use std::collections::BTreeMap;
 use std::num::FpCategory;
 
 use crate::{
