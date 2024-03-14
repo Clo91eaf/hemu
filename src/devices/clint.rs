@@ -40,116 +40,116 @@ const MTIME_END: u64 = MTIME + 0x8;
 /// 0x4000 mtimecmp for hart 0 (8 bytes)
 /// 0xbff8 mtime (8 bytes)
 pub struct Clint {
-    /// Machine mode software interrupt pending register, used to assert a software interrupt for
-    /// a CPU.
-    msip: u32,
-    /// Memory mapped machine mode timer compare register, used to trigger an interrupt when
-    /// mtimecmp is greater than or equal to mtime. There is an mtimecmp dedicated to each CPU.
-    mtimecmp: u64,
-    /// Machine mode timer register which runs at a constant frequency.
-    mtime: u64,
+  /// Machine mode software interrupt pending register, used to assert a software interrupt for
+  /// a CPU.
+  msip: u32,
+  /// Memory mapped machine mode timer compare register, used to trigger an interrupt when
+  /// mtimecmp is greater than or equal to mtime. There is an mtimecmp dedicated to each CPU.
+  mtimecmp: u64,
+  /// Machine mode timer register which runs at a constant frequency.
+  mtime: u64,
 }
 
 impl Clint {
-    /// Create a new CLINT object.
-    pub fn new() -> Self {
-        Self {
-            msip: 0,
-            mtimecmp: 0,
-            mtime: 0,
-        }
+  /// Create a new CLINT object.
+  pub fn new() -> Self {
+    Self {
+      msip: 0,
+      mtimecmp: 0,
+      mtime: 0,
+    }
+  }
+
+  /// Increment the mtimer register. It's not a real-time value. The MTIP bit (MIP, 7) is enabled
+  /// when `mtime` is greater than or equal to `mtimecmp`.
+  pub fn increment(&mut self, state: &mut State) {
+    self.mtime = self.mtime.wrapping_add(1);
+    // Sync TIME csr.
+    //state.write(TIME, self.mtime);
+
+    if (self.msip & 1) != 0 {
+      // Enable the MSIP bit (MIP, 3).
+      state.write(MIP, state.read(MIP) | MSIP_BIT);
     }
 
-    /// Increment the mtimer register. It's not a real-time value. The MTIP bit (MIP, 7) is enabled
-    /// when `mtime` is greater than or equal to `mtimecmp`.
-    pub fn increment(&mut self, state: &mut State) {
-        self.mtime = self.mtime.wrapping_add(1);
-        // Sync TIME csr.
-        //state.write(TIME, self.mtime);
-
-        if (self.msip & 1) != 0 {
-            // Enable the MSIP bit (MIP, 3).
-            state.write(MIP, state.read(MIP) | MSIP_BIT);
-        }
-
-        // 3.1.10 Machine Timer Registers (mtime and mtimecmp)
-        // "The interrupt remains posted until mtimecmp becomes greater than mtime (typically as a
-        // result of writing mtimecmp)."
-        if self.mtimecmp > self.mtime {
-            // Clear the MTIP bit (MIP, 7).
-            state.write(MIP, state.read(MIP) & !MTIP_BIT);
-        }
-
-        // 3.1.10 Machine Timer Registers (mtime and mtimecmp)
-        // "A timer interrupt becomes pending whenever mtime contains a value greater than or equal
-        // to mtimecmp, treating the values as unsigned integers."
-        if self.mtime >= self.mtimecmp {
-            // Enable the MTIP bit (MIP, 7).
-            state.write(MIP, state.read(MIP) | MTIP_BIT);
-        }
+    // 3.1.10 Machine Timer Registers (mtime and mtimecmp)
+    // "The interrupt remains posted until mtimecmp becomes greater than mtime (typically as a
+    // result of writing mtimecmp)."
+    if self.mtimecmp > self.mtime {
+      // Clear the MTIP bit (MIP, 7).
+      state.write(MIP, state.read(MIP) & !MTIP_BIT);
     }
 
-    /// Load `size`-bit data from a register located at `addr` in CLINT.
-    pub fn read(&self, addr: u64, size: u8) -> Result<u64, Exception> {
-        // `reg` is the value of a target register in CLINT and `offset` is the byte of the start
-        // position in the register.
-        let (reg, offset) = match addr {
-            MSIP..=MSIP_END => (self.msip as u64, addr - MSIP),
-            MTIMECMP..=MTIMECMP_END => (self.mtimecmp, addr - MTIMECMP),
-            MTIME..=MTIME_END => (self.mtime, addr - MTIME),
-            _ => return Err(Exception::LoadAccessFault),
-        };
+    // 3.1.10 Machine Timer Registers (mtime and mtimecmp)
+    // "A timer interrupt becomes pending whenever mtime contains a value greater than or equal
+    // to mtimecmp, treating the values as unsigned integers."
+    if self.mtime >= self.mtimecmp {
+      // Enable the MTIP bit (MIP, 7).
+      state.write(MIP, state.read(MIP) | MTIP_BIT);
+    }
+  }
 
-        match size {
-            BYTE => Ok((reg >> (offset * 8)) & 0xff),
-            HALFWORD => Ok((reg >> (offset * 8)) & 0xffff),
-            WORD => Ok((reg >> (offset * 8)) & 0xffffffff),
-            DOUBLEWORD => Ok(reg),
-            _ => return Err(Exception::LoadAccessFault),
-        }
+  /// Load `size`-bit data from a register located at `addr` in CLINT.
+  pub fn read(&self, addr: u64, size: u8) -> Result<u64, Exception> {
+    // `reg` is the value of a target register in CLINT and `offset` is the byte of the start
+    // position in the register.
+    let (reg, offset) = match addr {
+      MSIP..=MSIP_END => (self.msip as u64, addr - MSIP),
+      MTIMECMP..=MTIMECMP_END => (self.mtimecmp, addr - MTIMECMP),
+      MTIME..=MTIME_END => (self.mtime, addr - MTIME),
+      _ => return Err(Exception::LoadAccessFault),
+    };
+
+    match size {
+      BYTE => Ok((reg >> (offset * 8)) & 0xff),
+      HALFWORD => Ok((reg >> (offset * 8)) & 0xffff),
+      WORD => Ok((reg >> (offset * 8)) & 0xffffffff),
+      DOUBLEWORD => Ok(reg),
+      _ => return Err(Exception::LoadAccessFault),
+    }
+  }
+
+  /// Store `size`-bit data to a register located at `addr` in CLINT.
+  pub fn write(&mut self, addr: u64, value: u64, size: u8) -> Result<(), Exception> {
+    // `reg` is the value of a target register in CLINT and `offset` is the byte of the start
+    // position in the register.
+    let (mut reg, offset) = match addr {
+      MSIP..=MSIP_END => (self.msip as u64, addr - MSIP),
+      MTIMECMP..=MTIMECMP_END => (self.mtimecmp, addr - MTIMECMP),
+      MTIME..=MTIME_END => (self.mtime, addr - MTIME),
+      _ => return Err(Exception::StoreAMOAccessFault),
+    };
+
+    // Calculate the new value of the target register based on `size` and `offset`.
+    match size {
+      BYTE => {
+        // Clear the target byte.
+        reg = reg & (!(0xff << (offset * 8)));
+        // Set the new `value` to the target byte.
+        reg = reg | ((value & 0xff) << (offset * 8));
+      }
+      HALFWORD => {
+        reg = reg & (!(0xffff << (offset * 8)));
+        reg = reg | ((value & 0xffff) << (offset * 8));
+      }
+      WORD => {
+        reg = reg & (!(0xffffffff << (offset * 8)));
+        reg = reg | ((value & 0xffffffff) << (offset * 8));
+      }
+      DOUBLEWORD => {
+        reg = value;
+      }
+      _ => return Err(Exception::StoreAMOAccessFault),
     }
 
-    /// Store `size`-bit data to a register located at `addr` in CLINT.
-    pub fn write(&mut self, addr: u64, value: u64, size: u8) -> Result<(), Exception> {
-        // `reg` is the value of a target register in CLINT and `offset` is the byte of the start
-        // position in the register.
-        let (mut reg, offset) = match addr {
-            MSIP..=MSIP_END => (self.msip as u64, addr - MSIP),
-            MTIMECMP..=MTIMECMP_END => (self.mtimecmp, addr - MTIMECMP),
-            MTIME..=MTIME_END => (self.mtime, addr - MTIME),
-            _ => return Err(Exception::StoreAMOAccessFault),
-        };
-
-        // Calculate the new value of the target register based on `size` and `offset`.
-        match size {
-            BYTE => {
-                // Clear the target byte.
-                reg = reg & (!(0xff << (offset * 8)));
-                // Set the new `value` to the target byte.
-                reg = reg | ((value & 0xff) << (offset * 8));
-            }
-            HALFWORD => {
-                reg = reg & (!(0xffff << (offset * 8)));
-                reg = reg | ((value & 0xffff) << (offset * 8));
-            }
-            WORD => {
-                reg = reg & (!(0xffffffff << (offset * 8)));
-                reg = reg | ((value & 0xffffffff) << (offset * 8));
-            }
-            DOUBLEWORD => {
-                reg = value;
-            }
-            _ => return Err(Exception::StoreAMOAccessFault),
-        }
-
-        // Store the new value to the target register.
-        match addr {
-            MSIP..=MSIP_END => self.msip = reg as u32,
-            MTIMECMP..=MTIMECMP_END => self.mtimecmp = reg,
-            MTIME..=MTIME_END => self.mtime = reg,
-            _ => return Err(Exception::StoreAMOAccessFault),
-        }
-
-        Ok(())
+    // Store the new value to the target register.
+    match addr {
+      MSIP..=MSIP_END => self.msip = reg as u32,
+      MTIMECMP..=MTIMECMP_END => self.mtimecmp = reg,
+      MTIME..=MTIME_END => self.mtime = reg,
+      _ => return Err(Exception::StoreAMOAccessFault),
     }
+
+    Ok(())
+  }
 }

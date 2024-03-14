@@ -46,59 +46,59 @@ const DRAM_END: u64 = DRAM_BASE + DRAM_SIZE;
 
 /// The system bus.
 pub struct Bus {
-    pub clint: Clint,
-    pub plic: Plic,
-    pub uart: Uart,
-    pub virtio: Virtio,
-    dram: Dram,
-    pub rom: Rom,
+  pub clint: Clint,
+  pub plic: Plic,
+  pub uart: Uart,
+  pub virtio: Virtio,
+  dram: Dram,
+  pub rom: Rom,
 }
 
 impl Bus {
-    /// Create a new bus object.
-    pub fn new() -> Bus {
-        Self {
-            clint: Clint::new(),
-            plic: Plic::new(),
-            uart: Uart::new(),
-            virtio: Virtio::new(),
-            dram: Dram::new(),
-            rom: Rom::new(),
-        }
+  /// Create a new bus object.
+  pub fn new() -> Bus {
+    Self {
+      clint: Clint::new(),
+      plic: Plic::new(),
+      uart: Uart::new(),
+      virtio: Virtio::new(),
+      dram: Dram::new(),
+      rom: Rom::new(),
     }
+  }
 
-    /// Set the binary data to the memory.
-    pub fn initialize_dram(&mut self, data: Vec<u8>) {
-        self.dram.initialize(data);
-    }
+  /// Set the binary data to the memory.
+  pub fn initialize_dram(&mut self, data: Vec<u8>) {
+    self.dram.initialize(data);
+  }
 
-    /// Set the binary data to the virtIO disk.
-    pub fn initialize_disk(&mut self, data: Vec<u8>) {
-        self.virtio.initialize(data);
-    }
+  /// Set the binary data to the virtIO disk.
+  pub fn initialize_disk(&mut self, data: Vec<u8>) {
+    self.virtio.initialize(data);
+  }
 
-    /// Load a `size`-bit data from the device that connects to the system bus.
-    pub fn read(&mut self, addr: u64, size: u8) -> Result<u64, Exception> {
-        match addr {
-            MROM_BASE..=MROM_END => self.rom.read(addr, size),
-            CLINT_BASE..=CLINT_END => self.clint.read(addr, size),
-            PLIC_BASE..=PLIC_END => self.plic.read(addr, size),
-            UART_BASE..=UART_END => self.uart.read(addr, size),
-            VIRTIO_BASE..=VIRTIO_END => self.virtio.read(addr, size),
-            DRAM_BASE..=DRAM_END => self.dram.read(addr, size),
-            _ => Err(Exception::LoadAccessFault),
-        }
+  /// Load a `size`-bit data from the device that connects to the system bus.
+  pub fn read(&mut self, addr: u64, size: u8) -> Result<u64, Exception> {
+    match addr {
+      MROM_BASE..=MROM_END => self.rom.read(addr, size),
+      CLINT_BASE..=CLINT_END => self.clint.read(addr, size),
+      PLIC_BASE..=PLIC_END => self.plic.read(addr, size),
+      UART_BASE..=UART_END => self.uart.read(addr, size),
+      VIRTIO_BASE..=VIRTIO_END => self.virtio.read(addr, size),
+      DRAM_BASE..=DRAM_END => self.dram.read(addr, size),
+      _ => Err(Exception::LoadAccessFault),
     }
+  }
 
-    /// Store a `size`-bit data to the device that connects to the system bus.
-    pub fn write(&mut self, addr: u64, value: u64, size: u8) -> Result<(), Exception> {
-        match addr {
-            CLINT_BASE..=CLINT_END => self.clint.write(addr, value, size),
-            PLIC_BASE..=PLIC_END => self.plic.write(addr, value, size),
-            UART_BASE..=UART_END => self.uart.write(addr, value as u8, size),
-            VIRTIO_BASE..=VIRTIO_END => self.virtio.write(addr, value as u32, size),
-            DRAM_BASE..=DRAM_END => self.dram.write(addr, value, size),
-            _ => Err(Exception::StoreAMOAccessFault),
-        }
+  /// Store a `size`-bit data to the device that connects to the system bus.
+  pub fn write(&mut self, addr: u64, value: u64, size: u8) -> Result<(), Exception> {
+    match addr {
+      CLINT_BASE..=CLINT_END => self.clint.write(addr, value, size),
+      PLIC_BASE..=PLIC_END => self.plic.write(addr, value, size),
+      UART_BASE..=UART_END => self.uart.write(addr, value as u8, size),
+      VIRTIO_BASE..=VIRTIO_END => self.virtio.write(addr, value as u32, size),
+      DRAM_BASE..=DRAM_END => self.dram.write(addr, value, size),
+      _ => Err(Exception::StoreAMOAccessFault),
     }
+  }
 }

@@ -2,7 +2,5 @@
 
 pub mod clint;
 pub mod plic;
-pub mod virtio_blk;
 pub mod uart;
-
-
+pub mod virtio_blk;
