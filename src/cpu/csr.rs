@@ -170,11 +170,11 @@ pub const SEIP_BIT: u64 = 1 << 9;
 pub const MEIP_BIT: u64 = 1 << 11;
 
 /// The state to contains all the CSRs.
-pub struct State {
+pub struct Csr {
   csrs: [u64; CSR_SIZE],
 }
 
-impl fmt::Display for State {
+impl fmt::Display for Csr {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(
       f,
@@ -211,7 +211,7 @@ impl fmt::Display for State {
   }
 }
 
-impl State {
+impl Csr {
   /// Create a new `state` object.
   pub fn new() -> Self {
     let mut csrs = [0; CSR_SIZE];

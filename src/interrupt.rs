@@ -1,9 +1,6 @@
 //! The interrupt module contains all the interrupt kinds and the function to handle interrupts.
 
-use crate::{
-  cpu::{Cpu, Mode},
-  csr::*,
-};
+use crate::cpu::{csr::*, Cpu, Mode};
 
 /// All the interrupt kinds.
 #[derive(Debug)]
@@ -57,7 +54,7 @@ impl Interrupt {
     // in bit 5)."
     // TODO: Why should a M-mode timer interrupt be taken in M-mode?
     if previous_mode <= Mode::Supervisor
-      && ((cpu.state.read(MIDELEG) >> cause) & 1) == 1
+      && ((cpu.csr.read(MIDELEG) >> cause) & 1) == 1
       && cause != Interrupt::MachineTimerInterrupt.exception_code()
     {
       // Handle the trap in S-mode.
@@ -65,11 +62,11 @@ impl Interrupt {
 
       // Set the program counter to the supervisor trap-handler base address (stvec)
       // depending on the mode.
-      let vector = match cpu.state.read_bit(STVEC, 0) {
+      let vector = match cpu.csr.read_bit(STVEC, 0) {
         1 => 4 * cause, // vectored mode
         _ => 0,         // direct mode
       };
-      cpu.pc = ((cpu.state.read(STVEC) & !1) + vector) as u64;
+      cpu.pc = ((cpu.csr.read(STVEC) & !1) + vector) as u64;
 
       // 4.1.9 Supervisor Exception Program Counter (sepc)
       // "The low bit of sepc (sepc[0]) is always zero."
@@ -77,13 +74,13 @@ impl Interrupt {
       // the instruction that was interrupted or that encountered the exception.
       // Otherwise, sepc is never written by the implementation, though it may be
       // explicitly written by software."
-      cpu.state.write(SEPC, exception_pc & !1);
+      cpu.csr.write(SEPC, exception_pc & !1);
 
       // 4.1.10 Supervisor Cause Register (scause)
       // "When a trap is taken into S-mode, scause is written with a code indicating
       // the event that caused the trap.  Otherwise, scause is never written by the
       // implementation, though it may be explicitly written by software."
-      cpu.state.write(SCAUSE, 1 << 63 | cause);
+      cpu.csr.write(SCAUSE, 1 << 63 | cause);
 
       // 4.1.11 Supervisor Trap Value (stval) Register
       // "When a trap is taken into S-mode, stval is written with exception-specific
@@ -94,21 +91,19 @@ impl Interrupt {
       // written with the faulting virtual address. On an illegal instruction trap,
       // stval may be written with the first XLEN or ILEN bits of the faulting
       // instruction as described below. For other exceptions, stval is set to zero."
-      cpu.state.write(STVAL, 0);
+      cpu.csr.write(STVAL, 0);
 
       // Set a privious interrupt-enable bit for supervisor mode (SPIE, 5) to the value
       // of a global interrupt-enable bit for supervisor mode (SIE, 1).
-      cpu
-        .state
-        .write_sstatus(XSTATUS_SPIE, cpu.state.read_sstatus(XSTATUS_SIE));
+      cpu.csr.write_sstatus(XSTATUS_SPIE, cpu.csr.read_sstatus(XSTATUS_SIE));
       // Set a global interrupt-enable bit for supervisor mode (SIE, 1) to 0.
-      cpu.state.write_sstatus(XSTATUS_SIE, 0);
+      cpu.csr.write_sstatus(XSTATUS_SIE, 0);
       // 4.1.1 Supervisor Status Register (sstatus)
       // "When a trap is taken, SPP is set to 0 if the trap originated from user mode, or
       // 1 otherwise."
       match previous_mode {
-        Mode::User => cpu.state.write_sstatus(XSTATUS_SPP, 0),
-        _ => cpu.state.write_sstatus(XSTATUS_SPP, 1),
+        Mode::User => cpu.csr.write_sstatus(XSTATUS_SPP, 0),
+        _ => cpu.csr.write_sstatus(XSTATUS_SPP, 1),
       }
     } else {
       // Handle the trap in M-mode.
@@ -116,11 +111,11 @@ impl Interrupt {
 
       // Set the program counter to the machine trap-handler base address (mtvec)
       // depending on the mode.
-      let vector = match cpu.state.read_bit(MTVEC, 0) {
+      let vector = match cpu.csr.read_bit(MTVEC, 0) {
         1 => 4 * cause, // vectored mode
         _ => 0,         // direct mode
       };
-      cpu.pc = ((cpu.state.read(MTVEC) & !1) + vector) as u64;
+      cpu.pc = ((cpu.csr.read(MTVEC) & !1) + vector) as u64;
 
       // 3.1.15 Machine Exception Program Counter (mepc)
       // "The low bit of mepc (mepc[0]) is always zero."
@@ -128,13 +123,13 @@ impl Interrupt {
       // the instruction that was interrupted or that encountered the exception.
       // Otherwise, mepc is never written by the implementation, though it may be
       // explicitly written by software."
-      cpu.state.write(MEPC, exception_pc & !1);
+      cpu.csr.write(MEPC, exception_pc & !1);
 
       // 3.1.16 Machine Cause Register (mcause)
       // "When a trap is taken into M-mode, mcause is written with a code indicating
       // the event that caused the trap. Otherwise, mcause is never written by the
       // implementation, though it may be explicitly written by software."
-      cpu.state.write(MCAUSE, 1 << 63 | cause);
+      cpu.csr.write(MCAUSE, 1 << 63 | cause);
 
       // 3.1.17 Machine Trap Value (mtval) Register
       // "When a trap is taken into M-mode, mtval is either set to zero or written with
@@ -146,21 +141,19 @@ impl Interrupt {
       // written with the faulting virtual address. On an illegal instruction trap,
       // mtval may be written with the first XLEN or ILEN bits of the faulting
       // instruction as described below. For other traps, mtval is set to zero."
-      cpu.state.write(MTVAL, 0);
+      cpu.csr.write(MTVAL, 0);
 
       // Set a previous interrupt-enable bit for machine mode (MPIE, 7) to the value
       // of a global interrupt-enable bit for machine mode (MIE, 3).
-      cpu
-        .state
-        .write_mstatus(MSTATUS_MPIE, cpu.state.read_mstatus(MSTATUS_MIE));
+      cpu.csr.write_mstatus(MSTATUS_MPIE, cpu.csr.read_mstatus(MSTATUS_MIE));
       // Set a global interrupt-enable bit for machine mode (MIE, 3) to 0.
-      cpu.state.write_mstatus(MSTATUS_MIE, 0);
+      cpu.csr.write_mstatus(MSTATUS_MIE, 0);
       // When a trap is taken from privilege mode y into privilege mode x, xPIE is set
       // to the value of x IE; x IE is set to 0; and xPP is set to y.
       match previous_mode {
-        Mode::User => cpu.state.write_mstatus(MSTATUS_MPP, Mode::User as u64),
-        Mode::Supervisor => cpu.state.write_mstatus(MSTATUS_MPP, Mode::Supervisor as u64),
-        Mode::Machine => cpu.state.write_mstatus(MSTATUS_MPP, Mode::Machine as u64),
+        Mode::User => cpu.csr.write_mstatus(MSTATUS_MPP, Mode::User as u64),
+        Mode::Supervisor => cpu.csr.write_mstatus(MSTATUS_MPP, Mode::Supervisor as u64),
+        Mode::Machine => cpu.csr.write_mstatus(MSTATUS_MPP, Mode::Machine as u64),
         _ => panic!("previous privilege mode is invalid"),
       }
     }

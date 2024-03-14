@@ -8,7 +8,6 @@ use std::num::FpCategory;
 
 use crate::{
   bus::{Bus, DRAM_BASE},
-  csr::*,
   devices::{
     uart::UART_IRQ,
     virtio_blk::{Virtio, VIRTIO_IRQ},
@@ -17,6 +16,10 @@ use crate::{
   exception::Exception,
   interrupt::Interrupt,
 };
+
+pub mod csr;
+
+use csr::*;
 
 /// The number of registers.
 pub const REGISTERS_COUNT: usize = 32;
@@ -216,7 +219,7 @@ pub struct Cpu {
   /// Program counter.
   pub pc: u64,
   /// Control and status registers (CSR).
-  pub state: State,
+  pub csr: Csr,
   /// Privilege level.
   pub mode: Mode,
   /// System bus.
@@ -245,7 +248,7 @@ impl Cpu {
       xregs: XRegisters::new(),
       fregs: FRegisters::new(),
       pc: 0,
-      state: State::new(),
+      csr: Csr::new(),
       mode: Mode::Machine,
       bus: Bus::new(),
       enable_paging: false,
@@ -305,7 +308,7 @@ impl Cpu {
   pub fn reset(&mut self) {
     self.pc = 0;
     self.mode = Mode::Machine;
-    self.state.reset();
+    self.csr.reset();
     for i in 0..REGISTERS_COUNT {
       self.xregs.write(i as u64, 0);
       self.fregs.write(i as u64, 0.0);
@@ -325,13 +328,13 @@ impl Cpu {
     match self.mode {
       Mode::Machine => {
         // Check if the MIE bit is enabled.
-        if self.state.read_mstatus(MSTATUS_MIE) == 0 {
+        if self.csr.read_mstatus(MSTATUS_MIE) == 0 {
           return None;
         }
       }
       Mode::Supervisor => {
         // Check if the SIE bit is enabled.
-        if self.state.read_sstatus(XSTATUS_SIE) == 0 {
+        if self.csr.read_sstatus(XSTATUS_SIE) == 0 {
           return None;
         }
       }
@@ -356,7 +359,7 @@ impl Cpu {
       // TODO: assume that hart is 0
       // TODO: write a value to MCLAIM if the mode is machine
       self.bus.plic.update_pending(irq);
-      self.state.write(MIP, self.state.read(MIP) | SEIP_BIT);
+      self.csr.write(MIP, self.csr.read(MIP) | SEIP_BIT);
     }
 
     // 3.1.9 Machine Interrupt Registers (mip and mie)
@@ -368,30 +371,30 @@ impl Cpu {
     // delegated privilege mode (S or U) and that mode’s interrupt enable bit (SIE or UIE in
     // mstatus) is set, or if the current privilege mode is less than the delegated privilege
     // mode."
-    let pending = self.state.read(MIE) & self.state.read(MIP);
+    let pending = self.csr.read(MIE) & self.csr.read(MIP);
 
     if (pending & MEIP_BIT) != 0 {
-      self.state.write(MIP, self.state.read(MIP) & !MEIP_BIT);
+      self.csr.write(MIP, self.csr.read(MIP) & !MEIP_BIT);
       return Some(Interrupt::MachineExternalInterrupt);
     }
     if (pending & MSIP_BIT) != 0 {
-      self.state.write(MIP, self.state.read(MIP) & !MSIP_BIT);
+      self.csr.write(MIP, self.csr.read(MIP) & !MSIP_BIT);
       return Some(Interrupt::MachineSoftwareInterrupt);
     }
     if (pending & MTIP_BIT) != 0 {
-      self.state.write(MIP, self.state.read(MIP) & !MTIP_BIT);
+      self.csr.write(MIP, self.csr.read(MIP) & !MTIP_BIT);
       return Some(Interrupt::MachineTimerInterrupt);
     }
     if (pending & SEIP_BIT) != 0 {
-      self.state.write(MIP, self.state.read(MIP) & !SEIP_BIT);
+      self.csr.write(MIP, self.csr.read(MIP) & !SEIP_BIT);
       return Some(Interrupt::SupervisorExternalInterrupt);
     }
     if (pending & SSIP_BIT) != 0 {
-      self.state.write(MIP, self.state.read(MIP) & !SSIP_BIT);
+      self.csr.write(MIP, self.csr.read(MIP) & !SSIP_BIT);
       return Some(Interrupt::SupervisorSoftwareInterrupt);
     }
     if (pending & STIP_BIT) != 0 {
-      self.state.write(MIP, self.state.read(MIP) & !STIP_BIT);
+      self.csr.write(MIP, self.csr.read(MIP) & !STIP_BIT);
       return Some(Interrupt::SupervisorTimerInterrupt);
     }
 
@@ -402,10 +405,10 @@ impl Cpu {
   fn update_paging(&mut self) {
     // Read the physical page number (PPN) of the root page table, i.e., its
     // supervisor physical address divided by 4 KiB.
-    self.page_table = self.state.read_bits(SATP, ..44) * PAGE_SIZE;
+    self.page_table = self.csr.read_bits(SATP, ..44) * PAGE_SIZE;
 
     // Read the MODE field, which selects the current address-translation scheme.
-    let mode = self.state.read_bits(SATP, 60..);
+    let mode = self.csr.read_bits(SATP, 60..);
 
     // Enable the SV39 paging if the value of the mode field is 8.
     if mode == 8 {
@@ -567,8 +570,8 @@ impl Cpu {
     // 3.1.6.3 Memory Privilege in mstatus Register
     // "When MPRV=1, load and store memory addresses are translated and protected, and
     // endianness is applied, as though the current privilege mode were set to MPP."
-    if self.state.read_mstatus(MSTATUS_MPRV) == 1 {
-      self.mode = match self.state.read_mstatus(MSTATUS_MPP) {
+    if self.csr.read_mstatus(MSTATUS_MPRV) == 1 {
+      self.mode = match self.csr.read_mstatus(MSTATUS_MPP) {
         0b00 => Mode::User,
         0b01 => Mode::Supervisor,
         0b11 => Mode::Machine,
@@ -579,7 +582,7 @@ impl Cpu {
     let p_addr = self.translate(v_addr, AccessType::Load)?;
     let result = self.bus.read(p_addr, size);
 
-    if self.state.read_mstatus(MSTATUS_MPRV) == 1 {
+    if self.csr.read_mstatus(MSTATUS_MPRV) == 1 {
       self.mode = previous_mode;
     }
 
@@ -594,8 +597,8 @@ impl Cpu {
     // 3.1.6.3 Memory Privilege in mstatus Register
     // "When MPRV=1, load and store memory addresses are translated and protected, and
     // endianness is applied, as though the current privilege mode were set to MPP."
-    if self.state.read_mstatus(MSTATUS_MPRV) == 1 {
-      self.mode = match self.state.read_mstatus(MSTATUS_MPP) {
+    if self.csr.read_mstatus(MSTATUS_MPRV) == 1 {
+      self.mode = match self.csr.read_mstatus(MSTATUS_MPP) {
         0b00 => Mode::User,
         0b01 => Mode::Supervisor,
         0b11 => Mode::Machine,
@@ -612,7 +615,7 @@ impl Cpu {
     let p_addr = self.translate(v_addr, AccessType::Store)?;
     let result = self.bus.write(p_addr, value, size);
 
-    if self.state.read_mstatus(MSTATUS_MPRV) == 1 {
+    if self.csr.read_mstatus(MSTATUS_MPRV) == 1 {
       self.mode = previous_mode;
     }
 
@@ -639,9 +642,9 @@ impl Cpu {
   pub fn devices_increment(&mut self) {
     // TODO: mtime in Clint and TIME in CSR should be the same value.
     // Increment the timer register (mtimer) in Clint.
-    self.bus.clint.increment(&mut self.state);
+    self.bus.clint.increment(&mut self.csr);
     // Increment the value in the TIME and CYCLE registers in CSR.
-    self.state.increment_time();
+    self.csr.increment_time();
   }
 
   /// Execute an instruction. Raises an exception if something is wrong, otherwise, returns
@@ -2092,7 +2095,7 @@ impl Cpu {
               if divisor == 0 {
                 // Division by zero
                 // Set DZ (Divide by Zero) flag to 1.
-                self.state.write_bit(FCSR, 3, 1);
+                self.csr.write_bit(FCSR, 3, 1);
                 // "The quotient of division by zero has all bits set"
                 u64::MAX
               } else if dividend == i64::MIN && divisor == -1 {
@@ -2130,7 +2133,7 @@ impl Cpu {
               if divisor == 0 {
                 // Division by zero
                 // Set DZ (Divide by Zero) flag to 1.
-                self.state.write_bit(FCSR, 3, 1);
+                self.csr.write_bit(FCSR, 3, 1);
                 // "The quotient of division by zero has all bits set"
                 u64::MAX
               } else {
@@ -2280,7 +2283,7 @@ impl Cpu {
               if divisor == 0 {
                 // Division by zero
                 // Set DZ (Divide by Zero) flag to 1.
-                self.state.write_bit(FCSR, 3, 1);
+                self.csr.write_bit(FCSR, 3, 1);
                 // "The quotient of division by zero has all bits set"
                 u64::MAX
               } else if dividend == i32::MIN && divisor == -1 {
@@ -2317,7 +2320,7 @@ impl Cpu {
               if divisor == 0 {
                 // Division by zero
                 // Set DZ (Divide by Zero) flag to 1.
-                self.state.write_bit(FCSR, 3, 1);
+                self.csr.write_bit(FCSR, 3, 1);
                 // "The quotient of division by zero has all bits set"
                 u64::MAX
               } else {
@@ -2530,7 +2533,7 @@ impl Cpu {
          */
 
         // Check the frm field is valid.
-        match self.state.read_bits(FCSR, 5..8) {
+        match self.csr.read_bits(FCSR, 5..8) {
           0b000 => {}
           0b001 => {}
           0b010 => {}
@@ -3242,17 +3245,17 @@ impl Cpu {
 
                 // Set the program counter to the supervisor exception program
                 // counter (SEPC).
-                self.pc = self.state.read(SEPC).wrapping_sub(4);
+                self.pc = self.csr.read(SEPC).wrapping_sub(4);
 
                 // TODO: Check TSR field
 
                 // Set the current privileged mode depending on a previous
                 // privilege mode for supervisor mode (SPP, 8).
-                self.mode = match self.state.read_sstatus(XSTATUS_SPP) {
+                self.mode = match self.csr.read_sstatus(XSTATUS_SPP) {
                   0b0 => Mode::User,
                   0b1 => {
                     // If SPP != M-mode, SRET also sets MPRV=0.
-                    self.state.write_mstatus(MSTATUS_MPRV, 0);
+                    self.csr.write_mstatus(MSTATUS_MPRV, 0);
                     Mode::Supervisor
                   }
                   _ => Mode::Debug,
@@ -3261,15 +3264,13 @@ impl Cpu {
                 // Read a previous interrupt-enable bit for supervisor mode (SPIE,
                 // 5), and set a global interrupt-enable bit for supervisor mode
                 // (SIE, 1) to it.
-                self
-                  .state
-                  .write_sstatus(XSTATUS_SIE, self.state.read_sstatus(XSTATUS_SPIE));
+                self.csr.write_sstatus(XSTATUS_SIE, self.csr.read_sstatus(XSTATUS_SPIE));
 
                 // Set a previous interrupt-enable bit for supervisor mode (SPIE,
                 // 5) to 1.
-                self.state.write_sstatus(XSTATUS_SPIE, 1);
+                self.csr.write_sstatus(XSTATUS_SPIE, 1);
                 // Set a previous privilege mode for supervisor mode (SPP, 8) to 0.
-                self.state.write_sstatus(XSTATUS_SPP, 0);
+                self.csr.write_sstatus(XSTATUS_SPP, 0);
               }
               (0x2, 0x18) => {
                 // mret
@@ -3285,19 +3286,19 @@ impl Cpu {
 
                 // Set the program counter to the machine exception program
                 // counter (MEPC).
-                self.pc = self.state.read(MEPC).wrapping_sub(4);
+                self.pc = self.csr.read(MEPC).wrapping_sub(4);
 
                 // Set the current privileged mode depending on a previous
                 // privilege mode for machine  mode (MPP, 11..13).
-                self.mode = match self.state.read_mstatus(MSTATUS_MPP) {
+                self.mode = match self.csr.read_mstatus(MSTATUS_MPP) {
                   0b00 => {
                     // If MPP != M-mode, MRET also sets MPRV=0.
-                    self.state.write_mstatus(MSTATUS_MPRV, 0);
+                    self.csr.write_mstatus(MSTATUS_MPRV, 0);
                     Mode::User
                   }
                   0b01 => {
                     // If MPP != M-mode, MRET also sets MPRV=0.
-                    self.state.write_mstatus(MSTATUS_MPRV, 0);
+                    self.csr.write_mstatus(MSTATUS_MPRV, 0);
                     Mode::Supervisor
                   }
                   0b11 => Mode::Machine,
@@ -3307,17 +3308,15 @@ impl Cpu {
                 // Read a previous interrupt-enable bit for machine mode (MPIE, 7),
                 // and set a global interrupt-enable bit for machine mode (MIE, 3)
                 // to it.
-                self
-                  .state
-                  .write_mstatus(MSTATUS_MIE, self.state.read_mstatus(MSTATUS_MPIE));
+                self.csr.write_mstatus(MSTATUS_MIE, self.csr.read_mstatus(MSTATUS_MPIE));
 
                 // Set a previous interrupt-enable bit for machine mode (MPIE, 7)
                 // to 1.
-                self.state.write_mstatus(MSTATUS_MPIE, 1);
+                self.csr.write_mstatus(MSTATUS_MPIE, 1);
 
                 // Set a previous privilege mode for machine mode (MPP, 11..13) to
                 // 0.
-                self.state.write_mstatus(MSTATUS_MPP, Mode::User as u64);
+                self.csr.write_mstatus(MSTATUS_MPP, Mode::User as u64);
               }
               (0x5, 0x8) => {
                 // wfi
@@ -3354,8 +3353,8 @@ impl Cpu {
             inst_count!(self, "csrrw");
             self.debug(inst, "csrrw");
 
-            let t = self.state.read(csr_addr);
-            self.state.write(csr_addr, self.xregs.read(rs1));
+            let t = self.csr.read(csr_addr);
+            self.csr.write(csr_addr, self.xregs.read(rs1));
             self.xregs.write(rd, t);
 
             if csr_addr == SATP {
@@ -3367,8 +3366,8 @@ impl Cpu {
             inst_count!(self, "csrrs");
             self.debug(inst, "csrrs");
 
-            let t = self.state.read(csr_addr);
-            self.state.write(csr_addr, t | self.xregs.read(rs1));
+            let t = self.csr.read(csr_addr);
+            self.csr.write(csr_addr, t | self.xregs.read(rs1));
             self.xregs.write(rd, t);
 
             if csr_addr == SATP {
@@ -3380,8 +3379,8 @@ impl Cpu {
             inst_count!(self, "csrrc");
             self.debug(inst, "csrrc");
 
-            let t = self.state.read(csr_addr);
-            self.state.write(csr_addr, t & (!self.xregs.read(rs1)));
+            let t = self.csr.read(csr_addr);
+            self.csr.write(csr_addr, t & (!self.xregs.read(rs1)));
             self.xregs.write(rd, t);
 
             if csr_addr == SATP {
@@ -3394,8 +3393,8 @@ impl Cpu {
             self.debug(inst, "csrrwi");
 
             let zimm = rs1;
-            self.xregs.write(rd, self.state.read(csr_addr));
-            self.state.write(csr_addr, zimm);
+            self.xregs.write(rd, self.csr.read(csr_addr));
+            self.csr.write(csr_addr, zimm);
 
             if csr_addr == SATP {
               self.update_paging();
@@ -3407,8 +3406,8 @@ impl Cpu {
             self.debug(inst, "csrrsi");
 
             let zimm = rs1;
-            let t = self.state.read(csr_addr);
-            self.state.write(csr_addr, t | zimm);
+            let t = self.csr.read(csr_addr);
+            self.csr.write(csr_addr, t | zimm);
             self.xregs.write(rd, t);
 
             if csr_addr == SATP {
@@ -3421,8 +3420,8 @@ impl Cpu {
             self.debug(inst, "csrrci");
 
             let zimm = rs1;
-            let t = self.state.read(csr_addr);
-            self.state.write(csr_addr, t & (!zimm));
+            let t = self.csr.read(csr_addr);
+            self.csr.write(csr_addr, t & (!zimm));
             self.xregs.write(rd, t);
 
             if csr_addr == SATP {

@@ -30,7 +30,6 @@
 
 pub mod bus;
 pub mod cpu;
-pub mod csr;
 pub mod devices;
 pub mod dram;
 pub mod emulator;

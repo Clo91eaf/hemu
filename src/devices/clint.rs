@@ -14,7 +14,7 @@
 
 use crate::bus::CLINT_BASE;
 use crate::cpu::{BYTE, DOUBLEWORD, HALFWORD, WORD};
-use crate::csr::{State, MIP, MSIP_BIT, MTIP_BIT};
+use crate::cpu::csr::{Csr, MIP, MSIP_BIT, MTIP_BIT};
 use crate::exception::Exception;
 
 /// The address that a msip register starts. A msip is a machine mode software interrupt pending
@@ -62,7 +62,7 @@ impl Clint {
 
   /// Increment the mtimer register. It's not a real-time value. The MTIP bit (MIP, 7) is enabled
   /// when `mtime` is greater than or equal to `mtimecmp`.
-  pub fn increment(&mut self, state: &mut State) {
+  pub fn increment(&mut self, state: &mut Csr) {
     self.mtime = self.mtime.wrapping_add(1);
     // Sync TIME csr.
     //state.write(TIME, self.mtime);
