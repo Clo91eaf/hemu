@@ -26,13 +26,13 @@ cd hemu
 To run HEMU, you can use the following command:
 
 ```sh
-cargo run -- -f <path_to_binary>
+cargo run -- -k <path_to_binary>
 ```
 
 Where `<path_to_binary>` is the path to the binary file that you want to run. For example:
 
 ```sh
-cargo run -- -f ./resources/am-tests/add-riscv64-nemu.bin
+cargo run -- -k ./resources/am-tests/add-riscv64-nemu.bin
 ```
 
 ### Testing
@@ -67,8 +67,8 @@ There are several potential benefits to using Rust to rewrite Nemus's logic:
 
 - [x] RISCV64IM instruction set architecture
 - [x] Pass am-tests
-- [ ] RISCV64IMAZicsr instruction set architecture
-- [ ] Pass riscv-tests
+- [x] RISCV64IMAZicsr instruction set architecture
+- [x] Pass riscv-tests
 - [ ] Support for opensbi
 - [ ] Support for Linux
 - [ ] Add TUI for debugging
