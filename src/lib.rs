@@ -24,7 +24,7 @@
 //!
 //!     // `IllegalInstruction` is raised for now because of the termination condition of the emulator,
 //!     // but the register is successfully updated.
-//!     assert_eq!(42, emu.cpu.xregs.read(31));
+//!     assert_eq!(42, emu.cpu.gpr.read(31));
 //! }
 //! ```
 
