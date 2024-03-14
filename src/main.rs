@@ -1,7 +1,7 @@
 use std::fs::File;
-use std::io;
 use std::io::prelude::*;
 use std::iter::FromIterator;
+use std::path::PathBuf;
 
 use rvemu::bus::DRAM_BASE;
 use rvemu::cpu::Cpu;
@@ -11,15 +11,15 @@ use clap::Parser;
 
 /// Command line arguments.
 #[derive(Parser, Debug)]
-#[clap(name = "rvemu: RISC-V emulator", version = "0.0.1", author = "Asami Doi <@d0iasm>")]
+#[clap(name = "hemu: RISC-V emulator", version = "0.0.1", author = "Clo91eaf <@qq.com>")]
 struct Args {
   /// A kernel ELF image without headers
   #[arg(short = 'k', long = "kernel", required = true)]
-  kernel: String,
+  kernel: PathBuf,
 
   /// A raw disk image
   #[arg(short = 'f', long = "file")]
-  file: Option<String>,
+  file: Option<PathBuf>,
 
   /// Enables to output debug messages
   #[arg(short = 'd', long = "debug")]
@@ -56,7 +56,7 @@ fn dump_count(cpu: &Cpu) {
 }
 
 /// Main function of RISC-V emulator for the CLI version.
-fn main() -> io::Result<()> {
+fn main() -> anyhow::Result<()> {
   let args = Args::parse();
 
   let mut kernel_file = File::open(args.kernel)?;

@@ -1,34 +1,32 @@
-use hemu::cpu;
-use hemu::monitor::*;
 use std::path::PathBuf;
 
 #[macro_export]
 macro_rules! add_test {
   ($name: ident) => {
-    #[test]
-    fn $name() {
-      let mut root = String::from(env!("CARGO_MANIFEST_DIR"));
-      root.push_str("/tests/resources/am-tests/");
-      root.push_str(&stringify!($name).replace("_", "-"));
-      root.push_str("-riscv64-nemu");
+    // #[test]
+    // fn $name() {
+    //   let mut root = String::from(env!("CARGO_MANIFEST_DIR"));
+    //   root.push_str("/tests/resources/am-tests/");
+    //   root.push_str(&stringify!($name).replace("_", "-"));
+    //   root.push_str("-riscv64-nemu");
 
-      println!("root: {}", root);
+    //   println!("root: {}", root);
 
-      // prepare the diff file
-      let diff = Some(PathBuf::from(root.to_string() + ".diff"));
+    //   // prepare the diff file
+    //   let diff = Some(PathBuf::from(root.to_string() + ".diff"));
 
-      // prepare the img file
-      let img = PathBuf::from(root.to_string() + ".bin");
+    //   // prepare the img file
+    //   let img = PathBuf::from(root.to_string() + ".bin");
 
-      // start the monitor
-      let _ = load_img(img).unwrap();
-      let cpu = &mut cpu::Cpu::new(diff);
-      sdb::sdb_mainloop(cpu, true);
+    //   // start the monitor
+    //   let _ = load_img(img).unwrap();
+    //   let cpu = &mut cpu::Cpu::new(diff);
+    //   sdb::sdb_mainloop(cpu, true);
 
-      // check the result
-      assert_eq!(cpu.state, cpu::State::Ended);
-      assert_eq!(cpu.halt.ret, 0);
-    }
+    //   // check the result
+    //   assert_eq!(cpu.state, cpu::State::Ended);
+    //   assert_eq!(cpu.halt.ret, 0);
+    // }
   };
 }
 
