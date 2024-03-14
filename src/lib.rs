@@ -27,9 +27,6 @@
 //!     assert_eq!(42, emu.cpu.xregs.read(31));
 //! }
 //! ```
-//!
-//! See the example usage in
-//! [hemu/lib/hemu-cli/src/main.rs](https://github.com/d0iasm/hemu/blob/master/lib/hemu-cli/src/main.rs).
 
 pub mod bus;
 pub mod cpu;

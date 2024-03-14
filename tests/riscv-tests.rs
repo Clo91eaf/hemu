@@ -13,8 +13,6 @@ mod test_p {
         root.push("tests/resources/riscv-tests/rv64ui");
         root.push("rv64ui-p-".to_owned() + stringify!($name) + ".bin");
 
-        println!("root: {:?}", root);
-
         let mut file = File::open(root.as_path())?;
         let mut data = Vec::new();
         file.read_to_end(&mut data)?;
