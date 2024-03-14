@@ -59,6 +59,7 @@ fn dump_count(cpu: &Cpu) {
 fn main() -> anyhow::Result<()> {
   let args = Args::parse();
 
+  // Read the kernel bin(after objcopy) and the disk image.
   let mut kernel_file = File::open(args.kernel)?;
   let mut kernel_data = Vec::new();
   kernel_file.read_to_end(&mut kernel_data)?;
@@ -68,6 +69,7 @@ fn main() -> anyhow::Result<()> {
     File::open(img_file)?.read_to_end(&mut img_data)?;
   }
 
+  // Create an emulator object and start the execution.
   let mut emu = Emulator::new();
 
   emu.initialize_dram(kernel_data);

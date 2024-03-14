@@ -20,8 +20,8 @@ fn create_dts() -> std::io::Result<()> {
 / {
     #address-cells = <0x02>;
     #size-cells = <0x02>;
-    compatible = "riscv-virtio";
-    model = "riscv-virtio,qemu";
+    compatible = "hdu,hemu";
+    model = "hdu,hemu";
 
     chosen {
         bootargs = "root=/dev/vda ro console=ttyS0";

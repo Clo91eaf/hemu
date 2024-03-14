@@ -221,6 +221,7 @@ impl Exception {
       | Exception::StoreAMOAccessFault => Trap::Fatal,
       Exception::EnvironmentCallFromUMode
       | Exception::EnvironmentCallFromSMode
+    //   | Exception::EnvironmentCallFromMMode => Trap::Requested,
       | Exception::EnvironmentCallFromMMode => Trap::Fatal,
       Exception::InstructionPageFault(_) | Exception::LoadPageFault(_) | Exception::StoreAMOPageFault(_) => {
         Trap::Invisible
