@@ -42,14 +42,6 @@ pub const DOUBLEWORD: u8 = 64;
 /// https://github.com/riscv/riscv-pk/blob/master/machine/mentry.S#L233-L235
 pub const POINTER_TO_DTB: u64 = 0x1020;
 
-macro_rules! inst_count {
-  ($cpu:ident, $inst_name:expr) => {
-    if $cpu.is_count {
-      *$cpu.inst_counter.entry($inst_name.to_string()).or_insert(0) += 1;
-    }
-  };
-}
-
 /// Access type that is used in the virtual address translation process. It decides which exception
 /// should raises (InstructionPageFault, LoadPageFault or StoreAMOPageFault).
 #[derive(Debug, PartialEq, PartialOrd)]
@@ -94,12 +86,6 @@ pub struct Cpu {
   reservation_set: Vec<u64>,
   /// Idle state. True when WFI is called, and becomes false when an interrupt happens.
   pub idle: bool,
-  /// Counter of each instructions for debug.
-  pub inst_counter: BTreeMap<String, u64>,
-  /// The count flag. Count the number of each instruction executed.
-  pub is_count: bool,
-  /// Previous instruction. This is for debug.
-  pub pre_inst: u64,
 }
 
 impl Cpu {
@@ -116,53 +102,7 @@ impl Cpu {
       page_table: 0,
       reservation_set: Vec::new(),
       idle: false,
-      inst_counter: BTreeMap::new(),
-      is_count: false,
-      pre_inst: 0,
     }
-  }
-
-  fn debug(&self, _inst: u64, _name: &str) {
-    /*
-    if (((0x20_0000_0000 & self.pc) >> 37) == 1) && (self.pc & 0xf0000000_00000000) == 0 {
-        println!(
-            "[user]    {} pc: {:#x}, inst: {:#x}, is_inst 16? {} x[0x1c] {:#x}",
-            name,
-            self.pc,
-            inst,
-            // Check if an instruction is one of the compressed instructions.
-            inst & 0b11 == 0 || inst & 0b11 == 1 || inst & 0b11 == 2,
-            self.gpr.read(0x1c),
-        );
-        return;
-    }
-
-    if (self.pc & 0xf0000000_00000000) != 0 {
-        return;
-        /*
-        println!(
-            "[kernel]  {} pc: {:#x}, inst: {:#x}, is_inst 16? {} x[0x1c] {:#x}",
-            name,
-            self.pc,
-            inst,
-            // Check if an instruction is one of the compressed instructions.
-            inst & 0b11 == 0 || inst & 0b11 == 1 || inst & 0b11 == 2,
-            self.gpr.read(0x1c),
-        );
-        return;
-        */
-    }
-
-    println!(
-        "[machine] {} pc: {:#x}, inst: {:#x}, is_inst 16? {} x[0x1c] {:#x}",
-        name,
-        self.pc,
-        inst,
-        // Check if an instruction is one of the compressed instructions.
-        inst & 0b11 == 0 || inst & 0b11 == 1 || inst & 0b11 == 2,
-        self.gpr.read(0x1c),
-    );
-    */
   }
 
   /// Reset CPU states.
@@ -537,7 +477,6 @@ impl Cpu {
         self.pc += 4;
       }
     }
-    self.pre_inst = inst;
     Ok(inst)
   }
 
@@ -558,8 +497,6 @@ impl Cpu {
           0x0 => {
             // c.addi4spn
             // Expands to addi rd, x2, nzuimm, where rd=rd'+8.
-            inst_count!(self, "c.addi4spn");
-            self.debug(inst, "c.addi4spn");
 
             let rd = ((inst >> 2) & 0x7) + 8;
             // nzuimm[5:4|9:6|2|3] = inst[12:11|10:7|6|5]
@@ -575,9 +512,6 @@ impl Cpu {
           0x1 => {
             // c.fld
             // Expands to fld rd, offset(rs1), where rd=rd'+8 and rs1=rs1'+8.
-            inst_count!(self, "c.fld");
-            self.debug(inst, "c.fld");
-
             let rd = ((inst >> 2) & 0x7) + 8;
             let rs1 = ((inst >> 7) & 0x7) + 8;
             // offset[5:3|7:6] = isnt[12:10|6:5]
@@ -589,8 +523,6 @@ impl Cpu {
           0x2 => {
             // c.lw
             // Expands to lw rd, offset(rs1), where rd=rd'+8 and rs1=rs1'+8.
-            inst_count!(self, "c.lw");
-            self.debug(inst, "c.lw");
 
             let rd = ((inst >> 2) & 0x7) + 8;
             let rs1 = ((inst >> 7) & 0x7) + 8;
@@ -605,8 +537,6 @@ impl Cpu {
           0x3 => {
             // c.ld
             // Expands to ld rd, offset(rs1), where rd=rd'+8 and rs1=rs1'+8.
-            inst_count!(self, "c.ld");
-            self.debug(inst, "c.ld");
 
             let rd = ((inst >> 2) & 0x7) + 8;
             let rs1 = ((inst >> 7) & 0x7) + 8;
@@ -624,8 +554,6 @@ impl Cpu {
           0x5 => {
             // c.fsd
             // Expands to fsd rs2, offset(rs1), where rs2=rs2'+8 and rs1=rs1'+8.
-            inst_count!(self, "c.fsd");
-            self.debug(inst, "c.fsd");
 
             let rs2 = ((inst >> 2) & 0x7) + 8;
             let rs1 = ((inst >> 7) & 0x7) + 8;
@@ -638,8 +566,6 @@ impl Cpu {
           0x6 => {
             // c.sw
             // Expands to sw rs2, offset(rs1), where rs2=rs2'+8 and rs1=rs1'+8.
-            inst_count!(self, "c.sw");
-            self.debug(inst, "c.sw");
 
             let rs2 = ((inst >> 2) & 0x7) + 8;
             let rs1 = ((inst >> 7) & 0x7) + 8;
@@ -653,8 +579,6 @@ impl Cpu {
           0x7 => {
             // c.sd
             // Expands to sd rs2, offset(rs1), where rs2=rs2'+8 and rs1=rs1'+8.
-            inst_count!(self, "c.sd");
-            self.debug(inst, "c.sd");
 
             let rs2 = ((inst >> 2) & 0x7) + 8;
             let rs1 = ((inst >> 7) & 0x7) + 8;
@@ -675,8 +599,6 @@ impl Cpu {
           0x0 => {
             // c.addi
             // Expands to addi rd, rd, nzimm.
-            inst_count!(self, "c.addi");
-            self.debug(inst, "c.addi");
 
             let rd = (inst >> 7) & 0x1f;
             // nzimm[5|4:0] = inst[12|6:2]
@@ -695,8 +617,6 @@ impl Cpu {
             // Expands to addiw rd, rd, imm
             // "The immediate can be zero for C.ADDIW, where this corresponds to sext.w
             // rd"
-            inst_count!(self, "c.addiw");
-            self.debug(inst, "c.addiw");
 
             let rd = (inst >> 7) & 0x1f;
             // imm[5|4:0] = inst[12|6:2]
@@ -715,8 +635,6 @@ impl Cpu {
           0x2 => {
             // c.li
             // Expands to addi rd, x0, imm.
-            inst_count!(self, "c.li");
-            self.debug(inst, "c.li");
 
             let rd = (inst >> 7) & 0x1f;
             // imm[5|4:0] = inst[12|6:2]
@@ -737,8 +655,6 @@ impl Cpu {
               2 => {
                 // c.addi16sp
                 // Expands to addi x2, x2, nzimm
-                inst_count!(self, "c.addi16sp");
-                self.debug(inst, "c.addi16sp");
 
                 // nzimm[9|4|6|8:7|5] = inst[12|6|5|4:3|2]
                 let mut nzimm = ((inst >> 3) & 0x200) // nzimm[9]
@@ -758,8 +674,6 @@ impl Cpu {
               _ => {
                 // c.lui
                 // Expands to lui rd, nzimm.
-                inst_count!(self, "c.lui");
-                self.debug(inst, "c.lui");
 
                 // nzimm[17|16:12] = inst[12|6:2]
                 let mut nzimm = ((inst << 5) & 0x20000) | ((inst << 10) & 0x1f000);
@@ -780,8 +694,6 @@ impl Cpu {
               0x0 => {
                 // c.srli
                 // Expands to srli rd, rd, shamt, where rd=rd'+8.
-                inst_count!(self, "c.srli");
-                self.debug(inst, "c.srli");
 
                 let rd = ((inst >> 7) & 0b111) + 8;
                 // shamt[5|4:0] = inst[12|6:2]
@@ -791,8 +703,6 @@ impl Cpu {
               0x1 => {
                 // c.srai
                 // Expands to srai rd, rd, shamt, where rd=rd'+8.
-                inst_count!(self, "c.srai");
-                self.debug(inst, "c.srai");
 
                 let rd = ((inst >> 7) & 0b111) + 8;
                 // shamt[5|4:0] = inst[12|6:2]
@@ -802,8 +712,6 @@ impl Cpu {
               0x2 => {
                 // c.andi
                 // Expands to andi rd, rd, imm, where rd=rd'+8.
-                inst_count!(self, "c.andi");
-                self.debug(inst, "c.andi");
 
                 let rd = ((inst >> 7) & 0b111) + 8;
                 // imm[5|4:0] = inst[12|6:2]
@@ -820,8 +728,6 @@ impl Cpu {
                   (0x0, 0x0) => {
                     // c.sub
                     // Expands to sub rd, rd, rs2, rd=rd'+8 and rs2=rs2'+8.
-                    inst_count!(self, "c.sub");
-                    self.debug(inst, "c.sub");
 
                     let rd = ((inst >> 7) & 0b111) + 8;
                     let rs2 = ((inst >> 2) & 0b111) + 8;
@@ -830,8 +736,6 @@ impl Cpu {
                   (0x0, 0x1) => {
                     // c.xor
                     // Expands to xor rd, rd, rs2, rd=rd'+8 and rs2=rs2'+8.
-                    inst_count!(self, "c.xor");
-                    self.debug(inst, "c.xor");
 
                     let rd = ((inst >> 7) & 0b111) + 8;
                     let rs2 = ((inst >> 2) & 0b111) + 8;
@@ -840,8 +744,6 @@ impl Cpu {
                   (0x0, 0x2) => {
                     // c.or
                     // Expands to or rd, rd, rs2, rd=rd'+8 and rs2=rs2'+8.
-                    inst_count!(self, "c.or");
-                    self.debug(inst, "c.or");
 
                     let rd = ((inst >> 7) & 0b111) + 8;
                     let rs2 = ((inst >> 2) & 0b111) + 8;
@@ -850,8 +752,6 @@ impl Cpu {
                   (0x0, 0x3) => {
                     // c.and
                     // Expands to and rd, rd, rs2, rd=rd'+8 and rs2=rs2'+8.
-                    inst_count!(self, "c.and");
-                    self.debug(inst, "c.and");
 
                     let rd = ((inst >> 7) & 0b111) + 8;
                     let rs2 = ((inst >> 2) & 0b111) + 8;
@@ -860,8 +760,6 @@ impl Cpu {
                   (0x1, 0x0) => {
                     // c.subw
                     // Expands to subw rd, rd, rs2, rd=rd'+8 and rs2=rs2'+8.
-                    inst_count!(self, "c.subw");
-                    self.debug(inst, "c.subw");
 
                     let rd = ((inst >> 7) & 0b111) + 8;
                     let rs2 = ((inst >> 2) & 0b111) + 8;
@@ -873,8 +771,6 @@ impl Cpu {
                   (0x1, 0x1) => {
                     // c.addw
                     // Expands to addw rd, rd, rs2, rd=rd'+8 and rs2=rs2'+8.
-                    inst_count!(self, "c.addw");
-                    self.debug(inst, "c.andw");
 
                     let rd = ((inst >> 7) & 0b111) + 8;
                     let rs2 = ((inst >> 2) & 0b111) + 8;
@@ -896,8 +792,6 @@ impl Cpu {
           0x5 => {
             // c.j
             // Expands to jal x0, offset.
-            inst_count!(self, "c.j");
-            self.debug(inst, "c.j");
 
             // offset[11|4|9:8|10|6|7|3:1|5] = inst[12|11|10:9|8|7|6|5:3|2]
             let mut offset = ((inst >> 1) & 0x800) // offset[11]
@@ -919,8 +813,6 @@ impl Cpu {
           0x6 => {
             // c.beqz
             // Expands to beq rs1, x0, offset, rs1=rs1'+8.
-            inst_count!(self, "c.beqz");
-            self.debug(inst, "c.beqz");
 
             let rs1 = ((inst >> 7) & 0b111) + 8;
             // offset[8|4:3|7:6|2:1|5] = inst[12|11:10|6:5|4:3|2]
@@ -941,8 +833,6 @@ impl Cpu {
           0x7 => {
             // c.bnez
             // Expands to bne rs1, x0, offset, rs1=rs1'+8.
-            inst_count!(self, "c.bnez");
-            self.debug(inst, "c.beez");
 
             let rs1 = ((inst >> 7) & 0b111) + 8;
             // offset[8|4:3|7:6|2:1|5] = inst[12|11:10|6:5|4:3|2]
@@ -971,8 +861,6 @@ impl Cpu {
           0x0 => {
             // c.slli
             // Expands to slli rd, rd, shamt.
-            inst_count!(self, "c.slli");
-            self.debug(inst, "c.slli");
 
             let rd = (inst >> 7) & 0x1f;
             // shamt[5|4:0] = inst[12|6:2]
@@ -984,8 +872,6 @@ impl Cpu {
           0x1 => {
             // c.fldsp
             // Expands to fld rd, offset(x2).
-            inst_count!(self, "c.fldsp");
-            self.debug(inst, "c.fldsp");
 
             let rd = (inst >> 7) & 0x1f;
             // offset[5|4:3|8:6] = inst[12|6:5|4:2]
@@ -998,8 +884,6 @@ impl Cpu {
           0x2 => {
             // c.lwsp
             // Expands to lw rd, offset(x2).
-            inst_count!(self, "c.lwsp");
-            self.debug(inst, "c.lwsp");
 
             let rd = (inst >> 7) & 0x1f;
             // offset[5|4:2|7:6] = inst[12|6:4|3:2]
@@ -1012,8 +896,6 @@ impl Cpu {
           0x3 => {
             // c.ldsp
             // Expands to ld rd, offset(x2).
-            inst_count!(self, "c.ldsp");
-            self.debug(inst, "c.ldsp");
 
             let rd = (inst >> 7) & 0x1f;
             // offset[5|4:3|8:6] = inst[12|6:5|4:2]
@@ -1028,8 +910,6 @@ impl Cpu {
               (0, 0) => {
                 // c.jr
                 // Expands to jalr x0, 0(rs1).
-                inst_count!(self, "c.jr");
-                self.debug(inst, "c.jr");
 
                 let rs1 = (inst >> 7) & 0x1f;
                 if rs1 != 0 {
@@ -1039,8 +919,6 @@ impl Cpu {
               (0, _) => {
                 // c.mv
                 // Expands to add rd, x0, rs2.
-                inst_count!(self, "c.mv");
-                self.debug(inst, "c.mv");
 
                 let rd = (inst >> 7) & 0x1f;
                 let rs2 = (inst >> 2) & 0x1f;
@@ -1053,15 +931,11 @@ impl Cpu {
                 if rd == 0 {
                   // c.ebreak
                   // Expands to ebreak.
-                  inst_count!(self, "c.ebreak");
-                  self.debug(inst, "c.ebreak");
 
                   return Err(Exception::Breakpoint);
                 } else {
                   // c.jalr
                   // Expands to jalr x1, 0(rs1).
-                  inst_count!(self, "c.jalr");
-                  self.debug(inst, "c.jalr");
 
                   let rs1 = (inst >> 7) & 0x1f;
                   let t = self.pc.wrapping_add(2);
@@ -1072,8 +946,6 @@ impl Cpu {
               (1, _) => {
                 // c.add
                 // Expands to add rd, rd, rs2.
-                inst_count!(self, "c.add");
-                self.debug(inst, "c.add");
 
                 let rd = (inst >> 7) & 0x1f;
                 let rs2 = (inst >> 2) & 0x1f;
@@ -1089,8 +961,6 @@ impl Cpu {
           0x5 => {
             // c.fsdsp
             // Expands to fsd rs2, offset(x2).
-            inst_count!(self, "c.fsdsp");
-            self.debug(inst, "c.fsdsp");
 
             let rs2 = (inst >> 2) & 0x1f;
             // offset[5:3|8:6] = isnt[12:10|9:7]
@@ -1102,8 +972,6 @@ impl Cpu {
           0x6 => {
             // c.swsp
             // Expands to sw rs2, offset(x2).
-            inst_count!(self, "c.swsp");
-            self.debug(inst, "c.swsp");
 
             let rs2 = (inst >> 2) & 0x1f;
             // offset[5:2|7:6] = inst[12:9|8:7]
@@ -1115,8 +983,6 @@ impl Cpu {
           0x7 => {
             // c.sdsp
             // Expands to sd rs2, offset(x2).
-            inst_count!(self, "c.sdsp");
-            self.debug(inst, "c.sdsp");
 
             let rs2 = (inst >> 2) & 0x1f;
             // offset[5:3|8:6] = isnt[12:10|9:7]
@@ -1158,56 +1024,42 @@ impl Cpu {
         match funct3 {
           0x0 => {
             // lb
-            inst_count!(self, "lb");
-            self.debug(inst, "lb");
 
             let val = self.read(addr, BYTE)?;
             self.gpr.write(rd, val as i8 as i64 as u64);
           }
           0x1 => {
             // lh
-            inst_count!(self, "lh");
-            self.debug(inst, "lh");
 
             let val = self.read(addr, HALFWORD)?;
             self.gpr.write(rd, val as i16 as i64 as u64);
           }
           0x2 => {
             // lw
-            inst_count!(self, "lw");
-            self.debug(inst, "lw");
 
             let val = self.read(addr, WORD)?;
             self.gpr.write(rd, val as i32 as i64 as u64);
           }
           0x3 => {
             // ld
-            inst_count!(self, "ld");
-            self.debug(inst, "ld");
 
             let val = self.read(addr, DOUBLEWORD)?;
             self.gpr.write(rd, val);
           }
           0x4 => {
             // lbu
-            inst_count!(self, "lbu");
-            self.debug(inst, "lbu");
 
             let val = self.read(addr, BYTE)?;
             self.gpr.write(rd, val);
           }
           0x5 => {
             // lhu
-            inst_count!(self, "lhu");
-            self.debug(inst, "lhu");
 
             let val = self.read(addr, HALFWORD)?;
             self.gpr.write(rd, val);
           }
           0x6 => {
             // lwu
-            inst_count!(self, "lwu");
-            self.debug(inst, "lwu");
 
             let val = self.read(addr, WORD)?;
             self.gpr.write(rd, val);
@@ -1225,16 +1077,12 @@ impl Cpu {
         match funct3 {
           0x2 => {
             // flw
-            inst_count!(self, "flw");
-            self.debug(inst, "flw");
 
             let val = f32::from_bits(self.read(addr, WORD)? as u32);
             self.fpg.write(rd, val as f64);
           }
           0x3 => {
             // fld
-            inst_count!(self, "fld");
-            self.debug(inst, "fld");
 
             let val = f64::from_bits(self.read(addr, DOUBLEWORD)?);
             self.fpg.write(rd, val);
@@ -1252,13 +1100,9 @@ impl Cpu {
         match funct3 {
           0x0 => {
             // fence
-            inst_count!(self, "fence");
-            self.debug(inst, "fence");
           }
           0x1 => {
             // fence.i
-            inst_count!(self, "fence.i");
-            self.debug(inst, "fence.i");
           }
           _ => {
             return Err(Exception::IllegalInstruction(inst));
@@ -1273,15 +1117,11 @@ impl Cpu {
         match funct3 {
           0x0 => {
             // addi
-            inst_count!(self, "addi");
-            self.debug(inst, "addi");
 
             self.gpr.write(rd, self.gpr.read(rs1).wrapping_add(imm));
           }
           0x1 => {
             // slli
-            inst_count!(self, "slli");
-            self.debug(inst, "slli");
 
             // shamt size is 5 bits for RV32I and 6 bits for RV64I.
             let shamt = (inst >> 20) & 0x3f;
@@ -1289,8 +1129,6 @@ impl Cpu {
           }
           0x2 => {
             // slti
-            inst_count!(self, "slti");
-            self.debug(inst, "slti");
 
             self.gpr.write(
               rd,
@@ -1303,15 +1141,11 @@ impl Cpu {
           }
           0x3 => {
             // sltiu
-            inst_count!(self, "sltiu");
-            self.debug(inst, "sltiu");
 
             self.gpr.write(rd, if self.gpr.read(rs1) < imm { 1 } else { 0 });
           }
           0x4 => {
             // xori
-            inst_count!(self, "xori");
-            self.debug(inst, "xori");
 
             self.gpr.write(rd, self.gpr.read(rs1) ^ imm);
           }
@@ -1319,8 +1153,6 @@ impl Cpu {
             match funct6 {
               0x00 => {
                 // srli
-                inst_count!(self, "srli");
-                self.debug(inst, "srli");
 
                 // shamt size is 5 bits for RV32I and 6 bits for RV64I.
                 let shamt = (inst >> 20) & 0x3f;
@@ -1328,8 +1160,6 @@ impl Cpu {
               }
               0x10 => {
                 // srai
-                inst_count!(self, "srai");
-                self.debug(inst, "srai");
 
                 // shamt size is 5 bits for RV32I and 6 bits for RV64I.
                 let shamt = (inst >> 20) & 0x3f;
@@ -1342,15 +1172,11 @@ impl Cpu {
           }
           0x6 => {
             // ori
-            inst_count!(self, "ori");
-            self.debug(inst, "ori");
 
             self.gpr.write(rd, self.gpr.read(rs1) | imm);
           }
           0x7 => {
             // andi
-            inst_count!(self, "andi");
-            self.debug(inst, "andi");
 
             self.gpr.write(rd, self.gpr.read(rs1) & imm);
           }
@@ -1362,8 +1188,6 @@ impl Cpu {
       0x17 => {
         // RV32I
         // auipc
-        inst_count!(self, "auipc");
-        self.debug(inst, "auipc");
 
         // AUIPC forms a 32-bit offset from the 20-bit U-immediate, filling
         // in the lowest 12 bits with zeros.
@@ -1378,8 +1202,6 @@ impl Cpu {
         match funct3 {
           0x0 => {
             // addiw
-            inst_count!(self, "addiw");
-            self.debug(inst, "addiw");
 
             self
               .gpr
@@ -1387,8 +1209,6 @@ impl Cpu {
           }
           0x1 => {
             // slliw
-            inst_count!(self, "slliw");
-            self.debug(inst, "slliw");
 
             // "SLLIW, SRLIW, and SRAIW encodings with imm[5] ̸= 0 are reserved."
             let shamt = (imm & 0x1f) as u32;
@@ -1398,8 +1218,6 @@ impl Cpu {
             match funct7 {
               0x00 => {
                 // srliw
-                inst_count!(self, "srliw");
-                self.debug(inst, "srliw");
 
                 // "SLLIW, SRLIW, and SRAIW encodings with imm[5] ̸= 0 are reserved."
                 let shamt = (imm & 0x1f) as u32;
@@ -1409,8 +1227,6 @@ impl Cpu {
               }
               0x20 => {
                 // sraiw
-                inst_count!(self, "sraiw");
-                self.debug(inst, "sraiw");
 
                 // "SLLIW, SRLIW, and SRAIW encodings with imm[5] ̸= 0 are reserved."
                 let shamt = (imm & 0x1f) as u32;
@@ -1434,29 +1250,21 @@ impl Cpu {
         match funct3 {
           0x0 => {
             // sb
-            inst_count!(self, "sb");
-            self.debug(inst, "sb");
 
             self.write(addr, self.gpr.read(rs2), BYTE)?
           }
           0x1 => {
             // sh
-            inst_count!(self, "sh");
-            self.debug(inst, "sh");
 
             self.write(addr, self.gpr.read(rs2), HALFWORD)?
           }
           0x2 => {
             // sw
-            inst_count!(self, "sw");
-            self.debug(inst, "sw");
 
             self.write(addr, self.gpr.read(rs2), WORD)?
           }
           0x3 => {
             // sd
-            inst_count!(self, "sd");
-            self.debug(inst, "sd");
 
             self.write(addr, self.gpr.read(rs2), DOUBLEWORD)?
           }
@@ -1473,15 +1281,11 @@ impl Cpu {
         match funct3 {
           0x2 => {
             // fsw
-            inst_count!(self, "fsw");
-            self.debug(inst, "fsw");
 
             self.write(addr, (self.fpg.read(rs2) as f32).to_bits() as u64, WORD)?
           }
           0x3 => {
             // fsd
-            inst_count!(self, "fsd");
-            self.debug(inst, "fsd");
 
             self.write(addr, self.fpg.read(rs2).to_bits() as u64, DOUBLEWORD)?
           }
@@ -1499,8 +1303,6 @@ impl Cpu {
         match (funct3, funct5) {
           (0x2, 0x00) => {
             // amoadd.w
-            inst_count!(self, "amoadd.w");
-            self.debug(inst, "amoadd.w");
 
             let addr = self.gpr.read(rs1);
             // "For AMOs, the A extension requires that the address held in rs1 be
@@ -1517,8 +1319,6 @@ impl Cpu {
           }
           (0x3, 0x00) => {
             // amoadd.d
-            inst_count!(self, "amoadd.d");
-            self.debug(inst, "amoadd.d");
 
             let addr = self.gpr.read(rs1);
             if addr % 8 != 0 {
@@ -1530,8 +1330,6 @@ impl Cpu {
           }
           (0x2, 0x01) => {
             // amoswap.w
-            inst_count!(self, "amoswap.w");
-            self.debug(inst, "amoswap.w");
 
             let addr = self.gpr.read(rs1);
             if addr % 4 != 0 {
@@ -1543,8 +1341,6 @@ impl Cpu {
           }
           (0x3, 0x01) => {
             // amoswap.d
-            inst_count!(self, "amoswap.d");
-            self.debug(inst, "amoswap.d");
 
             let addr = self.gpr.read(rs1);
             if addr % 8 != 0 {
@@ -1556,8 +1352,6 @@ impl Cpu {
           }
           (0x2, 0x02) => {
             // lr.w
-            inst_count!(self, "lr.w");
-            self.debug(inst, "lr.w");
 
             let addr = self.gpr.read(rs1);
             // "For LR and SC, the A extension requires that the address held in rs1 be
@@ -1572,8 +1366,6 @@ impl Cpu {
           }
           (0x3, 0x02) => {
             // lr.d
-            inst_count!(self, "lr.d");
-            self.debug(inst, "lr.d");
 
             let addr = self.gpr.read(rs1);
             // "For LR and SC, the A extension requires that the address held in rs1 be
@@ -1588,8 +1380,6 @@ impl Cpu {
           }
           (0x2, 0x03) => {
             // sc.w
-            inst_count!(self, "sc.w");
-            self.debug(inst, "sc.w");
 
             let addr = self.gpr.read(rs1);
             // "For LR and SC, the A extension requires that the address held in rs1 be
@@ -1611,8 +1401,6 @@ impl Cpu {
           }
           (0x3, 0x03) => {
             // sc.d
-            inst_count!(self, "sc.d");
-            self.debug(inst, "sc.d");
 
             let addr = self.gpr.read(rs1);
             // "For LR and SC, the A extension requires that the address held in rs1 be
@@ -1632,8 +1420,6 @@ impl Cpu {
           }
           (0x2, 0x04) => {
             // amoxor.w
-            inst_count!(self, "amoxor.w");
-            self.debug(inst, "amoxor.w");
 
             let addr = self.gpr.read(rs1);
             if addr % 4 != 0 {
@@ -1645,8 +1431,6 @@ impl Cpu {
           }
           (0x3, 0x04) => {
             // amoxor.d
-            inst_count!(self, "amoxor.d");
-            self.debug(inst, "amoxor.d");
 
             let addr = self.gpr.read(rs1);
             if addr % 8 != 0 {
@@ -1658,8 +1442,6 @@ impl Cpu {
           }
           (0x2, 0x08) => {
             // amoor.w
-            inst_count!(self, "amoor.w");
-            self.debug(inst, "amoor.w");
 
             let addr = self.gpr.read(rs1);
             if addr % 4 != 0 {
@@ -1671,8 +1453,6 @@ impl Cpu {
           }
           (0x3, 0x08) => {
             // amoor.d
-            inst_count!(self, "amoor.d");
-            self.debug(inst, "amoor.d");
 
             let addr = self.gpr.read(rs1);
             if addr % 8 != 0 {
@@ -1684,8 +1464,6 @@ impl Cpu {
           }
           (0x2, 0x0c) => {
             // amoand.w
-            inst_count!(self, "amoand.w");
-            self.debug(inst, "amoand.w");
 
             let addr = self.gpr.read(rs1);
             if addr % 4 != 0 {
@@ -1697,8 +1475,6 @@ impl Cpu {
           }
           (0x3, 0x0c) => {
             // amoand.d
-            inst_count!(self, "amoand.d");
-            self.debug(inst, "amoand.d");
 
             let addr = self.gpr.read(rs1);
             if addr % 8 != 0 {
@@ -1710,8 +1486,6 @@ impl Cpu {
           }
           (0x2, 0x10) => {
             // amomin.w
-            inst_count!(self, "amomin.w");
-            self.debug(inst, "amomin.w");
 
             let addr = self.gpr.read(rs1);
             if addr % 4 != 0 {
@@ -1723,8 +1497,6 @@ impl Cpu {
           }
           (0x3, 0x10) => {
             // amomin.d
-            inst_count!(self, "amomin.d");
-            self.debug(inst, "amomin.d");
 
             let addr = self.gpr.read(rs1);
             if addr % 8 != 0 {
@@ -1736,8 +1508,6 @@ impl Cpu {
           }
           (0x2, 0x14) => {
             // amomax.w
-            inst_count!(self, "amomax.w");
-            self.debug(inst, "amomax.w");
 
             let addr = self.gpr.read(rs1);
             if addr % 4 != 0 {
@@ -1749,8 +1519,6 @@ impl Cpu {
           }
           (0x3, 0x14) => {
             // amomax.d
-            inst_count!(self, "amomax.d");
-            self.debug(inst, "amomax.d");
 
             let addr = self.gpr.read(rs1);
             if addr % 8 != 0 {
@@ -1762,8 +1530,6 @@ impl Cpu {
           }
           (0x2, 0x18) => {
             // amominu.w
-            inst_count!(self, "amominu.w");
-            self.debug(inst, "amominu.w");
 
             let addr = self.gpr.read(rs1);
             if addr % 4 != 0 {
@@ -1775,8 +1541,6 @@ impl Cpu {
           }
           (0x3, 0x18) => {
             // amominu.d
-            inst_count!(self, "amominu.d");
-            self.debug(inst, "amominu.d");
 
             let addr = self.gpr.read(rs1);
             if addr % 8 != 0 {
@@ -1788,8 +1552,6 @@ impl Cpu {
           }
           (0x2, 0x1c) => {
             // amomaxu.w
-            inst_count!(self, "amomaxu.w");
-            self.debug(inst, "amomaxu.w");
 
             let addr = self.gpr.read(rs1);
             if addr % 4 != 0 {
@@ -1801,8 +1563,6 @@ impl Cpu {
           }
           (0x3, 0x1c) => {
             // amomaxu.d
-            inst_count!(self, "amomaxu.d");
-            self.debug(inst, "amomaxu.d");
 
             let addr = self.gpr.read(rs1);
             if addr % 8 != 0 {
@@ -1822,15 +1582,11 @@ impl Cpu {
         match (funct3, funct7) {
           (0x0, 0x00) => {
             // add
-            inst_count!(self, "add");
-            self.debug(inst, "add");
 
             self.gpr.write(rd, self.gpr.read(rs1).wrapping_add(self.gpr.read(rs2)));
           }
           (0x0, 0x01) => {
             // mul
-            inst_count!(self, "mul");
-            self.debug(inst, "mul");
 
             self.gpr.write(
               rd,
@@ -1839,15 +1595,11 @@ impl Cpu {
           }
           (0x0, 0x20) => {
             // sub
-            inst_count!(self, "sub");
-            self.debug(inst, "sub");
 
             self.gpr.write(rd, self.gpr.read(rs1).wrapping_sub(self.gpr.read(rs2)));
           }
           (0x1, 0x00) => {
             // sll
-            inst_count!(self, "sll");
-            self.debug(inst, "sll");
 
             // "SLL, SRL, and SRA perform logical left, logical right, and arithmetic
             // right shifts on the value in register rs1 by the shift amount held in
@@ -1858,8 +1610,6 @@ impl Cpu {
           }
           (0x1, 0x01) => {
             // mulh
-            inst_count!(self, "mulh");
-            self.debug(inst, "mulh");
 
             // signed × signed
             self.gpr.write(
@@ -1869,8 +1619,6 @@ impl Cpu {
           }
           (0x2, 0x00) => {
             // slt
-            inst_count!(self, "slt");
-            self.debug(inst, "slt");
 
             self.gpr.write(
               rd,
@@ -1883,8 +1631,6 @@ impl Cpu {
           }
           (0x2, 0x01) => {
             // mulhsu
-            inst_count!(self, "mulhsu");
-            self.debug(inst, "mulhsu");
 
             // signed × unsigned
             self.gpr.write(
@@ -1894,8 +1640,6 @@ impl Cpu {
           }
           (0x3, 0x00) => {
             // sltu
-            inst_count!(self, "sltu");
-            self.debug(inst, "sltu");
 
             self
               .gpr
@@ -1903,8 +1647,6 @@ impl Cpu {
           }
           (0x3, 0x01) => {
             // mulhu
-            inst_count!(self, "mulhu");
-            self.debug(inst, "mulhu");
 
             // unsigned × unsigned
             self.gpr.write(
@@ -1914,15 +1656,11 @@ impl Cpu {
           }
           (0x4, 0x00) => {
             // xor
-            inst_count!(self, "xor");
-            self.debug(inst, "xor");
 
             self.gpr.write(rd, self.gpr.read(rs1) ^ self.gpr.read(rs2));
           }
           (0x4, 0x01) => {
             // div
-            inst_count!(self, "div");
-            self.debug(inst, "div");
 
             let dividend = self.gpr.read(rs1) as i64;
             let divisor = self.gpr.read(rs2) as i64;
@@ -1947,8 +1685,6 @@ impl Cpu {
           }
           (0x5, 0x00) => {
             // srl
-            inst_count!(self, "srl");
-            self.debug(inst, "srl");
 
             // "SLL, SRL, and SRA perform logical left, logical right, and arithmetic
             // right shifts on the value in register rs1 by the shift amount held in
@@ -1959,8 +1695,6 @@ impl Cpu {
           }
           (0x5, 0x01) => {
             // divu
-            inst_count!(self, "divu");
-            self.debug(inst, "divu");
 
             let dividend = self.gpr.read(rs1);
             let divisor = self.gpr.read(rs2);
@@ -1980,8 +1714,6 @@ impl Cpu {
           }
           (0x5, 0x20) => {
             // sra
-            inst_count!(self, "sra");
-            self.debug(inst, "sra");
 
             // "SLL, SRL, and SRA perform logical left, logical right, and arithmetic
             // right shifts on the value in register rs1 by the shift amount held in
@@ -1992,15 +1724,11 @@ impl Cpu {
           }
           (0x6, 0x00) => {
             // or
-            inst_count!(self, "or");
-            self.debug(inst, "or");
 
             self.gpr.write(rd, self.gpr.read(rs1) | self.gpr.read(rs2));
           }
           (0x6, 0x01) => {
             // rem
-            inst_count!(self, "rem");
-            self.debug(inst, "rem");
 
             let dividend = self.gpr.read(rs1) as i64;
             let divisor = self.gpr.read(rs2) as i64;
@@ -2023,15 +1751,11 @@ impl Cpu {
           }
           (0x7, 0x00) => {
             // and
-            inst_count!(self, "and");
-            self.debug(inst, "and");
 
             self.gpr.write(rd, self.gpr.read(rs1) & self.gpr.read(rs2));
           }
           (0x7, 0x01) => {
             // remu
-            inst_count!(self, "remu");
-            self.debug(inst, "remu");
 
             let dividend = self.gpr.read(rs1);
             let divisor = self.gpr.read(rs2);
@@ -2056,8 +1780,6 @@ impl Cpu {
       0x37 => {
         // RV32I
         // lui
-        inst_count!(self, "lui");
-        self.debug(inst, "lui");
 
         // "LUI places the U-immediate value in the top 20 bits of the destination
         // register rd, filling in the lowest 12 bits with zeros."
@@ -2068,8 +1790,6 @@ impl Cpu {
         match (funct3, funct7) {
           (0x0, 0x00) => {
             // addw
-            inst_count!(self, "addw");
-            self.debug(inst, "addw");
 
             self.gpr.write(
               rd,
@@ -2078,8 +1798,6 @@ impl Cpu {
           }
           (0x0, 0x01) => {
             // mulw
-            inst_count!(self, "mulw");
-            self.debug(inst, "mulw");
 
             let n1 = self.gpr.read(rs1) as i32;
             let n2 = self.gpr.read(rs2) as i32;
@@ -2088,8 +1806,6 @@ impl Cpu {
           }
           (0x0, 0x20) => {
             // subw
-            inst_count!(self, "subw");
-            self.debug(inst, "subw");
 
             self.gpr.write(
               rd,
@@ -2098,8 +1814,6 @@ impl Cpu {
           }
           (0x1, 0x00) => {
             // sllw
-            inst_count!(self, "sllw");
-            self.debug(inst, "sllw");
 
             // The shift amount is given by rs2[4:0].
             let shamt = self.gpr.read(rs2) & 0x1f;
@@ -2107,8 +1821,6 @@ impl Cpu {
           }
           (0x4, 0x01) => {
             // divw
-            inst_count!(self, "divw");
-            self.debug(inst, "divw");
 
             let dividend = self.gpr.read(rs1) as i32;
             let divisor = self.gpr.read(rs2) as i32;
@@ -2133,8 +1845,6 @@ impl Cpu {
           }
           (0x5, 0x00) => {
             // srlw
-            inst_count!(self, "srlw");
-            self.debug(inst, "srlw");
 
             // The shift amount is given by rs2[4:0].
             let shamt = self.gpr.read(rs2) & 0x1f;
@@ -2144,8 +1854,6 @@ impl Cpu {
           }
           (0x5, 0x01) => {
             // divuw
-            inst_count!(self, "divuw");
-            self.debug(inst, "divuw");
 
             let dividend = self.gpr.read(rs1) as u32;
             let divisor = self.gpr.read(rs2) as u32;
@@ -2165,8 +1873,6 @@ impl Cpu {
           }
           (0x5, 0x20) => {
             // sraw
-            inst_count!(self, "sraw");
-            self.debug(inst, "sraw");
 
             // The shift amount is given by rs2[4:0].
             let shamt = self.gpr.read(rs2) & 0x1f;
@@ -2174,8 +1880,6 @@ impl Cpu {
           }
           (0x6, 0x01) => {
             // remw
-            inst_count!(self, "remw");
-            self.debug(inst, "remw");
 
             let dividend = self.gpr.read(rs1) as i32;
             let divisor = self.gpr.read(rs2) as i32;
@@ -2198,8 +1902,6 @@ impl Cpu {
           }
           (0x7, 0x01) => {
             // remuw
-            inst_count!(self, "remuw");
-            self.debug(inst, "remuw");
 
             let dividend = self.gpr.read(rs1) as u32;
             let divisor = self.gpr.read(rs2) as u32;
@@ -2229,8 +1931,6 @@ impl Cpu {
         match funct2 {
           0x0 => {
             // fmadd.s
-            inst_count!(self, "fmadd.s");
-            self.debug(inst, "fmadd.s");
 
             self.fpg.write(
               rd,
@@ -2239,8 +1939,6 @@ impl Cpu {
           }
           0x1 => {
             // fmadd.d
-            inst_count!(self, "fmadd.d");
-            self.debug(inst, "fmadd.d");
 
             self
               .fpg
@@ -2259,8 +1957,6 @@ impl Cpu {
         match funct2 {
           0x0 => {
             // fmsub.s
-            inst_count!(self, "fmsub.s");
-            self.debug(inst, "fmsub.s");
 
             self.fpg.write(
               rd,
@@ -2269,8 +1965,6 @@ impl Cpu {
           }
           0x1 => {
             // fmsub.d
-            inst_count!(self, "fmsub.d");
-            self.debug(inst, "fmsub.d");
 
             self
               .fpg
@@ -2289,8 +1983,6 @@ impl Cpu {
         match funct2 {
           0x0 => {
             // fnmadd.s
-            inst_count!(self, "fnmadd.s");
-            self.debug(inst, "fnmadd.s");
 
             self.fpg.write(
               rd,
@@ -2299,8 +1991,6 @@ impl Cpu {
           }
           0x1 => {
             // fnmadd.d
-            inst_count!(self, "fnmadd.d");
-            self.debug(inst, "fnmadd.d");
 
             self.fpg.write(
               rd,
@@ -2320,8 +2010,6 @@ impl Cpu {
         match funct2 {
           0x0 => {
             // fnmsub.s
-            inst_count!(self, "fnmsub.s");
-            self.debug(inst, "fnmsub.s");
 
             self.fpg.write(
               rd,
@@ -2330,8 +2018,6 @@ impl Cpu {
           }
           0x1 => {
             // fnmsub.d
-            inst_count!(self, "fnmsub.d");
-            self.debug(inst, "fnmsub.d");
 
             self.fpg.write(
               rd,
@@ -2375,8 +2061,6 @@ impl Cpu {
         match funct7 {
           0x00 => {
             // fadd.s
-            inst_count!(self, "fadd.s");
-            self.debug(inst, "fadd.s");
 
             self
               .fpg
@@ -2384,15 +2068,11 @@ impl Cpu {
           }
           0x01 => {
             // fadd.d
-            inst_count!(self, "fadd.d");
-            self.debug(inst, "fadd.d");
 
             self.fpg.write(rd, self.fpg.read(rs1) + self.fpg.read(rs2));
           }
           0x04 => {
             // fsub.s
-            inst_count!(self, "fsub.s");
-            self.debug(inst, "fsub.s");
 
             self
               .fpg
@@ -2400,15 +2080,11 @@ impl Cpu {
           }
           0x05 => {
             // fsub.d
-            inst_count!(self, "fsub.d");
-            self.debug(inst, "fsub.d");
 
             self.fpg.write(rd, self.fpg.read(rs1) - self.fpg.read(rs2));
           }
           0x08 => {
             // fmul.s
-            inst_count!(self, "fmul.s");
-            self.debug(inst, "fmul.s");
 
             self
               .fpg
@@ -2416,15 +2092,11 @@ impl Cpu {
           }
           0x09 => {
             // fmul.d
-            inst_count!(self, "fmul.d");
-            self.debug(inst, "fmul.d");
 
             self.fpg.write(rd, self.fpg.read(rs1) * self.fpg.read(rs2));
           }
           0x0c => {
             // fdiv.s
-            inst_count!(self, "fdiv.s");
-            self.debug(inst, "fdiv.s");
 
             self
               .fpg
@@ -2432,8 +2104,6 @@ impl Cpu {
           }
           0x0d => {
             // fdiv.d
-            inst_count!(self, "fdiv.d");
-            self.debug(inst, "fdiv.d");
 
             self.fpg.write(rd, self.fpg.read(rs1) / self.fpg.read(rs2));
           }
@@ -2441,22 +2111,16 @@ impl Cpu {
             match funct3 {
               0x0 => {
                 // fsgnj.s
-                inst_count!(self, "fsgnj.s");
-                self.debug(inst, "fsgnj.s");
 
                 self.fpg.write(rd, self.fpg.read(rs1).copysign(self.fpg.read(rs2)));
               }
               0x1 => {
                 // fsgnjn.s
-                inst_count!(self, "fsgnjn.s");
-                self.debug(inst, "fsgnjn.s");
 
                 self.fpg.write(rd, self.fpg.read(rs1).copysign(-self.fpg.read(rs2)));
               }
               0x2 => {
                 // fsgnjx.s
-                inst_count!(self, "fsgnjx.s");
-                self.debug(inst, "fsgnjx.s");
 
                 let sign1 = (self.fpg.read(rs1) as f32).to_bits() & 0x80000000;
                 let sign2 = (self.fpg.read(rs2) as f32).to_bits() & 0x80000000;
@@ -2472,22 +2136,16 @@ impl Cpu {
             match funct3 {
               0x0 => {
                 // fsgnj.d
-                inst_count!(self, "fsgnj.d");
-                self.debug(inst, "fsgnj.d");
 
                 self.fpg.write(rd, self.fpg.read(rs1).copysign(self.fpg.read(rs2)));
               }
               0x1 => {
                 // fsgnjn.d
-                inst_count!(self, "fsgnjn.d");
-                self.debug(inst, "fsgnjn.d");
 
                 self.fpg.write(rd, self.fpg.read(rs1).copysign(-self.fpg.read(rs2)));
               }
               0x2 => {
                 // fsgnjx.d
-                inst_count!(self, "fsgnjx.d");
-                self.debug(inst, "fsgnjx.d");
 
                 let sign1 = self.fpg.read(rs1).to_bits() & 0x80000000_00000000;
                 let sign2 = self.fpg.read(rs2).to_bits() & 0x80000000_00000000;
@@ -2503,15 +2161,11 @@ impl Cpu {
             match funct3 {
               0x0 => {
                 // fmin.s
-                inst_count!(self, "fmin.s");
-                self.debug(inst, "fmin.s");
 
                 self.fpg.write(rd, self.fpg.read(rs1).min(self.fpg.read(rs2)));
               }
               0x1 => {
                 // fmax.s
-                inst_count!(self, "fmax.s");
-                self.debug(inst, "fmax.s");
 
                 self.fpg.write(rd, self.fpg.read(rs1).max(self.fpg.read(rs2)));
               }
@@ -2524,15 +2178,11 @@ impl Cpu {
             match funct3 {
               0x0 => {
                 // fmin.d
-                inst_count!(self, "fmin.d");
-                self.debug(inst, "fmin.d");
 
                 self.fpg.write(rd, self.fpg.read(rs1).min(self.fpg.read(rs2)));
               }
               0x1 => {
                 // fmax.d
-                inst_count!(self, "fmax.d");
-                self.debug(inst, "fmax.d");
 
                 self.fpg.write(rd, self.fpg.read(rs1).max(self.fpg.read(rs2)));
               }
@@ -2543,29 +2193,21 @@ impl Cpu {
           }
           0x20 => {
             // fcvt.s.d
-            inst_count!(self, "fcvt.s.d");
-            self.debug(inst, "fcvt.s.d");
 
             self.fpg.write(rd, self.fpg.read(rs1));
           }
           0x21 => {
             // fcvt.d.s
-            inst_count!(self, "fcvt.d.s");
-            self.debug(inst, "fcvt.d.s");
 
             self.fpg.write(rd, (self.fpg.read(rs1) as f32) as f64);
           }
           0x2c => {
             // fsqrt.s
-            inst_count!(self, "fsqrt.s");
-            self.debug(inst, "fsqrt.s");
 
             self.fpg.write(rd, (self.fpg.read(rs1) as f32).sqrt() as f64);
           }
           0x2d => {
             // fsqrt.d
-            inst_count!(self, "fsqrt.d");
-            self.debug(inst, "fsqrt.d");
 
             self.fpg.write(rd, self.fpg.read(rs1).sqrt());
           }
@@ -2573,8 +2215,6 @@ impl Cpu {
             match funct3 {
               0x0 => {
                 // fle.s
-                inst_count!(self, "fle.s");
-                self.debug(inst, "fle.s");
 
                 self
                   .gpr
@@ -2582,8 +2222,6 @@ impl Cpu {
               }
               0x1 => {
                 // flt.s
-                inst_count!(self, "flt.s");
-                self.debug(inst, "flt.s");
 
                 self
                   .gpr
@@ -2591,8 +2229,6 @@ impl Cpu {
               }
               0x2 => {
                 // feq.s
-                inst_count!(self, "feq.s");
-                self.debug(inst, "feq.s");
 
                 self
                   .gpr
@@ -2607,8 +2243,6 @@ impl Cpu {
             match funct3 {
               0x0 => {
                 // fle.d
-                inst_count!(self, "fle.d");
-                self.debug(inst, "fle.d");
 
                 self
                   .gpr
@@ -2616,8 +2250,6 @@ impl Cpu {
               }
               0x1 => {
                 // flt.d
-                inst_count!(self, "flt.d");
-                self.debug(inst, "flt.d");
 
                 self
                   .gpr
@@ -2625,8 +2257,6 @@ impl Cpu {
               }
               0x2 => {
                 // feq.d
-                inst_count!(self, "feq.d");
-                self.debug(inst, "feq.d");
 
                 self
                   .gpr
@@ -2641,15 +2271,11 @@ impl Cpu {
             match rs2 {
               0x0 => {
                 // fcvt.w.s
-                inst_count!(self, "fcvt.w.s");
-                self.debug(inst, "fcvt.w.s");
 
                 self.gpr.write(rd, ((self.fpg.read(rs1) as f32).round() as i32) as u64);
               }
               0x1 => {
                 // fcvt.wu.s
-                inst_count!(self, "fcvt.wu.s");
-                self.debug(inst, "fcvt.wu.s");
 
                 self
                   .gpr
@@ -2657,15 +2283,11 @@ impl Cpu {
               }
               0x2 => {
                 // fcvt.l.s
-                inst_count!(self, "fcvt.l.s");
-                self.debug(inst, "fcvt.l.s");
 
                 self.gpr.write(rd, (self.fpg.read(rs1) as f32).round() as u64);
               }
               0x3 => {
                 // fcvt.lu.s
-                inst_count!(self, "fcvt.lu.s");
-                self.debug(inst, "fcvt.lu.s");
 
                 self.gpr.write(rd, (self.fpg.read(rs1) as f32).round() as u64);
               }
@@ -2678,29 +2300,21 @@ impl Cpu {
             match rs2 {
               0x0 => {
                 // fcvt.w.d
-                inst_count!(self, "fcvt.w.d");
-                self.debug(inst, "fcvt.w.d");
 
                 self.gpr.write(rd, (self.fpg.read(rs1).round() as i32) as u64);
               }
               0x1 => {
                 // fcvt.wu.d
-                inst_count!(self, "fcvt.wu.d");
-                self.debug(inst, "fcvt.wu.d");
 
                 self.gpr.write(rd, ((self.fpg.read(rs1).round() as u32) as i32) as u64);
               }
               0x2 => {
                 // fcvt.l.d
-                inst_count!(self, "fcvt.l.d");
-                self.debug(inst, "fcvt.l.d");
 
                 self.gpr.write(rd, self.fpg.read(rs1).round() as u64);
               }
               0x3 => {
                 // fcvt.lu.d
-                inst_count!(self, "fcvt.lu.d");
-                self.debug(inst, "fcvt.lu.d");
 
                 self.gpr.write(rd, self.fpg.read(rs1).round() as u64);
               }
@@ -2713,29 +2327,21 @@ impl Cpu {
             match rs2 {
               0x0 => {
                 // fcvt.s.w
-                inst_count!(self, "fcvt.s.w");
-                self.debug(inst, "fcvt.s.w");
 
                 self.fpg.write(rd, ((self.gpr.read(rs1) as i32) as f32) as f64);
               }
               0x1 => {
                 // fcvt.s.wu
-                inst_count!(self, "fcvt.s.wu");
-                self.debug(inst, "fcvt.s.wu");
 
                 self.fpg.write(rd, ((self.gpr.read(rs1) as u32) as f32) as f64);
               }
               0x2 => {
                 // fcvt.s.l
-                inst_count!(self, "fcvt.s.l");
-                self.debug(inst, "fcvt.s.l");
 
                 self.fpg.write(rd, (self.gpr.read(rs1) as f32) as f64);
               }
               0x3 => {
                 // fcvt.s.lu
-                inst_count!(self, "fcvt.s.lu");
-                self.debug(inst, "fcvt.s.lu");
 
                 self.fpg.write(rd, ((self.gpr.read(rs1) as u64) as f32) as f64);
               }
@@ -2748,29 +2354,21 @@ impl Cpu {
             match rs2 {
               0x0 => {
                 // fcvt.d.w
-                inst_count!(self, "fcvt.d.w");
-                self.debug(inst, "fcvt.d.w");
 
                 self.fpg.write(rd, (self.gpr.read(rs1) as i32) as f64);
               }
               0x1 => {
                 // fcvt.d.wu
-                inst_count!(self, "fcvt.d.wu");
-                self.debug(inst, "fcvt.d.wu");
 
                 self.fpg.write(rd, (self.gpr.read(rs1) as u32) as f64);
               }
               0x2 => {
                 // fcvt.d.l
-                inst_count!(self, "fcvt.d.l");
-                self.debug(inst, "fcvt.d.l");
 
                 self.fpg.write(rd, self.gpr.read(rs1) as f64);
               }
               0x3 => {
                 // fcvt.d.lu
-                inst_count!(self, "fcvt.d.lu");
-                self.debug(inst, "fcvt.d.lu");
 
                 self.fpg.write(rd, self.gpr.read(rs1) as f64);
               }
@@ -2783,8 +2381,6 @@ impl Cpu {
             match funct3 {
               0x0 => {
                 // fmv.x.w
-                inst_count!(self, "fmv.x.w");
-                self.debug(inst, "fmv.x.w");
 
                 self
                   .gpr
@@ -2792,8 +2388,6 @@ impl Cpu {
               }
               0x1 => {
                 // fclass.s
-                inst_count!(self, "fclass.s");
-                self.debug(inst, "fclass.s");
 
                 let f = self.fpg.read(rs1);
                 match f.classify() {
@@ -2822,16 +2416,12 @@ impl Cpu {
             match funct3 {
               0x0 => {
                 // fmv.x.d
-                inst_count!(self, "fmv.x.d");
-                self.debug(inst, "fmv.x.d");
 
                 // "FMV.X.D and FMV.D.X do not modify the bits being transferred"
                 self.gpr.write(rd, self.fpg.read(rs1).to_bits());
               }
               0x1 => {
                 // fclass.d
-                inst_count!(self, "fclass.d");
-                self.debug(inst, "fclass.d");
 
                 let f = self.fpg.read(rs1);
                 match f.classify() {
@@ -2858,15 +2448,11 @@ impl Cpu {
           }
           0x78 => {
             // fmv.w.x
-            inst_count!(self, "fmv.w.x");
-            self.debug(inst, "fmv.w.x");
 
             self.fpg.write(rd, f64::from_bits(self.gpr.read(rs1) & 0xffffffff));
           }
           0x79 => {
             // fmv.d.x
-            inst_count!(self, "fmv.d.x");
-            self.debug(inst, "fmv.d.x");
 
             // "FMV.X.D and FMV.D.X do not modify the bits being transferred"
             self.fpg.write(rd, f64::from_bits(self.gpr.read(rs1)));
@@ -2887,8 +2473,6 @@ impl Cpu {
         match funct3 {
           0x0 => {
             // beq
-            inst_count!(self, "beq");
-            self.debug(inst, "beq");
 
             if self.gpr.read(rs1) == self.gpr.read(rs2) {
               self.pc = self.pc.wrapping_add(imm).wrapping_sub(4);
@@ -2896,8 +2480,6 @@ impl Cpu {
           }
           0x1 => {
             // bne
-            inst_count!(self, "bne");
-            self.debug(inst, "bne");
 
             if self.gpr.read(rs1) != self.gpr.read(rs2) {
               self.pc = self.pc.wrapping_add(imm).wrapping_sub(4);
@@ -2905,8 +2487,6 @@ impl Cpu {
           }
           0x4 => {
             // blt
-            inst_count!(self, "blt");
-            self.debug(inst, "blt");
 
             if (self.gpr.read(rs1) as i64) < (self.gpr.read(rs2) as i64) {
               self.pc = self.pc.wrapping_add(imm).wrapping_sub(4);
@@ -2914,8 +2494,6 @@ impl Cpu {
           }
           0x5 => {
             // bge
-            inst_count!(self, "bge");
-            self.debug(inst, "bge");
 
             if (self.gpr.read(rs1) as i64) >= (self.gpr.read(rs2) as i64) {
               self.pc = self.pc.wrapping_add(imm).wrapping_sub(4);
@@ -2923,8 +2501,6 @@ impl Cpu {
           }
           0x6 => {
             // bltu
-            inst_count!(self, "bltu");
-            self.debug(inst, "bltu");
 
             if self.gpr.read(rs1) < self.gpr.read(rs2) {
               self.pc = self.pc.wrapping_add(imm).wrapping_sub(4);
@@ -2932,8 +2508,6 @@ impl Cpu {
           }
           0x7 => {
             // bgeu
-            inst_count!(self, "bgeu");
-            self.debug(inst, "bgeu");
 
             if self.gpr.read(rs1) >= self.gpr.read(rs2) {
               self.pc = self.pc.wrapping_add(imm).wrapping_sub(4);
@@ -2946,8 +2520,6 @@ impl Cpu {
       }
       0x67 => {
         // jalr
-        inst_count!(self, "jalr");
-        self.debug(inst, "jalr");
 
         let t = self.pc.wrapping_add(4);
 
@@ -2960,8 +2532,6 @@ impl Cpu {
       }
       0x6F => {
         // jal
-        inst_count!(self, "jal");
-        self.debug(inst, "jal");
 
         self.gpr.write(rd, self.pc.wrapping_add(4));
 
@@ -2981,8 +2551,6 @@ impl Cpu {
             match (rs2, funct7) {
               (0x0, 0x0) => {
                 // ecall
-                inst_count!(self, "ecall");
-                self.debug(inst, "ecall");
 
                 // Makes a request of the execution environment by raising an
                 // environment call exception.
@@ -3003,8 +2571,6 @@ impl Cpu {
               }
               (0x1, 0x0) => {
                 // ebreak
-                inst_count!(self, "ebreak");
-                self.debug(inst, "ebreak");
 
                 // Makes a request of the debugger bu raising a Breakpoint
                 // exception.
@@ -3012,14 +2578,10 @@ impl Cpu {
               }
               (0x2, 0x0) => {
                 // uret
-                inst_count!(self, "uret");
-                self.debug(inst, "uret");
                 panic!("uret: not implemented yet. pc {}", self.pc);
               }
               (0x2, 0x8) => {
                 // sret
-                inst_count!(self, "sret");
-                self.debug(inst, "sret");
 
                 // "The RISC-V Reader" book says:
                 // "Returns from a supervisor-mode exception handler. Sets the pc to
@@ -3059,8 +2621,6 @@ impl Cpu {
               }
               (0x2, 0x18) => {
                 // mret
-                inst_count!(self, "mret");
-                self.debug(inst, "mret");
 
                 // "The RISC-V Reader" book says:
                 // "Returns from a machine-mode exception handler. Sets the pc to
@@ -3105,28 +2665,20 @@ impl Cpu {
               }
               (0x5, 0x8) => {
                 // wfi
-                inst_count!(self, "wfi");
-                self.debug(inst, "wfi");
                 // "provides a hint to the implementation that the current
                 // hart can be stalled until an interrupt might need servicing."
                 self.idle = true;
               }
               (_, 0x9) => {
                 // sfence.vma
-                inst_count!(self, "sfence.vma");
-                self.debug(inst, "sfence.vma");
                 // "SFENCE.VMA is used to synchronize updates to in-memory
                 // memory-management data structures with current execution"
               }
               (_, 0x11) => {
                 // hfence.bvma
-                inst_count!(self, "hfence.bvma");
-                self.debug(inst, "hfence.bvma");
               }
               (_, 0x51) => {
                 // hfence.gvma
-                inst_count!(self, "hfence.gvma");
-                self.debug(inst, "hfence.gvma");
               }
               _ => {
                 return Err(Exception::IllegalInstruction(inst));
@@ -3135,8 +2687,6 @@ impl Cpu {
           }
           0x1 => {
             // csrrw
-            inst_count!(self, "csrrw");
-            self.debug(inst, "csrrw");
 
             let t = self.csr.read(csr_addr);
             self.csr.write(csr_addr, self.gpr.read(rs1));
@@ -3148,8 +2698,6 @@ impl Cpu {
           }
           0x2 => {
             // csrrs
-            inst_count!(self, "csrrs");
-            self.debug(inst, "csrrs");
 
             let t = self.csr.read(csr_addr);
             self.csr.write(csr_addr, t | self.gpr.read(rs1));
@@ -3161,8 +2709,6 @@ impl Cpu {
           }
           0x3 => {
             // csrrc
-            inst_count!(self, "csrrc");
-            self.debug(inst, "csrrc");
 
             let t = self.csr.read(csr_addr);
             self.csr.write(csr_addr, t & (!self.gpr.read(rs1)));
@@ -3174,8 +2720,6 @@ impl Cpu {
           }
           0x5 => {
             // csrrwi
-            inst_count!(self, "csrrwi");
-            self.debug(inst, "csrrwi");
 
             let zimm = rs1;
             self.gpr.write(rd, self.csr.read(csr_addr));
@@ -3187,8 +2731,6 @@ impl Cpu {
           }
           0x6 => {
             // csrrsi
-            inst_count!(self, "csrrsi");
-            self.debug(inst, "csrrsi");
 
             let zimm = rs1;
             let t = self.csr.read(csr_addr);
@@ -3201,8 +2743,6 @@ impl Cpu {
           }
           0x7 => {
             // csrrci
-            inst_count!(self, "csrrci");
-            self.debug(inst, "csrrci");
 
             let zimm = rs1;
             let t = self.csr.read(csr_addr);
