@@ -145,6 +145,8 @@ pub struct Inst {
   pub typ: Instruction,
   /// instruction pattern table
   ipt: Vec<InstPattern>,
+  /// instruction type name
+  pub type_name: &'static str,
   pub rd: usize,
   pub rs1: usize,
   pub rs2: usize,
@@ -156,6 +158,7 @@ impl Inst {
     Inst {
       bits: 0,
       typ: Instruction::ERROR,
+      type_name: "",
       ipt: new_ipt(),
       rd: 0,
       rs1: 0,
@@ -164,9 +167,9 @@ impl Inst {
     }
   }
 
-  pub fn set_bits(&mut self, bits: u32) {
-    self.bits = bits;
-    self.typ = self.decode();
+  pub fn set_bits<T: Into<u32>>(&mut self, bits: T) {
+    self.bits = bits.into();
+    self.decode().unwrap();
     (self.rd, self.rs1, self.rs2, self.imm) = self.decode_operand().unwrap();
   }
 
@@ -190,7 +193,18 @@ impl Inst {
   }
 
   pub fn disassemble(&self, pc: u64) -> String {
-    disassemble(self, pc)
+    let (rd, rs1, rs2, imm) = (self.rd, self.rs1, self.rs2, self.imm);
+    let rd = rd as usize;
+    let gpr = vec!["zero", "ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0", "s1", "a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6"];
+    match self.typ {
+      Instruction::Register(_)  => format!("{} {}, {}, {}", self.type_name, gpr[rd], gpr[rs1], gpr[rs2]),
+      Instruction::Immediate(_) => format!("{} {}, {}, {}", self.type_name, gpr[rd], gpr[rs1], imm),
+      Instruction::Store(_)     => format!("{} {}, {}({})", self.type_name, gpr[rs2], imm, gpr[rs1]),
+      Instruction::Branch(_)    => format!("{} {}, {}, {:x}", self.type_name, gpr[rs1], gpr[rs2], (pc as i64).wrapping_add(imm)),
+      Instruction::Jump(_)      => format!("{} {}, {:x}", self.type_name, gpr[rd], (imm as u64).wrapping_add(pc)),
+      Instruction::Upper(_)     => format!("{} {}, {:x}", self.type_name, gpr[rd], imm),
+      _ => format!("Unknown instruction")
+    }
   }
 
   fn match_inst(&self, pattern: &str) -> bool {
@@ -207,24 +221,29 @@ impl Inst {
     (self.bits & mask) == expected
   }
 
-  fn decode(&self) -> Instruction {
-    self
+  fn decode(&mut self) -> anyhow::Result<()> {
+    let instruction_pattern = self
       .ipt
       .iter()
       .find(|p| self.match_inst(p.pattern))
-      .unwrap_or(&InstPattern::new("", Instruction::ERROR))
-      .itype
+      .unwrap();
+
+    self.typ = instruction_pattern.itype;
+    self.type_name = instruction_pattern.name;
+
+    Ok(())
   }
 }
 
 pub struct InstPattern {
+  pub name: &'static str,
   pub pattern: &'static str,
   pub itype: Instruction,
 }
 
 impl InstPattern {
-  pub fn new(pattern: &'static str, itype: Instruction) -> InstPattern {
-    InstPattern { pattern, itype }
+  pub fn new(name: &'static str, pattern: &'static str, itype: Instruction) -> InstPattern {
+    InstPattern { name, pattern, itype }
   }
 }
 
@@ -233,192 +252,98 @@ pub fn new_ipt() -> Vec<InstPattern> {
     vec![
   // RegisterType
   // rv32I 
-  InstPattern::new("0000000 ????? ????? 000 ????? 01100 11", Instruction::Register(RegisterType::ADD)),
-  InstPattern::new("0100000 ????? ????? 000 ????? 01100 11", Instruction::Register(RegisterType::SUB)),
-  InstPattern::new("0000000 ????? ????? 100 ????? 01100 11", Instruction::Register(RegisterType::XOR)),
-  InstPattern::new("0000000 ????? ????? 110 ????? 01100 11", Instruction::Register(RegisterType::OR)),
-  InstPattern::new("0000000 ????? ????? 111 ????? 01100 11", Instruction::Register(RegisterType::AND)),
-  InstPattern::new("0000000 ????? ????? 001 ????? 01100 11", Instruction::Register(RegisterType::SLL)),
-  InstPattern::new("0000000 ????? ????? 101 ????? 01100 11", Instruction::Register(RegisterType::SRL)),
-  InstPattern::new("0100000 ????? ????? 101 ????? 01100 11", Instruction::Register(RegisterType::SRA)),
-  InstPattern::new("0000000 ????? ????? 010 ????? 01100 11", Instruction::Register(RegisterType::SLT)),
-  InstPattern::new("0000000 ????? ????? 011 ????? 01100 11", Instruction::Register(RegisterType::SLTU)),
+  InstPattern::new("add", "0000000 ????? ????? 000 ????? 01100 11", Instruction::Register(RegisterType::ADD)),
+  InstPattern::new("sub", "0100000 ????? ????? 000 ????? 01100 11", Instruction::Register(RegisterType::SUB)),
+  InstPattern::new("xor", "0000000 ????? ????? 100 ????? 01100 11", Instruction::Register(RegisterType::XOR)),
+  InstPattern::new("or", "0000000 ????? ????? 110 ????? 01100 11", Instruction::Register(RegisterType::OR)),
+  InstPattern::new("and", "0000000 ????? ????? 111 ????? 01100 11", Instruction::Register(RegisterType::AND)),
+  InstPattern::new("sll", "0000000 ????? ????? 001 ????? 01100 11", Instruction::Register(RegisterType::SLL)),
+  InstPattern::new("srl", "0000000 ????? ????? 101 ????? 01100 11", Instruction::Register(RegisterType::SRL)),
+  InstPattern::new("sra", "0100000 ????? ????? 101 ????? 01100 11", Instruction::Register(RegisterType::SRA)),
+  InstPattern::new("slt", "0000000 ????? ????? 010 ????? 01100 11", Instruction::Register(RegisterType::SLT)),
+  InstPattern::new("sltu", "0000000 ????? ????? 011 ????? 01100 11", Instruction::Register(RegisterType::SLTU)),
   // rv32M
-  InstPattern::new("0000001 ????? ????? 000 ????? 01100 11", Instruction::Register(RegisterType::MUL)),
-  InstPattern::new("0000001 ????? ????? 001 ????? 01100 11", Instruction::Register(RegisterType::MULH)),
-  InstPattern::new("0000001 ????? ????? 010 ????? 01100 11", Instruction::Register(RegisterType::MULHSU)),
-  InstPattern::new("0000001 ????? ????? 011 ????? 01100 11", Instruction::Register(RegisterType::MULHU)),
-  InstPattern::new("0000001 ????? ????? 100 ????? 01100 11", Instruction::Register(RegisterType::DIV)),
-  InstPattern::new("0000001 ????? ????? 101 ????? 01100 11", Instruction::Register(RegisterType::DIVU)),
-  InstPattern::new("0000001 ????? ????? 110 ????? 01100 11", Instruction::Register(RegisterType::REM)),
-  InstPattern::new("0000001 ????? ????? 111 ????? 01100 11", Instruction::Register(RegisterType::REMU)),
+  InstPattern::new("mul", "0000001 ????? ????? 000 ????? 01100 11", Instruction::Register(RegisterType::MUL)),
+  InstPattern::new("mulh", "0000001 ????? ????? 001 ????? 01100 11", Instruction::Register(RegisterType::MULH)),
+  InstPattern::new("mulhsu", "0000001 ????? ????? 010 ????? 01100 11", Instruction::Register(RegisterType::MULHSU)),
+  InstPattern::new("mulhu", "0000001 ????? ????? 011 ????? 01100 11", Instruction::Register(RegisterType::MULHU)),
+  InstPattern::new("div", "0000001 ????? ????? 100 ????? 01100 11", Instruction::Register(RegisterType::DIV)),
+  InstPattern::new("divu", "0000001 ????? ????? 101 ????? 01100 11", Instruction::Register(RegisterType::DIVU)),
+  InstPattern::new("rem", "0000001 ????? ????? 110 ????? 01100 11", Instruction::Register(RegisterType::REM)),
+  InstPattern::new("remu", "0000001 ????? ????? 111 ????? 01100 11", Instruction::Register(RegisterType::REMU)),
   // rv64I
-  InstPattern::new("0000000 ????? ????? 000 ????? 01110 11", Instruction::Register(RegisterType::ADDW)),
-  InstPattern::new("0100000 ????? ????? 000 ????? 01110 11", Instruction::Register(RegisterType::SUBW)),
-  InstPattern::new("0000000 ????? ????? 001 ????? 01110 11", Instruction::Register(RegisterType::SLLW)),
-  InstPattern::new("0000000 ????? ????? 101 ????? 01110 11", Instruction::Register(RegisterType::SRLW)),
-  InstPattern::new("0100000 ????? ????? 101 ????? 01110 11", Instruction::Register(RegisterType::SRAW)),
+  InstPattern::new("addw", "0000000 ????? ????? 000 ????? 01110 11", Instruction::Register(RegisterType::ADDW)),
+  InstPattern::new("subw", "0100000 ????? ????? 000 ????? 01110 11", Instruction::Register(RegisterType::SUBW)),
+  InstPattern::new("sllw", "0000000 ????? ????? 001 ????? 01110 11", Instruction::Register(RegisterType::SLLW)),
+  InstPattern::new("srlw", "0000000 ????? ????? 101 ????? 01110 11", Instruction::Register(RegisterType::SRLW)),
+  InstPattern::new("sraw", "0100000 ????? ????? 101 ????? 01110 11", Instruction::Register(RegisterType::SRAW)),
 
-  InstPattern::new("0011000 00010 00000 000 00000 11100 11", Instruction::Register(RegisterType::MRET)),
+  InstPattern::new("mret", "0011000 00010 00000 000 00000 11100 11", Instruction::Register(RegisterType::MRET)),
   // rv64M
-  InstPattern::new("0000001 ????? ????? 000 ????? 01110 11", Instruction::Register(RegisterType::MULW)),
-  InstPattern::new("0000001 ????? ????? 100 ????? 01110 11", Instruction::Register(RegisterType::DIVW)),
-  InstPattern::new("0000001 ????? ????? 100 ????? 01110 11", Instruction::Register(RegisterType::DIVUW)),
-  InstPattern::new("0000001 ????? ????? 110 ????? 01110 11", Instruction::Register(RegisterType::REMW)),
-  InstPattern::new("0000001 ????? ????? 110 ????? 01110 11", Instruction::Register(RegisterType::REMUW)),
+  InstPattern::new("mulw", "0000001 ????? ????? 000 ????? 01110 11", Instruction::Register(RegisterType::MULW)),
+  InstPattern::new("divw", "0000001 ????? ????? 100 ????? 01110 11", Instruction::Register(RegisterType::DIVW)),
+  InstPattern::new("divuw", "0000001 ????? ????? 100 ????? 01110 11", Instruction::Register(RegisterType::DIVUW)),
+  InstPattern::new("remw", "0000001 ????? ????? 110 ????? 01110 11", Instruction::Register(RegisterType::REMW)),
+  InstPattern::new("remuw", "0000001 ????? ????? 110 ????? 01110 11", Instruction::Register(RegisterType::REMUW)),
 
   // Immediate
   // rv32I
-  InstPattern::new("??????? ????? ????? 000 ????? 00100 11", Instruction::Immediate(ImmediateType::ADDI)),
-  InstPattern::new("??????? ????? ????? 100 ????? 00100 11", Instruction::Immediate(ImmediateType::XORI)),
-  InstPattern::new("??????? ????? ????? 110 ????? 00100 11", Instruction::Immediate(ImmediateType::ORI)),
-  InstPattern::new("??????? ????? ????? 111 ????? 00100 11", Instruction::Immediate(ImmediateType::ANDI)),
-  InstPattern::new("000000? ????? ????? 001 ????? 00100 11", Instruction::Immediate(ImmediateType::SLLI)),
-  InstPattern::new("000000? ????? ????? 101 ????? 00100 11", Instruction::Immediate(ImmediateType::SRLI)),
-  InstPattern::new("010000? ????? ????? 101 ????? 00100 11", Instruction::Immediate(ImmediateType::SRAI)),
-  InstPattern::new("??????? ????? ????? 010 ????? 00100 11", Instruction::Immediate(ImmediateType::SLTI)),
-  InstPattern::new("??????? ????? ????? 011 ????? 00100 11", Instruction::Immediate(ImmediateType::SLTIU)),
+  InstPattern::new("addi", "??????? ????? ????? 000 ????? 00100 11", Instruction::Immediate(ImmediateType::ADDI)),
+  InstPattern::new("xori", "??????? ????? ????? 100 ????? 00100 11", Instruction::Immediate(ImmediateType::XORI)),
+  InstPattern::new("ori", "??????? ????? ????? 110 ????? 00100 11", Instruction::Immediate(ImmediateType::ORI)),
+  InstPattern::new("andi", "??????? ????? ????? 111 ????? 00100 11", Instruction::Immediate(ImmediateType::ANDI)),
+  InstPattern::new("slli", "000000? ????? ????? 001 ????? 00100 11", Instruction::Immediate(ImmediateType::SLLI)),
+  InstPattern::new("srli", "000000? ????? ????? 101 ????? 00100 11", Instruction::Immediate(ImmediateType::SRLI)),
+  InstPattern::new("srai", "010000? ????? ????? 101 ????? 00100 11", Instruction::Immediate(ImmediateType::SRAI)),
+  InstPattern::new("slti", "??????? ????? ????? 010 ????? 00100 11", Instruction::Immediate(ImmediateType::SLTI)),
+  InstPattern::new("sltiu", "??????? ????? ????? 011 ????? 00100 11", Instruction::Immediate(ImmediateType::SLTIU)),
 
-  InstPattern::new("??????? ????? ????? 000 ????? 00000 11", Instruction::Immediate(ImmediateType::LB)),
-  InstPattern::new("??????? ????? ????? 001 ????? 00000 11", Instruction::Immediate(ImmediateType::LH)),
-  InstPattern::new("??????? ????? ????? 010 ????? 00000 11", Instruction::Immediate(ImmediateType::LW)),
-  InstPattern::new("??????? ????? ????? 100 ????? 00000 11", Instruction::Immediate(ImmediateType::LBU)),
-  InstPattern::new("??????? ????? ????? 101 ????? 00000 11", Instruction::Immediate(ImmediateType::LHU)),
+  InstPattern::new("lb", "??????? ????? ????? 000 ????? 00000 11", Instruction::Immediate(ImmediateType::LB)),
+  InstPattern::new("lh", "??????? ????? ????? 001 ????? 00000 11", Instruction::Immediate(ImmediateType::LH)),
+  InstPattern::new("lw", "??????? ????? ????? 010 ????? 00000 11", Instruction::Immediate(ImmediateType::LW)),
+  InstPattern::new("lbu", "??????? ????? ????? 100 ????? 00000 11", Instruction::Immediate(ImmediateType::LBU)),
+  InstPattern::new("lhu", "??????? ????? ????? 101 ????? 00000 11", Instruction::Immediate(ImmediateType::LHU)),
 
-  InstPattern::new("??????? ????? ????? 000 ????? 11001 11", Instruction::Immediate(ImmediateType::JALR)),
+  InstPattern::new("jalr", "??????? ????? ????? 000 ????? 11001 11", Instruction::Immediate(ImmediateType::JALR)),
 
-  InstPattern::new("0000000 00001 00000 000 00000 11100 11", Instruction::Immediate(ImmediateType::EBREAK)),
-  InstPattern::new("0000000 00000 00000 000 00000 11100 11", Instruction::Immediate(ImmediateType::ECALL)),
-  InstPattern::new("0000??? ????? 00000 000 00000 00011 11", Instruction::Immediate(ImmediateType::EBREAK)),
+  InstPattern::new("ebreak", "0000000 00001 00000 000 00000 11100 11", Instruction::Immediate(ImmediateType::EBREAK)),
+  InstPattern::new("ecall", "0000000 00000 00000 000 00000 11100 11", Instruction::Immediate(ImmediateType::ECALL)),
+  InstPattern::new("fence", "0000??? ????? 00000 000 00000 00011 11", Instruction::Immediate(ImmediateType::FENCE)),
 
-  InstPattern::new("??????? ????? ????? 001 ????? 11100 11", Instruction::Immediate(ImmediateType::CSRRW)),
-  InstPattern::new("??????? ????? ????? 010 ????? 11100 11", Instruction::Immediate(ImmediateType::CSRRS)),
-  InstPattern::new("??????? ????? ????? 011 ????? 11100 11", Instruction::Immediate(ImmediateType::CSRRC)),
-  InstPattern::new("??????? ????? ????? 101 ????? 11100 11", Instruction::Immediate(ImmediateType::CSRRWI)),
-  InstPattern::new("??????? ????? ????? 110 ????? 11100 11", Instruction::Immediate(ImmediateType::CSRRSI)),
-  InstPattern::new("??????? ????? ????? 111 ????? 11100 11", Instruction::Immediate(ImmediateType::CSRRCI)),
+  InstPattern::new("csrrw", "??????? ????? ????? 001 ????? 11100 11", Instruction::Immediate(ImmediateType::CSRRW)),
+  InstPattern::new("csrrs", "??????? ????? ????? 010 ????? 11100 11", Instruction::Immediate(ImmediateType::CSRRS)),
+  InstPattern::new("csrrc", "??????? ????? ????? 011 ????? 11100 11", Instruction::Immediate(ImmediateType::CSRRC)),
+  InstPattern::new("csrrwi", "??????? ????? ????? 101 ????? 11100 11", Instruction::Immediate(ImmediateType::CSRRWI)),
+  InstPattern::new("csrrsi", "??????? ????? ????? 110 ????? 11100 11", Instruction::Immediate(ImmediateType::CSRRSI)),
+  InstPattern::new("csrrci", "??????? ????? ????? 111 ????? 11100 11", Instruction::Immediate(ImmediateType::CSRRCI)),
   // rv64I
-  InstPattern::new("??????? ????? ????? 110 ????? 00000 11", Instruction::Immediate(ImmediateType::LWU)),
-  InstPattern::new("??????? ????? ????? 011 ????? 00000 11", Instruction::Immediate(ImmediateType::LD)),
-  InstPattern::new("??????? ????? ????? 000 ????? 00110 11", Instruction::Immediate(ImmediateType::ADDIW)),
-  InstPattern::new("000000? ????? ????? 001 ????? 00110 11", Instruction::Immediate(ImmediateType::SLLIW)),
-  InstPattern::new("000000? ????? ????? 101 ????? 00110 11", Instruction::Immediate(ImmediateType::SRLIW)),
-  InstPattern::new("010000? ????? ????? 101 ????? 00110 11", Instruction::Immediate(ImmediateType::SRAIW)),
+  InstPattern::new("lwu", "??????? ????? ????? 110 ????? 00000 11", Instruction::Immediate(ImmediateType::LWU)),
+  InstPattern::new("ld", "??????? ????? ????? 011 ????? 00000 11", Instruction::Immediate(ImmediateType::LD)),
+  InstPattern::new("addiw", "??????? ????? ????? 000 ????? 00110 11", Instruction::Immediate(ImmediateType::ADDIW)),
+  InstPattern::new("slliw", "000000? ????? ????? 001 ????? 00110 11", Instruction::Immediate(ImmediateType::SLLIW)),
+  InstPattern::new("srliw", "000000? ????? ????? 101 ????? 00110 11", Instruction::Immediate(ImmediateType::SRLIW)),
+  InstPattern::new("sraiw", "010000? ????? ????? 101 ????? 00110 11", Instruction::Immediate(ImmediateType::SRAIW)),
 
   // Store
   // rv32I
-  InstPattern::new("??????? ????? ????? 000 ????? 01000 11", Instruction::Store(StoreType::SB)),
-  InstPattern::new("??????? ????? ????? 001 ????? 01000 11", Instruction::Store(StoreType::SH)),
-  InstPattern::new("??????? ????? ????? 010 ????? 01000 11", Instruction::Store(StoreType::SW)),
+  InstPattern::new("sb", "??????? ????? ????? 000 ????? 01000 11", Instruction::Store(StoreType::SB)),
+  InstPattern::new("sh", "??????? ????? ????? 001 ????? 01000 11", Instruction::Store(StoreType::SH)),
+  InstPattern::new("sw", "??????? ????? ????? 010 ????? 01000 11", Instruction::Store(StoreType::SW)),
   // rv64I
-  InstPattern::new("??????? ????? ????? 011 ????? 01000 11", Instruction::Store(StoreType::SD)),
+  InstPattern::new("sd", "??????? ????? ????? 011 ????? 01000 11", Instruction::Store(StoreType::SD)),
   // Branch
   // rv32I
-  InstPattern::new("??????? ????? ????? 000 ????? 11000 11", Instruction::Branch(BranchType::BEQ)),
-  InstPattern::new("??????? ????? ????? 001 ????? 11000 11", Instruction::Branch(BranchType::BNE)),
-  InstPattern::new("??????? ????? ????? 100 ????? 11000 11", Instruction::Branch(BranchType::BLT)),
-  InstPattern::new("??????? ????? ????? 101 ????? 11000 11", Instruction::Branch(BranchType::BGE)),
-  InstPattern::new("??????? ????? ????? 110 ????? 11000 11", Instruction::Branch(BranchType::BLTU)),
-  InstPattern::new("??????? ????? ????? 111 ????? 11000 11", Instruction::Branch(BranchType::BGEU)),
+  InstPattern::new("beq", "??????? ????? ????? 000 ????? 11000 11", Instruction::Branch(BranchType::BEQ)),
+  InstPattern::new("bne", "??????? ????? ????? 001 ????? 11000 11", Instruction::Branch(BranchType::BNE)),
+  InstPattern::new("blt", "??????? ????? ????? 100 ????? 11000 11", Instruction::Branch(BranchType::BLT)),
+  InstPattern::new("bge", "??????? ????? ????? 101 ????? 11000 11", Instruction::Branch(BranchType::BGE)),
+  InstPattern::new("bltu", "??????? ????? ????? 110 ????? 11000 11", Instruction::Branch(BranchType::BLTU)),
+  InstPattern::new("bgeu", "??????? ????? ????? 111 ????? 11000 11", Instruction::Branch(BranchType::BGEU)),
   // Jump
   // rv32I
-  InstPattern::new("??????? ????? ????? ??? ????? 11011 11", Instruction::Jump(JumpType::JAL)),
+  InstPattern::new("jal", "??????? ????? ????? ??? ????? 11011 11", Instruction::Jump(JumpType::JAL)),
   // Upper
   // rv32I
-  InstPattern::new("??????? ????? ????? ??? ????? 01101 11", Instruction::Upper(UpperType::LUI)),
-  InstPattern::new("??????? ????? ????? ??? ????? 00101 11", Instruction::Upper(UpperType::AUIPC)),]
-}
-
-#[rustfmt::skip]
-/// Decode operands from instruction
-pub fn disassemble(inst: &Inst, pc: u64) -> String {
-  let (rd, rs1, rs2, imm) = (inst.rd, inst.rs1, inst.rs2, inst.imm);
-  let gpr = vec!["zero", "ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0", "s1", "a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6"];
-  match inst.typ {
-    Instruction::Register(RegisterType::ADD)  => format!("add   {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Instruction::Register(RegisterType::ADDW) => format!("addw  {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Instruction::Register(RegisterType::SUB)  => format!("sub   {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Instruction::Register(RegisterType::SUBW) => format!("subw  {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Instruction::Register(RegisterType::XOR)  => format!("xor   {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Instruction::Register(RegisterType::OR)   => format!("or    {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Instruction::Register(RegisterType::AND)  => format!("and   {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Instruction::Register(RegisterType::SLL)  => format!("sll   {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Instruction::Register(RegisterType::SLLW) => format!("sllw  {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Instruction::Register(RegisterType::SRL)  => format!("srl   {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Instruction::Register(RegisterType::SRA)  => format!("sra   {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Instruction::Register(RegisterType::SRLW) => format!("srlw  {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Instruction::Register(RegisterType::SRAW) => format!("sraw  {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Instruction::Register(RegisterType::SLT)  => format!("slt   {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Instruction::Register(RegisterType::SLTU) => format!("sltu  {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-
-    Instruction::Immediate(ImmediateType::ADDI)  => format!("addi  {}, {}, {}", gpr[rd], gpr[rs1], imm),
-    Instruction::Immediate(ImmediateType::ADDIW) => format!("addiw {}, {}, {}", gpr[rd], gpr[rs1], imm),
-    Instruction::Immediate(ImmediateType::XORI)  => format!("xori  {}, {}, {}", gpr[rd], gpr[rs1], imm),
-    Instruction::Immediate(ImmediateType::ORI)   => format!("ori   {}, {}, {}", gpr[rd], gpr[rs1], imm),
-    Instruction::Immediate(ImmediateType::ANDI)  => format!("andi  {}, {}, {}", gpr[rd], gpr[rs1], imm),
-    Instruction::Immediate(ImmediateType::SLLI)  => format!("slli  {}, {}, {}", gpr[rd], gpr[rs1], imm),
-    Instruction::Immediate(ImmediateType::SLLIW) => format!("slliw {}, {}, {}", gpr[rd], gpr[rs1], imm),
-    Instruction::Immediate(ImmediateType::SRLI)  => format!("srli  {}, {}, {}", gpr[rd], gpr[rs1], imm),
-    Instruction::Immediate(ImmediateType::SRLIW) => format!("srliw {}, {}, {}", gpr[rd], gpr[rs1], imm),
-    Instruction::Immediate(ImmediateType::SRAI)  => format!("srai  {}, {}, {}", gpr[rd], gpr[rs1], imm),
-    Instruction::Immediate(ImmediateType::SRAIW) => format!("sraiw {}, {}, {}", gpr[rd], gpr[rs1], imm),
-    Instruction::Immediate(ImmediateType::SLTI)  => format!("slti  {}, {}, {}", gpr[rd], gpr[rs1], imm),
-    Instruction::Immediate(ImmediateType::SLTIU) => format!("sltiu {}, {}, {}", gpr[rd], gpr[rs1], imm),
-
-    Instruction::Immediate(ImmediateType::LB)  => format!("lb    {}, {:x}({})", gpr[rd], imm, gpr[rs1]),
-    Instruction::Immediate(ImmediateType::LBU) => format!("lbu   {}, {:x}({})", gpr[rd], imm, gpr[rs1]),
-    Instruction::Immediate(ImmediateType::LH)  => format!("lh    {}, {:x}({})", gpr[rd], imm, gpr[rs1]),
-    Instruction::Immediate(ImmediateType::LHU) => format!("lhu   {}, {:x}({})", gpr[rd], imm, gpr[rs1]),
-    Instruction::Immediate(ImmediateType::LW)  => format!("lw    {}, {:x}({})", gpr[rd], imm, gpr[rs1]),
-    Instruction::Immediate(ImmediateType::LWU) => format!("lwu   {}, {:x}({})", gpr[rd], imm, gpr[rs1]),
-    Instruction::Immediate(ImmediateType::LD)  => format!("ld    {}, {:x}({})", gpr[rd], imm, gpr[rs1]),
-
-    Instruction::Store(StoreType::SB) => format!("sb    {}, {}({})", gpr[rs2], imm, gpr[rs1]),
-    Instruction::Store(StoreType::SH) => format!("sh    {}, {}({})", gpr[rs2], imm, gpr[rs1]),
-    Instruction::Store(StoreType::SW) => format!("sw    {}, {}({})", gpr[rs2], imm, gpr[rs1]),
-    Instruction::Store(StoreType::SD) => format!("sd    {}, {}({})", gpr[rs2], imm, gpr[rs1]),
-
-    Instruction::Branch(BranchType::BEQ)  => format!("beq   {}, {}, {:x}", gpr[rs1], gpr[rs2], (pc as i64).wrapping_add(imm)),
-    Instruction::Branch(BranchType::BNE)  => format!("bne   {}, {}, {:x}", gpr[rs1], gpr[rs2], (pc as i64).wrapping_add(imm)),
-    Instruction::Branch(BranchType::BLT)  => format!("blt   {}, {}, {:x}", gpr[rs1], gpr[rs2], (pc as i64).wrapping_add(imm)),
-    Instruction::Branch(BranchType::BGE)  => format!("bge   {}, {}, {:x}", gpr[rs1], gpr[rs2], (pc as i64).wrapping_add(imm)),
-    Instruction::Branch(BranchType::BLTU) => format!("bltu  {}, {}, {:x}", gpr[rs1], gpr[rs2], (pc as i64).wrapping_add(imm)),
-    Instruction::Branch(BranchType::BGEU) => format!("bgeu  {}, {}, {:x}", gpr[rs1], gpr[rs2], (pc as i64).wrapping_add(imm)),
-
-    Instruction::Jump(JumpType::JAL)            => format!("jal   {}, {:x}", gpr[rd], (imm as u64).wrapping_add(pc)),
-    Instruction::Immediate(ImmediateType::JALR) => format!("jalr  {}, {}, {:x}", gpr[rd], gpr[rs1], imm),
-
-    Instruction::Upper(UpperType::LUI)   => format!("lui   {}, {:x}", gpr[rd], imm),
-    Instruction::Upper(UpperType::AUIPC) => format!("auipc {}, {:x}", gpr[rd], (pc as i64).wrapping_add(imm)),
-
-    Instruction::Register(RegisterType::MUL)    => format!("mul      {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Instruction::Register(RegisterType::MULH)   => format!("mulh     {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Instruction::Register(RegisterType::MULHU)  => format!("mulhu    {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Instruction::Register(RegisterType::MULHSU) => format!("mulhsu   {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Instruction::Register(RegisterType::MULW)   => format!("mulw     {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Instruction::Register(RegisterType::DIV)    => format!("div      {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Instruction::Register(RegisterType::DIVU)   => format!("divu     {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Instruction::Register(RegisterType::DIVUW)  => format!("divuw    {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Instruction::Register(RegisterType::DIVW)   => format!("divw     {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Instruction::Register(RegisterType::REM)    => format!("rem      {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Instruction::Register(RegisterType::REMU)   => format!("remu     {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Instruction::Register(RegisterType::REMUW)  => format!("remuw    {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-    Instruction::Register(RegisterType::REMW)   => format!("remw     {}, {}, {}", gpr[rd], gpr[rs1], gpr[rs2]),
-
-    Instruction::Register(RegisterType::MRET)   => format!("mret"),
-
-    Instruction::Immediate(ImmediateType::ECALL)  => format!("ecall"),
-    Instruction::Immediate(ImmediateType::EBREAK) => format!("ebreak"),
-
-    Instruction::Immediate(ImmediateType::FENCE) => format!("fence"),
-
-    Instruction::Immediate(ImmediateType::CSRRW)  => format!("csrrw  {}, {}", gpr[rd], gpr[rs1]),
-    Instruction::Immediate(ImmediateType::CSRRS)  => format!("csrrs  {}, {}", gpr[rd], gpr[rs1]),
-    Instruction::Immediate(ImmediateType::CSRRC)  => format!("csrrc  {}, {}", gpr[rd], gpr[rs1]),
-    Instruction::Immediate(ImmediateType::CSRRWI) => format!("csrrwi {}, 0x{:x}, {}", gpr[rd], imm, rs1),
-    Instruction::Immediate(ImmediateType::CSRRSI) => format!("csrrsi {}, 0x{:x}, {}", gpr[rd], imm, rs1),
-    Instruction::Immediate(ImmediateType::CSRRCI) => format!("csrrci {}, 0x{:x}, {}", gpr[rd], imm, rs1),
-
-    _ => format!("Unknown instruction")
-  }
+  InstPattern::new("lui", "??????? ????? ????? ??? ????? 01101 11", Instruction::Upper(UpperType::LUI)),
+  InstPattern::new("auipc", "??????? ????? ????? ??? ????? 00101 11", Instruction::Upper(UpperType::AUIPC)),]
 }

@@ -5,15 +5,11 @@ use std::cmp::PartialEq;
 use std::num::FpCategory;
 
 use crate::{
-  bus::{Bus, DRAM_BASE},
-  devices::{
+  bus::{Bus, DRAM_BASE}, devices::{
     dram::DRAM_SIZE,
     uart::UART_IRQ,
     virtio_blk::{Virtio, VIRTIO_IRQ},
-  },
-  exception::Exception,
-  interrupt::Interrupt,
-  instructions::Inst,
+  }, exception::Exception, instructions::{Inst, Instruction}, interrupt::Interrupt
 };
 
 pub mod csr;
@@ -1004,11 +1000,12 @@ impl Cpu {
   /// Execute a general-purpose instruction. Raises an exception if something is wrong,
   /// otherwise, returns a fetched instruction. It also increments the program counter by 4 bytes.
   fn execute_general(&mut self, inst: u64) -> Result<(), Exception> {
+    self.inst.set_bits(inst as u32);
     // 2. Decode.
     let opcode = inst & 0x0000007f;
-    let rd = (inst & 0x00000f80) >> 7;
-    let rs1 = (inst & 0x000f8000) >> 15;
-    let rs2 = (inst & 0x01f00000) >> 20;
+    let rd = self.inst.rd as u64;
+    let rs1 = self.inst.rs1 as u64;
+    let rs2 = self.inst.rs2 as u64;
     let funct3 = (inst & 0x00007000) >> 12;
     let funct7 = (inst & 0xfe000000) >> 25;
 
