@@ -13,6 +13,7 @@ use crate::{
   },
   exception::Exception,
   interrupt::Interrupt,
+  instructions::Inst,
 };
 
 pub mod csr;
@@ -70,6 +71,8 @@ pub struct Cpu {
   pub fpg: Fpg,
   /// Program counter.
   pub pc: u64,
+  /// Instructions.
+  pub inst: Inst,
   /// Control and status registers (CSR).
   pub csr: Csr,
   /// Privilege level.
@@ -94,6 +97,7 @@ impl Cpu {
       gpr: Gpr::new(),
       fpg: Fpg::new(),
       pc: 0,
+      inst: Inst::new(),
       csr: Csr::new(),
       mode: Mode::Machine,
       bus: Bus::new(),
@@ -455,28 +459,23 @@ impl Cpu {
       return Ok(0);
     }
 
-    // Fetch.
+    // Fetch. It can be optimized by only one fetch.
     let inst16 = self.fetch(HALFWORD)?;
-    let inst;
+    let inst = self.fetch(WORD)?;
     match inst16 & 0b11 {
       0 | 1 | 2 => {
-        if inst16 == 0 {
-          // Unimplemented instruction, since all bits are 0.
-          return Err(Exception::IllegalInstruction(inst16));
-        }
-        inst = inst16;
-        self.execute_compressed(inst)?;
+        self.execute_compressed(inst16)?;
         // Add 2 bytes to the program counter.
         self.pc += 2;
+        Ok(inst16)
       }
       _ => {
-        inst = self.fetch(WORD)?;
         self.execute_general(inst)?;
         // Add 4 bytes to the program counter.
         self.pc += 4;
+        Ok(inst)
       }
     }
-    Ok(inst)
   }
 
   /// Execute a compressed instruction. Raised an exception if something is wrong, otherwise,

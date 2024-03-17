@@ -31,6 +31,7 @@
 pub mod bus;
 pub mod cpu;
 pub mod devices;
+pub mod instructions;
 pub mod emulator;
 pub mod exception;
 pub mod interrupt;
