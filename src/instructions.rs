@@ -1,3 +1,8 @@
+mod rv64i;
+mod rv64m;
+use rv64i::rv64i;
+use rv64m::rv64m;
+
 #[derive(Copy, Clone, Debug)]
 pub enum Instruction {
   Register(RegisterType),
@@ -9,6 +14,7 @@ pub enum Instruction {
   ERROR,
 }
 
+#[allow(non_camel_case_types)]
 #[derive(Copy, Clone, Debug)]
 pub enum RegisterType {
   // RV32I
@@ -38,7 +44,10 @@ pub enum RegisterType {
   SRLW,
   SRAW,
 
+  SRET,
   MRET,
+
+  SFENCE_VMA,
   // RV64M
   MULW,
   DIVW,
@@ -47,6 +56,7 @@ pub enum RegisterType {
   REMUW,
 }
 
+#[allow(non_camel_case_types)]
 #[derive(Copy, Clone, Debug)]
 pub enum ImmediateType {
   // RV32I
@@ -71,6 +81,7 @@ pub enum ImmediateType {
   ECALL,
   EBREAK,
   FENCE,
+  FENCE_I,
 
   CSRRW,
   CSRRS,
@@ -155,11 +166,17 @@ pub struct Inst {
 
 impl Inst {
   pub fn new() -> Inst {
+    // new ipt
+    let mut ipt :Vec<InstPattern>= vec![];
+    ipt.extend(rv64i());
+    ipt.extend(rv64m());
+
+    // self
     Inst {
       bits: 0,
       typ: Instruction::ERROR,
       type_name: "",
-      ipt: new_ipt(),
+      ipt,
       rd: 0,
       rs1: 0,
       rs2: 0,
@@ -167,10 +184,11 @@ impl Inst {
     }
   }
 
-  pub fn set_bits<T: Into<u32>>(&mut self, bits: T) {
+  pub fn set_bits<T: Into<u32>>(&mut self, bits: T) -> anyhow::Result<()> {
     self.bits = bits.into();
-    self.decode().unwrap();
+    self.decode()?;
     (self.rd, self.rs1, self.rs2, self.imm) = self.decode_operand().unwrap();
+    Ok(())
   }
 
   #[rustfmt::skip]
@@ -226,7 +244,7 @@ impl Inst {
       .ipt
       .iter()
       .find(|p| self.match_inst(p.pattern))
-      .unwrap();
+      .ok_or_else(|| {anyhow::anyhow!("Unknown instruction")})?;
 
     self.typ = instruction_pattern.itype;
     self.type_name = instruction_pattern.name;
@@ -272,13 +290,6 @@ pub fn new_ipt() -> Vec<InstPattern> {
   InstPattern::new("rem", "0000001 ????? ????? 110 ????? 01100 11", Instruction::Register(RegisterType::REM)),
   InstPattern::new("remu", "0000001 ????? ????? 111 ????? 01100 11", Instruction::Register(RegisterType::REMU)),
   // rv64I
-  InstPattern::new("addw", "0000000 ????? ????? 000 ????? 01110 11", Instruction::Register(RegisterType::ADDW)),
-  InstPattern::new("subw", "0100000 ????? ????? 000 ????? 01110 11", Instruction::Register(RegisterType::SUBW)),
-  InstPattern::new("sllw", "0000000 ????? ????? 001 ????? 01110 11", Instruction::Register(RegisterType::SLLW)),
-  InstPattern::new("srlw", "0000000 ????? ????? 101 ????? 01110 11", Instruction::Register(RegisterType::SRLW)),
-  InstPattern::new("sraw", "0100000 ????? ????? 101 ????? 01110 11", Instruction::Register(RegisterType::SRAW)),
-
-  InstPattern::new("mret", "0011000 00010 00000 000 00000 11100 11", Instruction::Register(RegisterType::MRET)),
   // rv64M
   InstPattern::new("mulw", "0000001 ????? ????? 000 ????? 01110 11", Instruction::Register(RegisterType::MULW)),
   InstPattern::new("divw", "0000001 ????? ????? 100 ????? 01110 11", Instruction::Register(RegisterType::DIVW)),
