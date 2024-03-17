@@ -30,6 +30,7 @@
 
 pub mod bus;
 pub mod cpu;
+pub mod dut;
 pub mod devices;
 pub mod emulator;
 pub mod exception;
