@@ -9,11 +9,19 @@ jobs:
       uses: actions/checkout@master
     - name: test
       run: cargo test --test am-tests
-  riscv-test:
-    name: riscv-test
+  riscv-test-p:
+    name: riscv-test-p
     runs-on: ubuntu-latest
     steps:
     - name: checkout
       uses: actions/checkout@master
     - name: test
-      run: cargo test --test riscv-tests
+      run: cargo test --test riscv-tests-p
+  riscv-test-v:
+    name: riscv-test-v
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@master
+    - name: test
+      run: cargo test --test riscv-tests-v

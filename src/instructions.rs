@@ -240,6 +240,7 @@ impl Inst {
   }
 
   fn decode(&mut self) -> anyhow::Result<()> {
+    // todo: this can be optimized by map
     let instruction_pattern = self
       .ipt
       .iter()
