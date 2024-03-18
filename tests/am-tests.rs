@@ -12,10 +12,10 @@ mod rv64ui_p {
       #[test]
       fn $name() -> anyhow::Result<()> {
         let mut root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        root.push("dependencies/tests/am-tests");
+        root.push("dependencies/tests/bin/am-tests");
         root.push(stringify!($name).to_owned().replace("_", "-"));
   
-        let mut file = File::open("/tmp/bin")?;
+        let mut file = File::open(root)?;
         let mut data = Vec::new();
         file.read_to_end(&mut data)?;
   
