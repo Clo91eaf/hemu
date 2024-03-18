@@ -1012,9 +1012,15 @@ impl Cpu {
     }
     // 2. Decode.
     let opcode = inst & 0x0000007f;
-    let rd = self.inst.rd as u64;
-    let rs1 = self.inst.rs1 as u64;
-    let rs2 = self.inst.rs2 as u64;
+    // let rd = self.inst.rd as u64;
+    // let rs1 = self.inst.rs1 as u64;
+    // let rs2 = self.inst.rs2 as u64;
+    let rd = (inst & 0x00000f80) >> 7;
+    let rs1 = (inst & 0x000f8000) >> 15;
+    let rs2 = (inst & 0x01f00000) >> 20;
+    // assert_eq!(rd, self.inst.rd as u64);
+    // assert_eq!(rs1, self.inst.rs1 as u64);
+    // assert_eq!(rs2, self.inst.rs2 as u64);
     let funct3 = (inst & 0x00007000) >> 12;
     let funct7 = (inst & 0xfe000000) >> 25;
 
