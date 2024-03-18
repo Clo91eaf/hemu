@@ -1,9 +1,11 @@
 mod rv64i;
 mod rv64m;
 mod rv64a;
+mod rv64f;
 use rv64i::rv64i;
 use rv64m::rv64m;
 use rv64a::rv64a;
+use rv64f::rv64f;
 
 #[derive(Copy, Clone, Debug)]
 pub enum Instruction {
@@ -82,6 +84,31 @@ pub enum RegisterType {
   AMOMAX_D,
   AMOMINU_D,
   AMOMAXU_D,
+
+  // RV32F
+  FADD_S,
+  FSUB_S,
+  FMUL_S,
+  FDIV_S,
+  FSQRT_S,
+  FSGNJ_S,
+  FSGNJN_S,
+  FSGNJX_S,
+  FMIN_S,
+  FMAX_S,
+  FCVT_W_S,
+  FMV_X_W,
+  FEQ_S,
+  FLT_S,
+  FLE_S,
+  FCLASS_S,
+  FCVT_S_W,
+
+  // RV64F
+  FCVT_L_S,
+  FCVT_LU_S,
+  FCVT_S_L,
+  FCVT_S_LU,
 }
 
 #[allow(non_camel_case_types)]
@@ -124,6 +151,9 @@ pub enum ImmediateType {
   SLLIW,
   SRLIW,
   SRAIW,
+
+  // RV32F
+  FLW,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -134,6 +164,8 @@ pub enum StoreType {
   SW,
   // RV64I
   SD,
+  // RV64D
+  FSW,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -199,6 +231,7 @@ impl Inst {
     ipt.extend(rv64i());
     ipt.extend(rv64m());
     ipt.extend(rv64a());
+    ipt.extend(rv64f());
 
     // self
     Inst {

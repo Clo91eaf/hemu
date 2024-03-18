@@ -480,7 +480,7 @@ impl Cpu {
 
   /// Execute a compressed instruction. Raised an exception if something is wrong, otherwise,
   /// returns a fetched instruction. It also increments the program counter by 2 bytes.
-  pub fn execute_compressed(&mut self, inst: u64) -> Result<(), Exception> {
+  fn execute_compressed(&mut self, inst: u64) -> Result<(), Exception> {
     // 2. Decode.
     let opcode = inst & 0x3;
     let funct3 = (inst >> 13) & 0x7;
