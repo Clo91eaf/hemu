@@ -10,10 +10,10 @@ macro_rules! add_test {
     #[test]
     fn $name() -> anyhow::Result<()> {
       let mut root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-      root.push("tests/resources/am-tests");
-      root.push(stringify!($name).to_owned().replace("_", "-") + "-riscv64-nemu.bin");
+      root.push("dependencies/tests/am-tests");
+      root.push(stringify!($name).to_owned().replace("_", "-"));
 
-      let mut file = File::open(root.as_path())?;
+      let mut file = File::open("/tmp/bin")?;
       let mut data = Vec::new();
       file.read_to_end(&mut data)?;
 

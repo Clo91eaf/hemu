@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::prelude::*;
+use std::io::Read;
 use std::path::PathBuf;
 
 use hemu::bus::DRAM_BASE;

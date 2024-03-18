@@ -9,8 +9,8 @@ macro_rules! add_test_v {
     #[test]
     fn $name() -> anyhow::Result<()> {
       let mut root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-      root.push("tests/resources/riscv-tests/rv64ui");
-      root.push("rv64ui-v-".to_owned() + stringify!($name) + ".bin");
+      root.push("dependencies/tests/bin/riscv-tests/rv64ui");
+      root.push("rv64ui-v-".to_owned() + stringify!($name));
 
       let mut file = File::open(root.as_path())?;
       let mut data = Vec::new();
