@@ -1007,7 +1007,7 @@ impl Cpu {
     match self.inst.set_bits(inst as u32) {
       Ok(_) => {}
       Err(_) => {
-        panic!("pc: {:x}, inst: {:x}", self.pc, self.inst.bits);
+        panic!("unknown inst, pc: {:x}, inst: {:x}", self.pc, self.inst.bits);
       }
     }
     // 2. Decode.

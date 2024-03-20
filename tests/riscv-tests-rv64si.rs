@@ -9,8 +9,8 @@ macro_rules! add_test {
     #[test]
     fn $name() -> anyhow::Result<()> {
       let mut root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-      root.push("dependencies/tests/bin/riscv-tests/rv64mi");
-      root.push(("rv64mi-p-".to_owned() + stringify!($name)).replace("_", "-"));
+      root.push("dependencies/tests/bin/riscv-tests/rv64si");
+      root.push(("rv64si-p-".to_owned() + stringify!($name)).replace("_", "-"));
 
       let mut file = File::open(root.as_path())?;
       let mut data = Vec::new();
@@ -40,8 +40,8 @@ macro_rules! add_test_no_replace {
     #[test]
     fn $name() -> anyhow::Result<()> {
       let mut root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-      root.push("dependencies/tests/bin/riscv-tests/rv64mi");
-      root.push("rv64mi-p-".to_owned() + stringify!($name));
+      root.push("dependencies/tests/bin/riscv-tests/rv64si");
+      root.push("rv64si-p-".to_owned() + stringify!($name));
 
       let mut file = File::open(root.as_path())?;
       let mut data = Vec::new();
@@ -65,18 +65,10 @@ macro_rules! add_test_no_replace {
   };
 }
 
-add_test!(access);
-// add_test!(csr);
-// add_test!(illegal);
-add_test!(ld_misaligned);
-add_test!(lh_misaligned);
-add_test!(lw_misaligned);
-add_test_no_replace!(ma_addr);
-add_test_no_replace!(ma_fetch);
-add_test!(mcsr);
+add_test!(csr);
+add_test!(dirty);
+add_test!(icache_alias);
 add_test!(sbreak);
 add_test!(scall);
-add_test!(sd_misaligned);
-add_test!(sh_misaligned);
-add_test!(sw_misaligned);
-add_test!(zicntr);
+add_test!(wfi);
+add_test_no_replace!(ma_fetch);
