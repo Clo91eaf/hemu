@@ -2080,6 +2080,7 @@ impl Cpu {
             // fadd.d
 
             self.fpg.write(rd, self.fpg.read(rs1) + self.fpg.read(rs2));
+            self.fpg.fflags(rd);
           }
           0x04 => {
             // fsub.s
