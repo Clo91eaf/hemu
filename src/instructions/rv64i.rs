@@ -61,6 +61,8 @@ pub fn rv32i() -> Vec<InstPattern> {
   InstPattern::new("mret", "0011000 00010 00000 000 00000 11100 11", Instruction::Register(RegisterType::MRET)),
   InstPattern::new("sret", "0001000 00010 00000 000 00000 11100 11", Instruction::Register(RegisterType::SRET)),
   InstPattern::new("sfence.vma", "0001001 ????? ????? 000 00000 11100 11", Instruction::Register(RegisterType::SFENCE_VMA)),
+
+  InstPattern::new("wfi", "0001000 00101 00000 000 00000 11100 11", Instruction::Register(RegisterType::WFI)),
   ]
 }
 

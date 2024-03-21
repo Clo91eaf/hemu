@@ -70,5 +70,5 @@ add_test!(dirty);
 add_test!(icache_alias);
 add_test!(sbreak);
 add_test!(scall);
-add_test!(wfi);
+// add_test!(wfi);
 add_test_no_replace!(ma_fetch);

@@ -52,6 +52,8 @@ pub enum RegisterType {
   MRET,
 
   SFENCE_VMA,
+  // Privileged Spec
+  WFI,
   // RV64M
   MULW,
   DIVW,

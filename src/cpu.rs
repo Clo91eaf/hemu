@@ -466,13 +466,13 @@ impl Cpu {
       0 | 1 | 2 => {
         self.execute_compressed(inst16)?;
         // Add 2 bytes to the program counter.
-        self.pc += 2;
+        self.pc = self.pc.wrapping_add(2);
         Ok(inst16)
       }
       _ => {
         self.execute_general(inst)?;
         // Add 4 bytes to the program counter.
-        self.pc += 4;
+        self.pc = self.pc.wrapping_add(4);
         Ok(inst)
       }
     }
