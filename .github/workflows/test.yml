@@ -41,3 +41,11 @@ jobs:
       uses: actions/checkout@master
     - name: test
       run: cargo test --test riscv-tests-rv64um
+  riscv-test-rv64ua:
+    name: riscv-test-rv64ua
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@master
+    - name: test
+      run: cargo test --test riscv-tests-rv64ua
