@@ -34,7 +34,7 @@ pub enum RegisterType {
   SRA,
   SLT,
   SLTU,
-  // RV32M (RV64M)
+  // RV32M
   MUL,
   MULH,
   MULHSU,
@@ -43,6 +43,14 @@ pub enum RegisterType {
   DIVU,
   REM,
   REMU,
+
+  // RV64M
+  MULW,
+  DIVW,
+  DIVUW,
+  REMW,
+  REMUW,
+
   // RV64I
   ADDW,
   SUBW,
@@ -56,12 +64,6 @@ pub enum RegisterType {
   SFENCE_VMA,
   // Privileged Spec
   WFI,
-  // RV64M
-  MULW,
-  DIVW,
-  DIVUW,
-  REMW,
-  REMUW,
 
   // RV32A
   LR_W,
