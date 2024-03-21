@@ -25,3 +25,11 @@ jobs:
       uses: actions/checkout@master
     - name: test
       run: cargo test --test riscv-tests-rv64mi
+  riscv-test-rv64si:
+    name: riscv-test-rv64si
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@master
+    - name: test
+      run: cargo test --test riscv-tests-rv64si
