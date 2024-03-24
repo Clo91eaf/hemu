@@ -56,7 +56,12 @@ impl Emulator {
   /// Start executing the emulator.
   pub fn start(&mut self) {
     loop {
+      // let pc = self.cpu.pc;
       let trap = self.execute();
+      // println!("=================================");
+      // println!("pc: {:#x}, inst: {}", pc, self.cpu.inst.disassemble(pc));
+      // println!("{}", self.cpu.gpr.to_string());
+      // println!("{}", self.cpu.csr.to_string());
 
       match trap {
         Trap::Fatal => {

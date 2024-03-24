@@ -66,7 +66,7 @@ macro_rules! add_test_no_replace {
 }
 
 add_test!(access);
-// add_test!(csr);
+add_test!(csr);
 // add_test!(illegal);
 add_test!(ld_misaligned);
 add_test!(lh_misaligned);
