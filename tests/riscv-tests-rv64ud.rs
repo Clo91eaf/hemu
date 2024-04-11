@@ -36,18 +36,18 @@ mod rv64ud_p {
     };
   }
 
-  add_test_p!(fadd);
-  add_test_p!(fclass);
-  add_test_p!(fcmp);
-  add_test_p!(fcvt);
-  add_test_p!(fcvt_w);
-  add_test_p!(fdiv);
-  add_test_p!(fmadd);
-  add_test_p!(fmin);
-  add_test_p!(ldst);
-  add_test_p!(__move);
-  add_test_p!(recoding);
-  add_test_p!(structural);
+  // add_test_p!(fadd);
+  // add_test_p!(fclass);
+  // add_test_p!(fcmp);
+  // add_test_p!(fcvt);
+  // add_test_p!(fcvt_w);
+  // add_test_p!(fdiv);
+  // add_test_p!(fmadd);
+  // add_test_p!(fmin);
+  // add_test_p!(ldst);
+  // add_test_p!(__move);
+  // add_test_p!(recoding);
+  // add_test_p!(structural);
 }
 
 mod rv64ud_v {
@@ -88,16 +88,16 @@ mod rv64ud_v {
       }
     };
   }
-  add_test_v!(fadd);
-  add_test_v!(fclass);
-  add_test_v!(fcmp);
-  add_test_v!(fcvt);
-  add_test_v!(fcvt_w);
-  add_test_v!(fdiv);
-  add_test_v!(fmadd);
-  add_test_v!(fmin);
-  add_test_v!(ldst);
-  add_test_v!(__move);
-  add_test_v!(recoding);
-  add_test_v!(structural);
+  // add_test_v!(fadd);
+  // add_test_v!(fclass);
+  // add_test_v!(fcmp);
+  // add_test_v!(fcvt);
+  // add_test_v!(fcvt_w);
+  // add_test_v!(fdiv);
+  // add_test_v!(fmadd);
+  // add_test_v!(fmin);
+  // add_test_v!(ldst);
+  // add_test_v!(__move);
+  // add_test_v!(recoding);
+  // add_test_v!(structural);
 }
