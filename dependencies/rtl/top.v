@@ -1,4 +1,4 @@
-module top_sram_wrapper(
+module top(
     input         clock,
     input         reset,
     // interrupts
