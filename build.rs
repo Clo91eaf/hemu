@@ -25,20 +25,13 @@ fn main() {
 
   // Generate CPP from Verilog
   let mut verilator = Verilator::default();
-
-  let dir = Path::new("myCPU");
-  let files: Vec<_> = fs::read_dir(dir)
-    .expect("Directory not found")
-    .filter_map(|entry| entry.ok().and_then(|e| e.path().to_str().map(|s| String::from(s))))
-    .collect();
-
-  println!("Files: {:?}", files);
-
-  verilator.with_coverage(true).with_trace(true);
-
-  for file in &files {
-    verilator.file_with_standard(file, Standard::Verilog2005);
-  }
-
-  verilator.file(out_dir.join("mycpu_top.cpp")).build("mycpu_top");
+  verilator
+    .with_coverage(true)
+    .with_trace(true)
+    .no_warn("fatal")
+    .no_warn("WIDTHTRUNC")
+    .file_with_standard("dependencies/rtl/PuaCpu.v", Standard::SystemVerilog2012)
+    .file_with_standard("dependencies/rtl/top.v", Standard::SystemVerilog2012)
+    .file(out_dir.join("top.cpp"))
+    .build("top");
 }

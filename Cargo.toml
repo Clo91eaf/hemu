@@ -6,10 +6,10 @@ edition = "2021"
 build = "build.rs"
 
 [dependencies]
-verilated = { path = "./verilator/verilated" }
-verilated-module = { path = "./verilator/verilated-module" }
+verilated = { path = "./dependencies/verilated-rs/verilated" }
+verilated-module = { path = "./dependencies/verilated-rs/verilated-module" }
 clap = { version = "4.3.11", features = ["derive"] }
 anyhow = "1.0.80"
 
 [build-dependencies]
-verilator = { path = "./verilator/verilator", features = ["gen", "module"] }
+verilator = { path = "./dependencies/verilated-rs/verilator", features = ["gen", "module"] }
