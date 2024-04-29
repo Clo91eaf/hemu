@@ -1,0 +1,3 @@
+[submodule "verilator"]
+	path = verilator
+	url = git@github.com:Anillc/verilated-rs.git
