@@ -1,18 +1,25 @@
 //! The emulator module represents an entire computer.
 
 use crate::cpu::Cpu;
+use crate::dut::Dut;
 use crate::exception::Trap;
 
 /// The emulator to hold a CPU.
 pub struct Emulator {
   /// The CPU which is the core implementation of this emulator.
   pub cpu: Cpu,
+
+  /// The DUT which is the peripheral devices of this emulator.
+  pub dut: Dut,
 }
 
 impl Emulator {
   /// Constructor for an emulator.
   pub fn new() -> Emulator {
-    Self { cpu: Cpu::new() }
+    Self {
+      cpu: Cpu::new(),
+      dut: Dut::new(),
+    }
   }
 
   /// Reset CPU state.

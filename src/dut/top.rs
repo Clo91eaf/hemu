@@ -2,7 +2,7 @@ use std::time::Duration;
 use verilated_module::module;
 
 #[module(top)]
-pub struct top {
+pub struct Top {
   #[port(clock)]
   pub clock: bool,
   #[port(reset)]
@@ -41,7 +41,7 @@ pub struct top {
 }
 
 pub fn create_tb() {
-  let mut tb: top = top::default();
+  let mut tb: Top = Top::default();
   tb.eval();
   tb.eval();
 
