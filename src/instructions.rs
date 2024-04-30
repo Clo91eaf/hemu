@@ -9,6 +9,8 @@ use rv64a::rv64a;
 use rv64f::rv64f;
 use rv64d::rv64d;
 
+use std::fmt;
+
 #[derive(Copy, Clone, Debug)]
 pub enum Instruction {
   Register(RegisterType),
@@ -311,21 +313,6 @@ impl Inst {
     }
   }
 
-  pub fn disassemble(&self, pc: u64) -> String {
-    let (rd, rs1, rs2, imm) = (self.rd, self.rs1, self.rs2, self.imm);
-    let rd = rd as usize;
-    let gpr = vec!["zero", "ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0", "s1", "a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6"];
-    match self.typ {
-      Instruction::Register(_)  => format!("{} {}, {}, {}", self.type_name, gpr[rd], gpr[rs1], gpr[rs2]),
-      Instruction::Immediate(_) => format!("{} {}, {}, {}", self.type_name, gpr[rd], gpr[rs1], imm),
-      Instruction::Store(_)     => format!("{} {}, {}({})", self.type_name, gpr[rs2], imm, gpr[rs1]),
-      Instruction::Branch(_)    => format!("{} {}, {}, {:x}", self.type_name, gpr[rs1], gpr[rs2], (pc as i64).wrapping_add(imm)),
-      Instruction::Jump(_)      => format!("{} {}, {:x}", self.type_name, gpr[rd], (imm as u64).wrapping_add(pc)),
-      Instruction::Upper(_)     => format!("{} {}, {:x}", self.type_name, gpr[rd], imm),
-      _ => format!("Unknown instruction")
-    }
-  }
-
   fn match_inst(&self, pattern: &str) -> bool {
     let mut mask = 0;
     let mut expected = 0;
@@ -352,6 +339,24 @@ impl Inst {
     self.type_name = instruction_pattern.name;
 
     Ok(())
+  }
+}
+
+impl fmt::Display for Inst {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    let (rd, rs1, rs2, imm) = (self.rd, self.rs1, self.rs2, self.imm);
+    let rd = rd as usize;
+    let gpr = vec!["zero", "ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0", "s1", "a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6"];
+    let output = match self.typ {
+      Instruction::Register(_)  => format!("{} {}, {}, {}", self.type_name, gpr[rd], gpr[rs1], gpr[rs2]),
+      Instruction::Immediate(_) => format!("{} {}, {}, {}", self.type_name, gpr[rd], gpr[rs1], imm),
+      Instruction::Store(_)     => format!("{} {}, {}({})", self.type_name, gpr[rs2], imm, gpr[rs1]),
+      Instruction::Branch(_)    => format!("{} {}, {}, pc + ({:x})", self.type_name, gpr[rs1], gpr[rs2], imm),
+      Instruction::Jump(_)      => format!("{} {}, pc + ({:x})", self.type_name, gpr[rd], imm),
+      Instruction::Upper(_)     => format!("{} {}, {:x}", self.type_name, gpr[rd], imm),
+      _ => format!("Unknown instruction")
+    };
+    write!(f, "{}", output)
   }
 }
 
