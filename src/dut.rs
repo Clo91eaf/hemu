@@ -6,7 +6,7 @@ use top::Top;
 // sram interface
 pub struct Dut {
   top: Top,
-  clocks: u64,
+  pub clocks: u64,
 }
 
 impl Dut {
@@ -15,16 +15,18 @@ impl Dut {
     top.eval();
     top.eval();
 
-    top.open_trace("counter.vcd", 99).unwrap();
-
     Dut { top, clocks: 0 }
   }
 
-  fn trace(&mut self) {
-    self.top.trace_at(Duration::from_nanos(20 * self.clocks));
+  pub fn exec(&mut self) -> anyhow::Result<()> {
+    
+    Ok(())
   }
 
   pub fn step(&mut self) -> anyhow::Result<()> {
+    // clocks:|0|1|2|3|45678
+    // reset: |-|-|_|_|_____
+    // clock: |-|_|-|_|-_-_-
     if self.clocks == 0 {
       self.top.reset_toggle();
     } else if self.clocks == 2 {
@@ -33,11 +35,9 @@ impl Dut {
 
     self.top.clock_toggle();
     self.top.eval();
-    self.trace();
 
     self.top.clock_toggle();
     self.top.eval();
-    self.trace();
 
     self.clocks += 1;
 
