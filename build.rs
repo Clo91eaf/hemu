@@ -1,4 +1,3 @@
-use std::path::Path;
 use std::path::PathBuf;
 use std::{env, fs};
 use verilator::gen::{Standard, Verilator};
@@ -28,8 +27,6 @@ fn main() {
   verilator
     .with_coverage(true)
     .with_trace(true)
-    .no_warn("fatal")
-    .no_warn("WIDTHTRUNC")
     .file_with_standard("dependencies/rtl/PuaCpu.v", Standard::SystemVerilog2012)
     .file_with_standard("dependencies/rtl/top.v", Standard::SystemVerilog2012)
     .file(out_dir.join("top.cpp"))
