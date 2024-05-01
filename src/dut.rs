@@ -1,5 +1,17 @@
 mod top;
 use top::Top;
+use crate::emulator::DebugInfo;
+
+pub struct SramRequest {
+  pub en: bool,
+  pub addr: u32,
+}
+
+impl SramRequest {
+  pub fn new(en: bool, addr: u32) -> Self {
+    SramRequest { en, addr }
+  }
+}
 
 // sram interface
 pub struct Dut {
@@ -42,8 +54,9 @@ impl Dut {
   }
 
   /// drive the instruction SRAM interface
-  pub fn step(&mut self, inst: u32) -> anyhow::Result<bool> {
+  pub fn step(&mut self, inst: u32, data: u64) -> anyhow::Result<(SramRequest, SramRequest, DebugInfo)> {
     self.top.set_inst_sram_rdata(inst);
+    self.top.set_data_sram_rdata(data);
 
     self.top.clock_toggle();
     self.top.eval();
@@ -60,7 +73,24 @@ impl Dut {
     println!("debug_reg_wnum: {}", self.top.debug_reg_wnum());
     println!("debug_wdata: 0x{:x}", self.top.debug_wdata());
 
-    Ok(self.top.inst_sram_en() != 0)
+    Ok({
+      (
+        SramRequest::new(
+          self.top.inst_sram_en() != 0,
+          self.top.inst_sram_addr(),
+        ),
+        SramRequest::new(
+          self.top.data_sram_en() != 0,
+          self.top.data_sram_addr(),
+        ),
+        DebugInfo::new(
+          self.top.debug_commit() != 0,
+          self.top.debug_pc(),
+          self.top.debug_reg_wnum(),
+          self.top.debug_wdata(),
+        )
+      )
+    })
   }
 }
 

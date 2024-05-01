@@ -1,11 +1,13 @@
 use std::fmt;
 
-use crate::cpu::{REGISTERS_COUNT, DRAM_BASE, DRAM_SIZE, POINTER_TO_DTB};
+use crate::cpu::{DRAM_BASE, DRAM_SIZE, POINTER_TO_DTB, REGISTERS_COUNT};
 
 /// The integer registers.
 #[derive(Debug)]
 pub struct Gpr {
   gpr: [u64; REGISTERS_COUNT],
+
+  pub record: Option<(u8, u64)>,
 }
 
 impl Gpr {
@@ -27,7 +29,7 @@ impl Gpr {
     // So, we need to set registers register to the state as they are when a bootloader finished.
     gpr[10] = 0;
     gpr[11] = POINTER_TO_DTB;
-    Self { gpr }
+    Self { gpr, record: None }
   }
 
   /// Read the value from a register.
@@ -35,11 +37,20 @@ impl Gpr {
     self.gpr[index as usize]
   }
 
+  pub fn reset_record(&mut self) {
+    self.record = None;
+  }
+
+  fn record(&mut self, wnum: u8, wdata: u64) {
+    self.record = Some((wnum, wdata));
+  }
+
   /// Write the value to a register.
   pub fn write(&mut self, index: u64, value: u64) {
     // Register x0 is hardwired with all bits equal to 0.
     if index != 0 {
       self.gpr[index as usize] = value;
+      self.record(index as u8, value);
     }
   }
 }

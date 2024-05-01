@@ -88,8 +88,6 @@ pub struct Cpu {
   reservation_set: Vec<u64>,
   /// Idle state. True when WFI is called, and becomes false when an interrupt happens.
   pub idle: bool,
-
-  pub diff: Vec<>,
 }
 
 impl Cpu {
@@ -225,7 +223,8 @@ impl Cpu {
   }
 
   /// Translate a virtual address to a physical address for the paged virtual-memory system.
-  fn translate(&mut self, addr: u64, access_type: AccessType) -> Result<u64, Exception> {
+  /// pub for dut to access
+  pub fn translate(&mut self, addr: u64, access_type: AccessType) -> Result<u64, Exception> {
     if !self.enable_paging || self.mode == Mode::Machine {
       return Ok(addr);
     }
@@ -461,18 +460,23 @@ impl Cpu {
       return Ok(0);
     }
 
+    // Reset the record of the register for difftest.
+    self.gpr.reset_record();
+
     // Fetch. It can be optimized by only one fetch.
     let inst16 = self.fetch(HALFWORD)?;
     let inst = self.fetch(WORD)?;
     match inst16 & 0b11 {
       0 | 1 | 2 => {
         self.execute_compressed(inst16)?;
+
         // Add 2 bytes to the program counter.
         self.pc = self.pc.wrapping_add(2);
         Ok(inst16)
       }
       _ => {
         self.execute_general(inst)?;
+
         // Add 4 bytes to the program counter.
         self.pc = self.pc.wrapping_add(4);
         Ok(inst)
