@@ -351,8 +351,8 @@ impl fmt::Display for Inst {
       Instruction::Register(_)  => format!("{} {}, {}, {}", self.type_name, gpr[rd], gpr[rs1], gpr[rs2]),
       Instruction::Immediate(_) => format!("{} {}, {}, {}", self.type_name, gpr[rd], gpr[rs1], imm),
       Instruction::Store(_)     => format!("{} {}, {}({})", self.type_name, gpr[rs2], imm, gpr[rs1]),
-      Instruction::Branch(_)    => format!("{} {}, {}, pc + ({:x})", self.type_name, gpr[rs1], gpr[rs2], imm),
-      Instruction::Jump(_)      => format!("{} {}, pc + ({:x})", self.type_name, gpr[rd], imm),
+      Instruction::Branch(_)    => format!("{} {}, {}, pc{:+}", self.type_name, gpr[rs1], gpr[rs2], imm),
+      Instruction::Jump(_)      => format!("{} {}, pc{:+}", self.type_name, gpr[rd], imm),
       Instruction::Upper(_)     => format!("{} {}, {:x}", self.type_name, gpr[rd], imm),
       _ => format!("Unknown instruction")
     };

@@ -22,9 +22,10 @@ impl Emulator {
     }
   }
 
-  /// Reset CPU state.
+  /// Reset CPU and DUT state.
   pub fn reset(&mut self) {
-    self.cpu.reset()
+    self.cpu.reset();
+    self.dut.reset();
   }
 
   /// Set binary data to the beginning of the DRAM from the emulator console.
@@ -62,6 +63,7 @@ impl Emulator {
 
   /// Start executing the emulator.
   pub fn start(&mut self) {
+    let mut inst: u32 = 0;
     loop {
       // ================ cpu ====================
       let pc = self.cpu.pc;
@@ -69,7 +71,9 @@ impl Emulator {
       println!("pc: {:#x}, inst: {}", pc, self.cpu.inst);
 
       // ================ dut ====================
-      self.dut.step().unwrap();
+      // continue to step the DUT until the instruction is ready
+      while !self.dut.step(inst).unwrap() {}
+      inst = self.cpu.inst.bits;
 
       match trap {
         Trap::Fatal => {

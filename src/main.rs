@@ -37,6 +37,8 @@ fn main() -> anyhow::Result<()> {
   // Create an emulator object and start the execution.
   let mut emu = Emulator::new();
 
+  emu.reset();
+
   emu.initialize_dram(kernel_data);
   emu.initialize_disk(img_data);
   emu.initialize_pc(DRAM_BASE);

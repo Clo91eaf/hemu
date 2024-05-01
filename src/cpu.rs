@@ -88,6 +88,8 @@ pub struct Cpu {
   reservation_set: Vec<u64>,
   /// Idle state. True when WFI is called, and becomes false when an interrupt happens.
   pub idle: bool,
+
+  pub diff: Vec<>,
 }
 
 impl Cpu {
