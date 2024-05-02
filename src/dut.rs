@@ -1,6 +1,6 @@
 mod top;
-use top::Top;
 use crate::emulator::DebugInfo;
+use top::Top;
 use tracing::info;
 
 pub struct SramRequest {
@@ -64,29 +64,25 @@ impl Dut {
 
     self.clocks += 1;
 
-    info!("==============================");
-    info!("clocks: {}", self.clocks);
-    info!("debug_commit: {}", self.top.debug_commit());
-    info!("debug_pc: 0x{:x}", self.top.debug_pc());
-    info!("debug_reg_wnum: {}", self.top.debug_reg_wnum());
-    info!("debug_wdata: 0x{:x}", self.top.debug_wdata());
+    info!(
+      "[dut] clocks: {} commit: {} pc: {:#010x} wnum: {} wdata: {:#018x}",
+      self.clocks,
+      self.top.debug_commit(),
+      self.top.debug_pc(),
+      self.top.debug_reg_wnum(),
+      self.top.debug_wdata()
+    );
 
     Ok({
       (
-        SramRequest::new(
-          self.top.inst_sram_en() != 0,
-          self.top.inst_sram_addr(),
-        ),
-        SramRequest::new(
-          self.top.data_sram_en() != 0,
-          self.top.data_sram_addr(),
-        ),
+        SramRequest::new(self.top.inst_sram_en() != 0, self.top.inst_sram_addr()),
+        SramRequest::new(self.top.data_sram_en() != 0, self.top.data_sram_addr()),
         DebugInfo::new(
           self.top.debug_commit() != 0,
           self.top.debug_pc(),
           self.top.debug_reg_wnum(),
           self.top.debug_wdata(),
-        )
+        ),
       )
     })
   }

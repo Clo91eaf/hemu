@@ -143,11 +143,11 @@ impl Emulator {
       loop {
         let pc = self.cpu.pc;
         let trap = self.execute();
-        info!("pc: {:#x}, inst: {}", pc, self.cpu.inst);
+        info!("[cpu] pc: {:#x}, inst: {}", pc, self.cpu.inst);
 
         match trap {
           Trap::Fatal => {
-            info!("pc: {:#x}, trap {:#?}", self.cpu.pc, trap);
+            info!("[cpu] pc: {:#x}, trap {:#?}", self.cpu.pc, trap);
             return;
           }
           _ => {}
