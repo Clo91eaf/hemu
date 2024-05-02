@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use hemu::bus::DRAM_BASE;
 use hemu::emulator::Emulator;
+use hemu::log::log_trace;
 
 use clap::Parser;
 
@@ -22,6 +23,8 @@ struct Args {
 
 /// Main function of RISC-V emulator for the CLI version.
 fn main() -> anyhow::Result<()> {
+  log_trace();
+
   let args = Args::parse();
 
   // Read the kernel bin(after objcopy) and the disk image.

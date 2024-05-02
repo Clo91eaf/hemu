@@ -1,6 +1,7 @@
 //! The emulator module represents an entire computer.
 
 use core::fmt;
+use tracing::{ info, error };
 
 use crate::cpu::Cpu;
 use crate::dut::Dut;
@@ -16,16 +17,17 @@ pub struct DebugInfo {
 
 impl fmt::Display for DebugInfo {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, "commit: {}, pc: 0x{:#x}, wnum: {}, wdata: 0x{:#x}", self.commit, self.pc, self.wnum, self.wdata)
+    write!(
+      f,
+      "commit: {}, pc: {:#x}, wnum: {}, wdata: {:#x}",
+      self.commit, self.pc, self.wnum, self.wdata
+    )
   }
 }
 
 impl PartialEq for DebugInfo {
   fn eq(&self, other: &Self) -> bool {
-    self.commit == other.commit
-      && self.pc == other.pc
-      && self.wnum == other.wnum
-      && self.wdata == other.wdata
+    self.commit == other.commit && self.pc == other.pc && self.wnum == other.wnum && self.wdata == other.wdata
   }
 }
 
@@ -33,7 +35,12 @@ impl Eq for DebugInfo {}
 
 impl DebugInfo {
   pub fn new(commit: bool, pc: u64, wnum: u8, wdata: u64) -> Self {
-    DebugInfo { commit, pc, wnum, wdata }
+    DebugInfo {
+      commit,
+      pc,
+      wnum,
+      wdata,
+    }
   }
 }
 
@@ -94,21 +101,53 @@ impl Emulator {
     }
   }
 
-  /// Start executing the emulator.
-  pub fn start(&mut self) {
+  fn dut_step(&mut self) -> DebugInfo {
     let mut inst: u32 = 0;
     let mut data: u64 = 0;
     loop {
+      let (inst_sram, data_sram, debug_info) = self.dut.step(inst, data).unwrap();
+
+      if data_sram.en {
+        let p_addr = self
+          .cpu
+          .translate(data_sram.addr as u64, crate::cpu::AccessType::Instruction)
+          .unwrap();
+
+        // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
+        // should be `Exception::InstructionAccessFault`.
+        data = self.cpu.bus.read(p_addr, crate::cpu::DOUBLEWORD).unwrap();
+      }
+
+      if inst_sram.en {
+        let p_pc = self
+          .cpu
+          .translate(inst_sram.addr as u64, crate::cpu::AccessType::Instruction)
+          .unwrap();
+
+        // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
+        // should be `Exception::InstructionAccessFault`.
+        inst = self.cpu.bus.read(p_pc, crate::cpu::WORD).unwrap() as u32;
+      }
+
+      if debug_info.commit {
+        return debug_info;
+      }
+    }
+  }
+
+  /// Start executing the emulator.
+  pub fn start(&mut self) {
+    loop {
       // ================ cpu ====================
-      let mut cpu_diff = DebugInfo::default();
+      let cpu_diff;
       loop {
         let pc = self.cpu.pc;
         let trap = self.execute();
-        println!("pc: {:#x}, inst: {}", pc, self.cpu.inst);
+        info!("pc: {:#x}, inst: {}", pc, self.cpu.inst);
 
         match trap {
           Trap::Fatal => {
-            println!("pc: {:#x}, trap {:#?}", self.cpu.pc, trap);
+            info!("pc: {:#x}, trap {:#?}", self.cpu.pc, trap);
             return;
           }
           _ => {}
@@ -123,37 +162,13 @@ impl Emulator {
         }
       }
 
-      // ================ dut ====================
-      // continue to step the DUT until the instruction is ready
-      let mut dut_diff = DebugInfo::default();
-      loop {
-        let (inst_sram, data_sram, debug_info) = self.dut.step(inst, data).unwrap();
-
-        if data_sram.en {
-          let p_addr = self.cpu.translate(data_sram.addr as u64, crate::cpu::AccessType::Instruction).unwrap();
-
-          // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
-          // should be `Exception::InstructionAccessFault`.
-          data = self.cpu.bus.read(p_addr, crate::cpu::DOUBLEWORD).unwrap();
-        }
-
-        if inst_sram.en {
-          let p_pc = self.cpu.translate(inst_sram.addr as u64, crate::cpu::AccessType::Instruction).unwrap();
-
-          // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
-          // should be `Exception::InstructionAccessFault`.
-          inst = self.cpu.bus.read(p_pc, crate::cpu::WORD).unwrap() as u32;
-        }
-
-        if debug_info.commit {
-          dut_diff = debug_info;
-          break;
-        }
-      }
+      let dut_diff = self.dut_step();
 
       // ==================== diff ====================
       if cpu_diff != dut_diff {
-        println!("pc: {:#x}\ncpu: {}\ndut: {}\n", self.cpu.pc, cpu_diff, dut_diff);
+        error!("difftest failed");
+        error!("cpu: {}", cpu_diff);
+        error!("dut: {}", dut_diff);
         return;
       }
     }

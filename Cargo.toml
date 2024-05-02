@@ -10,6 +10,8 @@ verilated = { path = "./dependencies/verilated-rs/verilated" }
 verilated-module = { path = "./dependencies/verilated-rs/verilated-module" }
 clap = { version = "4.3.11", features = ["derive"] }
 anyhow = "1.0.80"
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [build-dependencies]
 verilator = { path = "./dependencies/verilated-rs/verilator", features = ["gen", "module"] }

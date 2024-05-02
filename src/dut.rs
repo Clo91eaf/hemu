@@ -1,6 +1,7 @@
 mod top;
 use top::Top;
 use crate::emulator::DebugInfo;
+use tracing::info;
 
 pub struct SramRequest {
   pub en: bool,
@@ -45,9 +46,6 @@ impl Dut {
     self.top.clock_toggle();
     self.top.eval();
 
-    println!("inst_sram_en: {}", self.top.inst_sram_en());
-    println!("inst_sram_addr: 0x{:x}", self.top.inst_sram_addr());
-
     self.clocks += 1;
 
     self.top.reset_toggle();
@@ -66,12 +64,12 @@ impl Dut {
 
     self.clocks += 1;
 
-    println!("==============================");
-    println!("clocks: {}", self.clocks);
-    println!("debug_commit: {}", self.top.debug_commit());
-    println!("debug_pc: 0x{:x}", self.top.debug_pc());
-    println!("debug_reg_wnum: {}", self.top.debug_reg_wnum());
-    println!("debug_wdata: 0x{:x}", self.top.debug_wdata());
+    info!("==============================");
+    info!("clocks: {}", self.clocks);
+    info!("debug_commit: {}", self.top.debug_commit());
+    info!("debug_pc: 0x{:x}", self.top.debug_pc());
+    info!("debug_reg_wnum: {}", self.top.debug_reg_wnum());
+    info!("debug_wdata: 0x{:x}", self.top.debug_wdata());
 
     Ok({
       (
