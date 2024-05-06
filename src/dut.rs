@@ -1,5 +1,6 @@
 mod top;
 use crate::emulator::DebugInfo;
+use std::time::Duration;
 use top::Top;
 use tracing::info;
 
@@ -24,8 +25,8 @@ pub struct Dut {
 impl Dut {
   pub fn new() -> Self {
     let mut top = Top::default();
-    top.eval();
-    top.eval();
+
+    top.open_trace("wave.vcd", 99).unwrap();
 
     Dut {
       top,
@@ -34,34 +35,31 @@ impl Dut {
     }
   }
 
-  pub fn reset(&mut self) {
-    // clocks:|0|0|
-    // reset: |-|-|
-    // clock: |-|_|
-    self.top.reset_toggle();
+  fn eval(&mut self) {
+    self.top.clock_toggle();
+    self.top.eval();
+    self.top.trace_at(Duration::from_nanos(self.clocks * 10));
 
     self.top.clock_toggle();
     self.top.eval();
-
-    self.top.clock_toggle();
-    self.top.eval();
-
-    self.clocks += 1;
-
-    self.top.reset_toggle();
+    self.top.trace_at(Duration::from_nanos(self.clocks * 10 + 5));
   }
 
   /// drive the instruction SRAM interface
   pub fn step(&mut self, inst: u32, data: u64) -> anyhow::Result<(SramRequest, SramRequest, DebugInfo)> {
-    self.top.set_inst_sram_rdata(inst);
-    self.top.set_data_sram_rdata(data);
+    if self.clocks == 0 {
+      self.top.reset_toggle();
+    }
+    if self.clocks == 5 {
+      self.top.reset_toggle();
+    }
 
-    self.top.clock_toggle();
-    self.top.eval();
+    if self.clocks >= 5 {
+      self.top.set_inst_sram_rdata(inst);
+      self.top.set_data_sram_rdata(data);
+    }
 
-    self.top.clock_toggle();
-    self.top.eval();
-
+    self.eval();
     self.clocks += 1;
 
     info!(

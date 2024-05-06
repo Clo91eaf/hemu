@@ -65,7 +65,6 @@ impl Emulator {
   /// Reset CPU and DUT state.
   pub fn reset(&mut self) {
     self.cpu.reset();
-    self.dut.reset();
   }
 
   /// Set binary data to the beginning of the DRAM from the emulator console.

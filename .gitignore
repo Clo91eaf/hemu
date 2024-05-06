@@ -3,3 +3,4 @@
 /logs
 /dependencies/elf
 Cargo.lock
+*.vcd

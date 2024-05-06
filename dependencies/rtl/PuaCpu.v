@@ -103,7 +103,7 @@ module FetchUnit(	// playground/src/pipeline/fetch/FetchUnit.scala:9:7
   reg         io_decodeStage_data_valid_REG;	// playground/src/pipeline/fetch/FetchUnit.scala:29:49
   always @(posedge clock) begin	// playground/src/pipeline/fetch/FetchUnit.scala:9:7
     if (reset) begin	// playground/src/pipeline/fetch/FetchUnit.scala:9:7
-      pc <= 64'h80000000;	// playground/src/pipeline/fetch/FetchUnit.scala:15:19
+      pc <= 64'h7FFFFFFC;	// playground/src/pipeline/fetch/FetchUnit.scala:15:19
       io_decodeStage_data_valid_REG <= 1'h0;	// playground/src/pipeline/fetch/FetchUnit.scala:25:7, :29:49
     end
     else begin	// playground/src/pipeline/fetch/FetchUnit.scala:9:7
