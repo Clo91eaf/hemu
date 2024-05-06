@@ -95,20 +95,19 @@ module FetchUnit(	// playground/src/pipeline/fetch/FetchUnit.scala:9:7
   input  [31:0] io_instSram_rdata	// playground/src/pipeline/fetch/FetchUnit.scala:10:14
 );
 
-  reg  [63:0] pc;	// playground/src/pipeline/fetch/FetchUnit.scala:15:19
-  wire [31:0] _io_instSram_addr_T_4 =
-    io_ctrl_ctrlSignal_do_flush
-      ? io_ctrl_target[31:0]
-      : io_ctrl_ctrlSignal_allow_to_go ? pc[31:0] + 32'h4 : pc[31:0];	// playground/src/pipeline/fetch/FetchUnit.scala:10:14, :15:19, :22:8, src/main/scala/chisel3/util/Mux.scala:126:16
-  reg         io_decodeStage_data_valid_REG;	// playground/src/pipeline/fetch/FetchUnit.scala:29:49
+  reg [63:0] pc;	// playground/src/pipeline/fetch/FetchUnit.scala:16:19
+  reg        io_decodeStage_data_valid_REG;	// playground/src/pipeline/fetch/FetchUnit.scala:26:49
   always @(posedge clock) begin	// playground/src/pipeline/fetch/FetchUnit.scala:9:7
     if (reset) begin	// playground/src/pipeline/fetch/FetchUnit.scala:9:7
-      pc <= 64'h7FFFFFFC;	// playground/src/pipeline/fetch/FetchUnit.scala:15:19
-      io_decodeStage_data_valid_REG <= 1'h0;	// playground/src/pipeline/fetch/FetchUnit.scala:25:7, :29:49
+      pc <= 64'h7FFFFFFC;	// playground/src/pipeline/fetch/FetchUnit.scala:16:{19,40}
+      io_decodeStage_data_valid_REG <= 1'h0;	// playground/src/pipeline/fetch/FetchUnit.scala:22:7, :26:49
     end
     else begin	// playground/src/pipeline/fetch/FetchUnit.scala:9:7
-      pc <= {32'h0, _io_instSram_addr_T_4};	// playground/src/pipeline/fetch/FetchUnit.scala:15:19, src/main/scala/chisel3/util/Mux.scala:126:16
-      io_decodeStage_data_valid_REG <= ~reset;	// playground/src/pipeline/fetch/FetchUnit.scala:29:{49,50}
+      if (io_ctrl_ctrlSignal_do_flush)	// playground/src/pipeline/fetch/FetchUnit.scala:10:14
+        pc <= io_ctrl_target;	// playground/src/pipeline/fetch/FetchUnit.scala:16:19
+      else if (io_ctrl_ctrlSignal_allow_to_go)	// playground/src/pipeline/fetch/FetchUnit.scala:10:14
+        pc <= pc + 64'h4;	// playground/src/pipeline/fetch/FetchUnit.scala:16:19, :19:8
+      io_decodeStage_data_valid_REG <= ~reset;	// playground/src/pipeline/fetch/FetchUnit.scala:26:{49,50}
     end
   end // always @(posedge)
   `ifdef ENABLE_INITIAL_REG_	// playground/src/pipeline/fetch/FetchUnit.scala:9:7
@@ -124,19 +123,19 @@ module FetchUnit(	// playground/src/pipeline/fetch/FetchUnit.scala:9:7
         for (logic [1:0] i = 2'h0; i < 2'h3; i += 2'h1) begin
           _RANDOM[i] = `RANDOM;	// playground/src/pipeline/fetch/FetchUnit.scala:9:7
         end	// playground/src/pipeline/fetch/FetchUnit.scala:9:7
-        pc = {_RANDOM[2'h0], _RANDOM[2'h1]};	// playground/src/pipeline/fetch/FetchUnit.scala:9:7, :15:19
-        io_decodeStage_data_valid_REG = _RANDOM[2'h2][0];	// playground/src/pipeline/fetch/FetchUnit.scala:9:7, :29:49
+        pc = {_RANDOM[2'h0], _RANDOM[2'h1]};	// playground/src/pipeline/fetch/FetchUnit.scala:9:7, :16:19
+        io_decodeStage_data_valid_REG = _RANDOM[2'h2][0];	// playground/src/pipeline/fetch/FetchUnit.scala:9:7, :26:49
       `endif // RANDOMIZE_REG_INIT
     end // initial
     `ifdef FIRRTL_AFTER_INITIAL	// playground/src/pipeline/fetch/FetchUnit.scala:9:7
       `FIRRTL_AFTER_INITIAL	// playground/src/pipeline/fetch/FetchUnit.scala:9:7
     `endif // FIRRTL_AFTER_INITIAL
   `endif // ENABLE_INITIAL_REG_
-  assign io_decodeStage_data_inst = {32'h0, io_instSram_rdata};	// playground/src/pipeline/fetch/FetchUnit.scala:9:7, :15:19, :31:39
-  assign io_decodeStage_data_valid = io_decodeStage_data_valid_REG & ~reset;	// playground/src/pipeline/fetch/FetchUnit.scala:9:7, :29:{49,74,76}
-  assign io_decodeStage_data_pc = pc;	// playground/src/pipeline/fetch/FetchUnit.scala:9:7, :15:19
-  assign io_instSram_en = ~reset & pc[1:0] == 2'h0;	// playground/src/pipeline/fetch/FetchUnit.scala:9:7, :15:19, :32:{44,51}, :34:{24,38}
-  assign io_instSram_addr = _io_instSram_addr_T_4;	// playground/src/pipeline/fetch/FetchUnit.scala:9:7, src/main/scala/chisel3/util/Mux.scala:126:16
+  assign io_decodeStage_data_inst = {32'h0, io_instSram_rdata};	// playground/src/pipeline/fetch/FetchUnit.scala:9:7, :28:39
+  assign io_decodeStage_data_valid = io_decodeStage_data_valid_REG & ~reset;	// playground/src/pipeline/fetch/FetchUnit.scala:9:7, :26:{49,74,76}
+  assign io_decodeStage_data_pc = pc;	// playground/src/pipeline/fetch/FetchUnit.scala:9:7, :16:19
+  assign io_instSram_en = ~reset & pc[1:0] == 2'h0;	// playground/src/pipeline/fetch/FetchUnit.scala:9:7, :16:19, :29:{44,51}, :32:{24,38}
+  assign io_instSram_addr = pc[31:0];	// playground/src/pipeline/fetch/FetchUnit.scala:9:7, :16:19, :31:21
 endmodule
 
 module DecodeStage(	// playground/src/pipeline/decode/DecodeStage.scala:20:7

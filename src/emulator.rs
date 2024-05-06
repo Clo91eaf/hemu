@@ -142,7 +142,6 @@ impl Emulator {
       loop {
         let pc = self.cpu.pc;
         let trap = self.execute();
-        info!("[cpu] pc: {:#x}, inst: {}", pc, self.cpu.inst);
 
         match trap {
           Trap::Fatal => {
@@ -155,9 +154,12 @@ impl Emulator {
         match self.cpu.gpr.record {
           Some((wnum, wdata)) => {
             cpu_diff = DebugInfo::new(true, pc, wnum, wdata);
+            info!("[cpu] record: true, pc: {:#x}, inst: {}", pc, self.cpu.inst);
             break;
           }
-          None => {}
+          None => {
+            info!("[cpu] record: false, pc: {:#x}, inst: {}", pc, self.cpu.inst);
+          }
         }
       }
 
