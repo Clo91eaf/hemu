@@ -18,7 +18,9 @@ impl SramRequest {
 // sram interface
 pub struct Dut {
   top: Top,
-  pub clocks: u64,
+  clock: bool,
+  reset: bool,
+  pub ticks: u64,
   pub prepare_for_difftest: bool,
 }
 
@@ -30,41 +32,54 @@ impl Dut {
 
     Dut {
       top,
-      clocks: 0,
+      clock: false,
+      reset: false,
+      ticks: 0,
       prepare_for_difftest: false,
     }
   }
 
-  fn eval(&mut self) {
+  fn clock_toggle(&mut self) {
+    self.clock = !self.clock;
     self.top.clock_toggle();
-    self.top.eval();
-    self.top.trace_at(Duration::from_nanos(self.clocks * 10));
+  }
 
-    self.top.clock_toggle();
+  fn reset_toggle(&mut self) {
+    self.reset = !self.reset;
+    self.top.reset_toggle();
+  }
+
+  fn eval(&mut self) {
+    self.clock_toggle();
     self.top.eval();
-    self.top.trace_at(Duration::from_nanos(self.clocks * 10 + 5));
+    self.top.trace_at(Duration::from_nanos(self.ticks * 2));
+
+    self.clock_toggle();
+    self.top.eval();
+    self.top.trace_at(Duration::from_nanos(self.ticks * 2 + 1));
+    self.ticks += 1;
   }
 
   /// drive the instruction SRAM interface
   pub fn step(&mut self, inst: u32, data: u64) -> anyhow::Result<(SramRequest, SramRequest, DebugInfo)> {
-    if self.clocks == 0 {
-      self.top.reset_toggle();
+    if self.ticks == 0 {
+      self.reset_toggle();
     }
-    if self.clocks == 5 {
-      self.top.reset_toggle();
+    if self.ticks == 2 {
+      self.reset_toggle();
     }
 
-    if self.clocks >= 5 {
+    // reset = 0
+    if self.ticks >= 2 {
       self.top.set_inst_sram_rdata(inst);
       self.top.set_data_sram_rdata(data);
     }
 
     self.eval();
-    self.clocks += 1;
 
     info!(
-      "[dut] clocks: {} commit: {} pc: {:#010x} wnum: {} wdata: {:#018x}",
-      self.clocks,
+      "[dut] ticks: {} commit: {} pc: {:#010x} wnum: {} wdata: {:#018x}",
+      self.ticks,
       self.top.debug_commit(),
       self.top.debug_pc(),
       self.top.debug_reg_wnum(),
@@ -76,7 +91,7 @@ impl Dut {
         SramRequest::new(self.top.inst_sram_en() != 0, self.top.inst_sram_addr()),
         SramRequest::new(self.top.data_sram_en() != 0, self.top.data_sram_addr()),
         DebugInfo::new(
-          self.top.debug_commit() != 0,
+          self.top.debug_commit() != 0 && self.top.debug_reg_wnum() != 0,
           self.top.debug_pc(),
           self.top.debug_reg_wnum(),
           self.top.debug_wdata(),

@@ -1,7 +1,7 @@
 //! The emulator module represents an entire computer.
 
 use core::fmt;
-use tracing::{ info, error };
+use tracing::{error, info, trace};
 
 use crate::cpu::Cpu;
 use crate::dut::Dut;
@@ -103,6 +103,7 @@ impl Emulator {
   fn dut_step(&mut self) -> DebugInfo {
     let mut inst: u32 = 0;
     let mut data: u64 = 0;
+    let mut ticks = 20;
     loop {
       let (inst_sram, data_sram, debug_info) = self.dut.step(inst, data).unwrap();
 
@@ -115,6 +116,12 @@ impl Emulator {
         // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
         // should be `Exception::InstructionAccessFault`.
         data = self.cpu.bus.read(p_addr, crate::cpu::DOUBLEWORD).unwrap();
+        trace!(
+          "[dut] ticks:{} data_sram: addr={:#x} data={:#018x}",
+          self.dut.ticks,
+          data_sram.addr,
+          data
+        );
       }
 
       if inst_sram.en {
@@ -126,10 +133,22 @@ impl Emulator {
         // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
         // should be `Exception::InstructionAccessFault`.
         inst = self.cpu.bus.read(p_pc, crate::cpu::WORD).unwrap() as u32;
+
+        trace!(
+          "[dut] ticks:{} data_sram: addr={:#x} inst={:#018x}",
+          self.dut.ticks,
+          inst_sram.addr,
+          inst
+        );
       }
 
       if debug_info.commit {
         return debug_info;
+      }
+
+      ticks -= 1;
+      if ticks == 0 {
+        panic!("timeout");
       }
     }
   }
@@ -145,7 +164,7 @@ impl Emulator {
 
         match trap {
           Trap::Fatal => {
-            info!("[cpu] pc: {:#x}, trap {:#?}", self.cpu.pc, trap);
+            info!("[cpu] fatal pc: {:#x}, trap {:#?}", self.cpu.pc, trap);
             return;
           }
           _ => {}
