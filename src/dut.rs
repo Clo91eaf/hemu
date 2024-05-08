@@ -22,6 +22,8 @@ pub struct Dut {
   reset: bool,
   pub ticks: u64,
   pub prepare_for_difftest: bool,
+  pub inst: u32,
+  pub data: u64
 }
 
 impl Dut {
@@ -36,6 +38,8 @@ impl Dut {
       reset: false,
       ticks: 0,
       prepare_for_difftest: false,
+      inst: 0,
+      data: 0
     }
   }
 
@@ -67,10 +71,10 @@ impl Dut {
       _ => {},
     }
 
+    // a little trick: there must be 2 state transitions after clock posedge
     self.clock_toggle();
     self.top.eval();
     if self.ticks >= 2 {
-      assert!(self.clock && !self.reset);
       self.top.set_inst_sram_rdata(inst);
       self.top.set_data_sram_rdata(data);
       self.top.eval();

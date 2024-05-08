@@ -63,8 +63,7 @@ module Ctrl(	// playground/src/ctrl/Ctrl.scala:9:7
   input         io_executeUnit_data_is_load,	// playground/src/ctrl/Ctrl.scala:10:14
   input  [4:0]  io_executeUnit_data_reg_waddr,	// playground/src/ctrl/Ctrl.scala:10:14
   input         io_executeUnit_flush,	// playground/src/ctrl/Ctrl.scala:10:14
-  input  [63:0] io_executeUnit_target,	// playground/src/ctrl/Ctrl.scala:10:14
-  output        io_executeUnit_ctrlSignal_do_flush	// playground/src/ctrl/Ctrl.scala:10:14
+  input  [63:0] io_executeUnit_target	// playground/src/ctrl/Ctrl.scala:10:14
 );
 
   wire lw_stall =
@@ -78,7 +77,6 @@ module Ctrl(	// playground/src/ctrl/Ctrl.scala:9:7
   assign io_fetchUnit_ctrlSignal_do_flush = io_executeUnit_flush;	// playground/src/ctrl/Ctrl.scala:9:7
   assign io_decodeUnit_ctrlSignal_allow_to_go = ~lw_stall;	// playground/src/ctrl/Ctrl.scala:9:7, :18:85, :22:46
   assign io_decodeUnit_ctrlSignal_do_flush = io_executeUnit_flush | lw_stall;	// playground/src/ctrl/Ctrl.scala:9:7, :18:85, :29:61
-  assign io_executeUnit_ctrlSignal_do_flush = io_executeUnit_flush;	// playground/src/ctrl/Ctrl.scala:9:7
 endmodule
 
 module FetchUnit(	// playground/src/pipeline/fetch/FetchUnit.scala:9:7
@@ -1347,7 +1345,6 @@ endmodule
 module MemoryStage(	// playground/src/pipeline/memory/MemoryStage.scala:21:7
   input         clock,	// playground/src/pipeline/memory/MemoryStage.scala:21:7
                 reset,	// playground/src/pipeline/memory/MemoryStage.scala:21:7
-                io_ctrl_do_flush,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
   input  [63:0] io_executeUnit_data_pc,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
   input         io_executeUnit_data_info_valid,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
   input  [2:0]  io_executeUnit_data_info_fusel,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
@@ -1379,28 +1376,25 @@ module MemoryStage(	// playground/src/pipeline/memory/MemoryStage.scala:21:7
   always @(posedge clock) begin	// playground/src/pipeline/memory/MemoryStage.scala:21:7
     if (reset) begin	// playground/src/pipeline/memory/MemoryStage.scala:21:7
       data_pc <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:22:14, :27:21, :29:26, :30:10, :31:35
-      data_info_valid <= 1'h0;	// playground/src/pipeline/memory/MemoryStage.scala:22:14, :27:21, :29:26, :30:10, :31:35
+      data_info_valid <= 1'h0;	// playground/src/pipeline/memory/MemoryStage.scala:22:14, :27:21
       data_info_fusel <= 3'h0;	// playground/src/pipeline/memory/MemoryStage.scala:27:{21,34}
-      data_info_reg_wen <= 1'h0;	// playground/src/pipeline/memory/MemoryStage.scala:22:14, :27:21, :29:26, :30:10, :31:35
+      data_info_reg_wen <= 1'h0;	// playground/src/pipeline/memory/MemoryStage.scala:22:14, :27:21
       data_info_reg_waddr <= 5'h0;	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :27:21
       data_rd_info_wdata_0 <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:22:14, :27:21, :29:26, :30:10, :31:35
       data_rd_info_wdata_2 <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:22:14, :27:21, :29:26, :30:10, :31:35
       data_rd_info_wdata_5 <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:22:14, :27:21, :29:26, :30:10, :31:35
-      data_has_exception <= 1'h0;	// playground/src/pipeline/memory/MemoryStage.scala:22:14, :27:21, :29:26, :30:10, :31:35
+      data_has_exception <= 1'h0;	// playground/src/pipeline/memory/MemoryStage.scala:22:14, :27:21
     end
     else begin	// playground/src/pipeline/memory/MemoryStage.scala:21:7
-      data_pc <= io_ctrl_do_flush ? 64'h0 : io_executeUnit_data_pc;	// playground/src/pipeline/memory/MemoryStage.scala:22:14, :27:21, :29:26, :30:10, :31:35
-      data_info_valid <= ~io_ctrl_do_flush & io_executeUnit_data_info_valid;	// playground/src/pipeline/memory/MemoryStage.scala:27:21, :29:26, :30:10, :31:35
-      data_info_fusel <= io_ctrl_do_flush ? 3'h0 : io_executeUnit_data_info_fusel;	// playground/src/pipeline/memory/MemoryStage.scala:27:{21,34}, :29:26, :30:10, :31:35
-      data_info_reg_wen <= ~io_ctrl_do_flush & io_executeUnit_data_info_reg_wen;	// playground/src/pipeline/memory/MemoryStage.scala:27:21, :29:26, :30:10, :31:35
-      data_info_reg_waddr <= io_ctrl_do_flush ? 5'h0 : io_executeUnit_data_info_reg_waddr;	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :27:21, :29:26, :30:10, :31:35
-      data_rd_info_wdata_0 <=
-        io_ctrl_do_flush ? 64'h0 : io_executeUnit_data_rd_info_wdata_0;	// playground/src/pipeline/memory/MemoryStage.scala:22:14, :27:21, :29:26, :30:10, :31:35
-      data_rd_info_wdata_2 <=
-        io_ctrl_do_flush ? 64'h0 : io_executeUnit_data_rd_info_wdata_2;	// playground/src/pipeline/memory/MemoryStage.scala:22:14, :27:21, :29:26, :30:10, :31:35
-      data_rd_info_wdata_5 <=
-        io_ctrl_do_flush ? 64'h0 : io_executeUnit_data_rd_info_wdata_5;	// playground/src/pipeline/memory/MemoryStage.scala:22:14, :27:21, :29:26, :30:10, :31:35
-      data_has_exception <= 1'h0;	// playground/src/pipeline/memory/MemoryStage.scala:22:14, :27:21, :29:26, :30:10, :31:35
+      data_pc <= io_executeUnit_data_pc;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+      data_info_valid <= io_executeUnit_data_info_valid;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+      data_info_fusel <= io_executeUnit_data_info_fusel;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+      data_info_reg_wen <= io_executeUnit_data_info_reg_wen;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+      data_info_reg_waddr <= io_executeUnit_data_info_reg_waddr;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+      data_rd_info_wdata_0 <= io_executeUnit_data_rd_info_wdata_0;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+      data_rd_info_wdata_2 <= io_executeUnit_data_rd_info_wdata_2;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+      data_rd_info_wdata_5 <= io_executeUnit_data_rd_info_wdata_5;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+      data_has_exception <= 1'h0;	// playground/src/pipeline/memory/MemoryStage.scala:22:14, :27:21
     end
   end // always @(posedge)
   `ifdef ENABLE_INITIAL_REG_	// playground/src/pipeline/memory/MemoryStage.scala:21:7
@@ -1759,7 +1753,6 @@ module Core(	// playground/src/Core.scala:10:7
   wire        _Ctrl_io_fetchUnit_ctrlSignal_do_flush;	// playground/src/Core.scala:18:30
   wire        _Ctrl_io_decodeUnit_ctrlSignal_allow_to_go;	// playground/src/Core.scala:18:30
   wire        _Ctrl_io_decodeUnit_ctrlSignal_do_flush;	// playground/src/Core.scala:18:30
-  wire        _Ctrl_io_executeUnit_ctrlSignal_do_flush;	// playground/src/Core.scala:18:30
   Ctrl Ctrl (	// playground/src/Core.scala:18:30
     .io_fetchUnit_target                  (_Ctrl_io_fetchUnit_target),
     .io_fetchUnit_ctrlSignal_allow_to_go  (_Ctrl_io_fetchUnit_ctrlSignal_allow_to_go),
@@ -1773,8 +1766,7 @@ module Core(	// playground/src/Core.scala:10:7
     .io_executeUnit_data_is_load          (_ExecuteUnit_io_ctrl_data_is_load),	// playground/src/Core.scala:24:30
     .io_executeUnit_data_reg_waddr        (_ExecuteUnit_io_ctrl_data_reg_waddr),	// playground/src/Core.scala:24:30
     .io_executeUnit_flush                 (_ExecuteUnit_io_ctrl_flush),	// playground/src/Core.scala:24:30
-    .io_executeUnit_target                (_ExecuteUnit_io_ctrl_target),	// playground/src/Core.scala:24:30
-    .io_executeUnit_ctrlSignal_do_flush   (_Ctrl_io_executeUnit_ctrlSignal_do_flush)
+    .io_executeUnit_target                (_ExecuteUnit_io_ctrl_target)	// playground/src/Core.scala:24:30
   );
   FetchUnit FetchUnit (	// playground/src/Core.scala:19:30
     .clock                          (clock),
@@ -1934,7 +1926,6 @@ module Core(	// playground/src/Core.scala:10:7
   MemoryStage MemoryStage (	// playground/src/Core.scala:25:30
     .clock                               (clock),
     .reset                               (reset),
-    .io_ctrl_do_flush                    (_Ctrl_io_executeUnit_ctrlSignal_do_flush),	// playground/src/Core.scala:18:30
     .io_executeUnit_data_pc              (_ExecuteUnit_io_memoryStage_data_pc),	// playground/src/Core.scala:24:30
     .io_executeUnit_data_info_valid      (_ExecuteUnit_io_memoryStage_data_info_valid),	// playground/src/Core.scala:24:30
     .io_executeUnit_data_info_fusel      (_ExecuteUnit_io_memoryStage_data_info_fusel),	// playground/src/Core.scala:24:30

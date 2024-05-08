@@ -101,11 +101,9 @@ impl Emulator {
   }
 
   fn dut_step(&mut self) -> DebugInfo {
-    let mut inst: u32 = 0;
-    let mut data: u64 = 0;
     let mut ticks = 20;
     loop {
-      let (inst_sram, data_sram, debug_info) = self.dut.step(inst, data).unwrap();
+      let (inst_sram, data_sram, debug_info) = self.dut.step(self.dut.inst, self.dut.data).unwrap();
 
       if data_sram.en {
         let p_addr = self
@@ -115,12 +113,12 @@ impl Emulator {
 
         // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
         // should be `Exception::InstructionAccessFault`.
-        data = self.cpu.bus.read(p_addr, crate::cpu::DOUBLEWORD).unwrap();
+        self.dut.data = self.cpu.bus.read(p_addr, crate::cpu::DOUBLEWORD).unwrap();
         trace!(
           "[dut] ticks: {}, data_sram: addr: {:#x}, data: {:#018x}",
           self.dut.ticks,
           data_sram.addr,
-          data
+          self.dut.data
         );
       }
 
@@ -132,13 +130,13 @@ impl Emulator {
 
         // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
         // should be `Exception::InstructionAccessFault`.
-        inst = self.cpu.bus.read(p_pc, crate::cpu::WORD).unwrap() as u32;
+        self.dut.inst = self.cpu.bus.read(p_pc, crate::cpu::WORD).unwrap() as u32;
 
         trace!(
           "[dut] ticks: {}, inst_sram: addr: {:#x}, inst: {:#018x}",
           self.dut.ticks,
           inst_sram.addr,
-          inst
+          self.dut.inst
         );
       }
 
