@@ -117,7 +117,7 @@ impl Emulator {
         // should be `Exception::InstructionAccessFault`.
         data = self.cpu.bus.read(p_addr, crate::cpu::DOUBLEWORD).unwrap();
         trace!(
-          "[dut] ticks:{} data_sram: addr={:#x} data={:#018x}",
+          "[dut] ticks: {}, data_sram: addr: {:#x}, data: {:#018x}",
           self.dut.ticks,
           data_sram.addr,
           data
@@ -135,7 +135,7 @@ impl Emulator {
         inst = self.cpu.bus.read(p_pc, crate::cpu::WORD).unwrap() as u32;
 
         trace!(
-          "[dut] ticks:{} data_sram: addr={:#x} inst={:#018x}",
+          "[dut] ticks: {}, inst_sram: addr: {:#x}, inst: {:#018x}",
           self.dut.ticks,
           inst_sram.addr,
           inst

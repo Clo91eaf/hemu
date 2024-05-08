@@ -62,20 +62,26 @@ impl Dut {
 
   /// drive the instruction SRAM interface
   pub fn step(&mut self, inst: u32, data: u64) -> anyhow::Result<(SramRequest, SramRequest, DebugInfo)> {
-    if self.ticks == 0 {
-      self.reset_toggle();
-    }
-    if self.ticks == 2 {
-      self.reset_toggle();
+    match self.ticks {
+      0 | 2 => self.reset_toggle(),
+      _ => {},
     }
 
-    // reset = 0
+    self.clock_toggle();
+    self.top.eval();
     if self.ticks >= 2 {
+      assert!(self.clock && !self.reset);
       self.top.set_inst_sram_rdata(inst);
       self.top.set_data_sram_rdata(data);
-    }
+      self.top.eval();
+    } 
+    self.top.trace_at(Duration::from_nanos(self.ticks * 2));
 
-    self.eval();
+    self.clock_toggle();
+    self.top.eval();
+    self.top.trace_at(Duration::from_nanos(self.ticks * 2 + 1));
+
+    self.ticks += 1;
 
     info!(
       "[dut] ticks: {} commit: {} pc: {:#010x} wnum: {} wdata: {:#018x}",
