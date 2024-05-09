@@ -17,7 +17,7 @@ use std::{collections::VecDeque, io};
 const INST_BUFFER_SIZE: usize = 10;
 const CPU_BUFFER_SIZE: usize = 10;
 const DUT_BUFFER_SIZE: usize = 10;
-const DIFF_BUFFER_SIZE: usize = 1;
+const DIFF_BUFFER_SIZE: usize = 5;
 
 #[derive(Default)]
 pub struct DebugInfo {
@@ -71,6 +71,10 @@ impl Buffer {
       self.info.pop_front();
     }
     self.info.push_back(info);
+  }
+
+  fn clear(&mut self) {
+    self.info.clear();
   }
 }
 
@@ -390,11 +394,10 @@ impl Emulator {
 
         match trap {
           Trap::Fatal => {
-            // info!("[cpu] fatal pc: {:#x}, trap {:#?}", self.cpu.pc, trap);
             self
               .ui_buffer
               .diff
-              .push(format!("[cpu] fatal pc: {:#x}, trap {:#?}", self.cpu.pc, trap));
+              .push(format!("fatal pc: {:#x}, trap {:#?}", self.cpu.pc, trap));
             return;
           }
           _ => {}
@@ -403,19 +406,17 @@ impl Emulator {
         match self.cpu.gpr.record {
           Some((wnum, wdata)) => {
             cpu_diff = DebugInfo::new(true, pc, wnum, wdata);
-            // info!("[cpu] record: true, pc: {:#x}, inst: {}", pc, self.cpu.inst);
             self
               .ui_buffer
               .cpu
-              .push(format!("[cpu] record: true, pc: {:#x}, inst: {}", pc, self.cpu.inst));
+              .push(format!("record: true, pc: {:#x}, inst: {}", pc, self.cpu.inst));
             break;
           }
           None => {
-            // info!("[cpu] record: false, pc: {:#x}, inst: {}", pc, self.cpu.inst);
             self
               .ui_buffer
               .cpu
-              .push(format!("[cpu] record: false, pc: {:#x}, inst: {}", pc, self.cpu.inst));
+              .push(format!("record: false, pc: {:#x}, inst: {}", pc, self.cpu.inst));
           }
         }
       }
@@ -436,7 +437,7 @@ impl Emulator {
           self.dut.data = self.cpu.bus.read(p_addr, crate::cpu::DOUBLEWORD).unwrap();
 
           self.ui_buffer.dut.push(format!(
-            "[dut] ticks: {}, data_sram: addr: {:#x}, data: {:#018x}",
+            "{}, data_sram: addr: {:#x}, data: {:#018x}",
             self.dut.ticks, data_sram.addr, self.dut.data
           ))
         }
@@ -452,7 +453,7 @@ impl Emulator {
           self.dut.inst = self.cpu.bus.read(p_pc, crate::cpu::WORD).unwrap() as u32;
 
           self.ui_buffer.dut.push(format!(
-            "[dut] ticks: {}, inst_sram: addr: {:#x}, inst: {:#018x}",
+            "{}, inst_sram: pc: {:#x}, inst: {:#010x}",
             self.dut.ticks, inst_sram.addr, self.dut.inst
           ))
         }
@@ -463,7 +464,7 @@ impl Emulator {
         }
       }
       self.ui_buffer.dut.push(format!(
-        "[dut] ticks: {} pc: {:#010x} wnum: {} wdata: {:#018x}",
+        "{}, pc: {:#010x} wnum: {} wdata: {:#018x}",
         self.dut.ticks,
         self.dut.top.debug_pc(),
         self.dut.top.debug_reg_wnum(),
@@ -472,16 +473,19 @@ impl Emulator {
 
       // ==================== diff ====================
       if cpu_diff != dut_diff {
-        // error!("difftest failed");
+        self.ui_buffer.diff.clear();
+
         self.ui_buffer.diff.push("difftest failed".to_string());
-        // error!("last: {}", last_diff);
         self.ui_buffer.diff.push(format!("last: {}", last_diff));
-        // error!("cpu : {}", cpu_diff);
         self.ui_buffer.diff.push(format!("cpu : {}", cpu_diff));
-        // error!("dut : {}", dut_diff);
         self.ui_buffer.diff.push(format!("dut : {}", dut_diff));
 
-        self.exit();
+        while !self.exit {
+          terminal.draw(|frame| self.render_frame(frame)).unwrap();
+          self.handle_events().unwrap();
+        }
+
+        return;
       }
       last_diff = cpu_diff;
 
