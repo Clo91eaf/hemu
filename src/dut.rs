@@ -53,17 +53,6 @@ impl Dut {
     self.top.reset_toggle();
   }
 
-  fn eval(&mut self) {
-    self.clock_toggle();
-    self.top.eval();
-    self.top.trace_at(Duration::from_nanos(self.ticks * 2));
-
-    self.clock_toggle();
-    self.top.eval();
-    self.top.trace_at(Duration::from_nanos(self.ticks * 2 + 1));
-    self.ticks += 1;
-  }
-
   /// drive the instruction SRAM interface
   pub fn step(&mut self, inst: u32, data: u64) -> anyhow::Result<(SramRequest, SramRequest, DebugInfo)> {
     match self.ticks {
