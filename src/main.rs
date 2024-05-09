@@ -21,15 +21,26 @@ struct Args {
   file: Option<PathBuf>,
 
   /// Difftest
+  #[arg(short, long, default_value = "info")]
+  log: String,
+
+  /// Difftest
   #[arg(short, long)]
   diff: bool,
+
+  /// Enable tui
+  #[arg(short, long)]
+  tui: bool
 }
 
 /// Main function of RISC-V emulator for the CLI version.
 fn main() -> anyhow::Result<()> {
-  log_trace();
-
   let args = Args::parse();
+
+  // Set the log level.
+  // "error", "warn", "info", "debug", "trace"
+  let level = args.log.parse()?;
+  log_trace(level);
 
   // Read the kernel bin(after objcopy) and the disk image.
   let mut kernel_file = File::open(args.kernel)?;
