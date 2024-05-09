@@ -37,3 +37,4 @@ pub mod emulator;
 pub mod exception;
 pub mod interrupt;
 pub mod rom;
+pub mod tui;

@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use hemu::bus::DRAM_BASE;
 use hemu::emulator::Emulator;
+use hemu::tui;
 
 use clap::Parser;
 
@@ -18,6 +19,10 @@ struct Args {
   /// A raw disk image
   #[arg(short = 'f', long = "file")]
   file: Option<PathBuf>,
+
+  // /// Enable tui mode
+  // #[arg(short = 't', long = "tui")]
+  // tui: bool,
 }
 
 /// Main function of RISC-V emulator for the CLI version.
@@ -37,11 +42,13 @@ fn main() -> anyhow::Result<()> {
   // Create an emulator object and start the execution.
   let mut emu = Emulator::new();
 
+  let mut terminal = tui::init()?;
+
   emu.initialize_dram(kernel_data);
   emu.initialize_disk(img_data);
   emu.initialize_pc(DRAM_BASE);
 
-  emu.start();
+  emu.start(&mut terminal);
 
   Ok(())
 }
