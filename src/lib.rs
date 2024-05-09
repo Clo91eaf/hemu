@@ -38,3 +38,4 @@ pub mod exception;
 pub mod interrupt;
 pub mod rom;
 pub mod log;
+pub mod tui;

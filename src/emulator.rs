@@ -6,6 +6,18 @@ use tracing::{error, info, trace};
 use crate::cpu::Cpu;
 use crate::dut::Dut;
 use crate::exception::Trap;
+use crate::tui;
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
+use ratatui::{
+  prelude::*,
+  widgets::{block::*, *},
+};
+use std::{collections::VecDeque, io};
+
+const INST_BUFFER_SIZE: usize = 10;
+const CPU_BUFFER_SIZE: usize = 10;
+const DUT_BUFFER_SIZE: usize = 10;
+const DIFF_BUFFER_SIZE: usize = 1;
 
 #[derive(Default)]
 pub struct DebugInfo {
@@ -40,6 +52,56 @@ impl DebugInfo {
   }
 }
 
+#[derive(Default)]
+struct Buffer {
+  info: VecDeque<String>,
+  size: usize,
+}
+
+impl Buffer {
+  fn new(size: usize) -> Self {
+    Self {
+      info: VecDeque::new(),
+      size,
+    }
+  }
+
+  fn push(&mut self, info: String) {
+    if self.info.len() >= self.size {
+      self.info.pop_front();
+    }
+    self.info.push_back(info);
+  }
+}
+
+impl fmt::Display for Buffer {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    for info in &self.info {
+      write!(f, "{}\n", info)?;
+    }
+    Ok(())
+  }
+}
+
+#[derive(Default)]
+struct UIBuffer {
+  inst: Buffer,
+  cpu: Buffer,
+  dut: Buffer,
+  diff: Buffer,
+}
+
+impl UIBuffer {
+  pub fn new() -> Self {
+    UIBuffer {
+      inst: Buffer::new(INST_BUFFER_SIZE),
+      cpu: Buffer::new(CPU_BUFFER_SIZE),
+      dut: Buffer::new(DUT_BUFFER_SIZE),
+      diff: Buffer::new(DIFF_BUFFER_SIZE),
+    }
+  }
+}
+
 /// The emulator to hold a CPU.
 pub struct Emulator {
   /// The CPU which is the core implementation of this emulator.
@@ -47,6 +109,12 @@ pub struct Emulator {
 
   /// The DUT which is the peripheral devices of this emulator.
   pub dut: Dut,
+
+  /// The flag to exit the emulator.
+  exit: bool,
+
+  /// UI information
+  ui_buffer: UIBuffer,
 }
 
 impl Emulator {
@@ -55,12 +123,18 @@ impl Emulator {
     Self {
       cpu: Cpu::new(),
       dut: Dut::new(),
+      exit: false,
+      ui_buffer: UIBuffer::new(),
     }
   }
 
   /// Reset CPU and DUT state.
   pub fn reset(&mut self) {
     self.cpu.reset();
+  }
+
+  fn exit(&mut self) {
+    self.exit = true;
   }
 
   /// Set binary data to the beginning of the DRAM from the emulator console.
@@ -96,55 +170,93 @@ impl Emulator {
     }
   }
 
-  fn dut_step(&mut self) -> DebugInfo {
-    let mut ticks = 20;
-    loop {
-      let (inst_sram, data_sram, debug_info) = self.dut.step(self.dut.inst, self.dut.data).unwrap();
+  fn render_frame(&self, frame: &mut Frame) {
+    // layout
+    let layout_vertical = Layout::default()
+      .direction(Direction::Vertical)
+      .constraints(vec![
+        Constraint::Percentage(40),
+        Constraint::Percentage(40),
+        Constraint::Percentage(20),
+      ])
+      .split(frame.size());
 
-      if data_sram.en {
-        let p_addr = self
-          .cpu
-          .translate(data_sram.addr as u64, crate::cpu::AccessType::Instruction)
-          .unwrap();
+    let layout_horizontal = Layout::default()
+      .direction(Direction::Horizontal)
+      .constraints(vec![Constraint::Percentage(50), Constraint::Percentage(50)])
+      .split(layout_vertical[1]);
 
-        // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
-        // should be `Exception::InstructionAccessFault`.
-        self.dut.data = self.cpu.bus.read(p_addr, crate::cpu::DOUBLEWORD).unwrap();
-        trace!(
-          "[dut] ticks: {}, data_sram: addr: {:#x}, data: {:#018x}",
-          self.dut.ticks,
-          data_sram.addr,
-          self.dut.data
-        );
-      }
+    // render
+    frame.render_widget(
+      Paragraph::new(self.ui_buffer.inst.to_string())
+        .block(
+          Block::bordered()
+            .title("Instructions")
+            .title_alignment(Alignment::Left)
+            .border_type(BorderType::Rounded),
+        )
+        .style(Style::default().fg(Color::Cyan))
+        .left_aligned(),
+      layout_vertical[0],
+    );
 
-      if inst_sram.en {
-        let p_pc = self
-          .cpu
-          .translate(inst_sram.addr as u64, crate::cpu::AccessType::Instruction)
-          .unwrap();
+    frame.render_widget(
+      Paragraph::new(self.ui_buffer.cpu.to_string())
+        .block(
+          Block::bordered()
+            .title("CPU")
+            .title_alignment(Alignment::Left)
+            .border_type(BorderType::Rounded),
+        )
+        .style(Style::default().fg(Color::Cyan))
+        .left_aligned(),
+      layout_horizontal[0],
+    );
 
-        // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
-        // should be `Exception::InstructionAccessFault`.
-        self.dut.inst = self.cpu.bus.read(p_pc, crate::cpu::WORD).unwrap() as u32;
+    frame.render_widget(
+      Paragraph::new(self.ui_buffer.dut.to_string())
+        .block(
+          Block::bordered()
+            .title("DUT")
+            .title_alignment(Alignment::Left)
+            .border_type(BorderType::Rounded),
+        )
+        .style(Style::default().fg(Color::Cyan))
+        .left_aligned(),
+      layout_horizontal[1],
+    );
 
-        trace!(
-          "[dut] ticks: {}, inst_sram: addr: {:#x}, inst: {:#018x}",
-          self.dut.ticks,
-          inst_sram.addr,
-          self.dut.inst
-        );
-      }
+    frame.render_widget(
+      Paragraph::new(self.ui_buffer.diff.to_string())
+      .block(
+        Block::bordered()
+          .title("Difftest Status")
+          .title_alignment(Alignment::Center)
+          .border_type(BorderType::Rounded),
+      )
+      .style(Style::default().fg(Color::Cyan))
+      .centered(),
+      layout_vertical[2],
+    );
+  }
 
-      if debug_info.commit {
-        return debug_info;
-      }
-
-      ticks -= 1;
-      if ticks == 0 {
-        panic!("timeout");
-      }
+  fn handle_key_event(&mut self, key_event: KeyEvent) {
+    match key_event.code {
+      KeyCode::Char('q') => self.exit(),
+      KeyCode::Char('Q') => self.exit(),
+      _ => {}
     }
+  }
+
+  /// updates the application's state based on user input
+  fn handle_events(&mut self) -> io::Result<()> {
+    match event::read()? {
+      // it's important to check that the event is a key press event as
+      // crossterm also emits key release and repeat events on Windows.
+      Event::Key(key_event) if key_event.kind == KeyEventKind::Press => self.handle_key_event(key_event),
+      _ => {}
+    };
+    Ok(())
   }
 
   pub fn start(&mut self) {
@@ -193,7 +305,59 @@ impl Emulator {
         }
       }
 
-      let dut_diff = self.dut_step();
+      let dut_diff;
+
+      loop {
+        let (inst_sram, data_sram, debug_info) = self.dut.step(self.dut.inst, self.dut.data).unwrap();
+
+        if data_sram.en {
+          let p_addr = self
+            .cpu
+            .translate(data_sram.addr as u64, crate::cpu::AccessType::Instruction)
+            .unwrap();
+
+          // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
+          // should be `Exception::InstructionAccessFault`.
+          self.dut.data = self.cpu.bus.read(p_addr, crate::cpu::DOUBLEWORD).unwrap();
+          trace!(
+            "[dut] ticks: {}, data_sram: addr: {:#x}, data: {:#018x}",
+            self.dut.ticks,
+            data_sram.addr,
+            self.dut.data
+          );
+        }
+
+        if inst_sram.en {
+          let p_pc = self
+            .cpu
+            .translate(inst_sram.addr as u64, crate::cpu::AccessType::Instruction)
+            .unwrap();
+
+          // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
+          // should be `Exception::InstructionAccessFault`.
+          self.dut.inst = self.cpu.bus.read(p_pc, crate::cpu::WORD).unwrap() as u32;
+
+          trace!(
+            "[dut] ticks: {}, inst_sram: addr: {:#x}, inst: {:#018x}",
+            self.dut.ticks,
+            inst_sram.addr,
+            self.dut.inst
+          );
+        }
+
+        if debug_info.commit {
+          dut_diff = debug_info;
+          break;
+        }
+      }
+      info!(
+        "[dut] ticks: {} commit: {} pc: {:#010x} wnum: {} wdata: {:#018x}",
+        self.dut.ticks,
+        self.dut.top.debug_commit(),
+        self.dut.top.debug_pc(),
+        self.dut.top.debug_reg_wnum(),
+        self.dut.top.debug_wdata()
+      );
 
       // ==================== diff ====================
       if cpu_diff != dut_diff {
@@ -204,6 +368,126 @@ impl Emulator {
         return;
       }
       last_diff = cpu_diff;
+    }
+  }
+
+  /// Start executing the emulator with difftest and tui.
+  pub fn start_diff_tui(&mut self, terminal: &mut tui::Tui) {
+    self.ui_buffer.diff.push("running".to_string());
+    let mut last_diff = DebugInfo::default();
+
+    while !self.exit {
+      // ================ cpu ====================
+      let cpu_diff;
+      loop {
+        let pc = self.cpu.pc;
+        let trap = self.execute();
+
+        self
+          .ui_buffer
+          .inst
+          .push(format!("pc: {:#x}, inst: {}", pc, self.cpu.inst));
+
+        match trap {
+          Trap::Fatal => {
+            // info!("[cpu] fatal pc: {:#x}, trap {:#?}", self.cpu.pc, trap);
+            self
+              .ui_buffer
+              .diff
+              .push(format!("[cpu] fatal pc: {:#x}, trap {:#?}", self.cpu.pc, trap));
+            return;
+          }
+          _ => {}
+        }
+
+        match self.cpu.gpr.record {
+          Some((wnum, wdata)) => {
+            cpu_diff = DebugInfo::new(true, pc, wnum, wdata);
+            // info!("[cpu] record: true, pc: {:#x}, inst: {}", pc, self.cpu.inst);
+            self
+              .ui_buffer
+              .cpu
+              .push(format!("[cpu] record: true, pc: {:#x}, inst: {}", pc, self.cpu.inst));
+            break;
+          }
+          None => {
+            // info!("[cpu] record: false, pc: {:#x}, inst: {}", pc, self.cpu.inst);
+            self
+              .ui_buffer
+              .cpu
+              .push(format!("[cpu] record: false, pc: {:#x}, inst: {}", pc, self.cpu.inst));
+          }
+        }
+      }
+
+      let dut_diff;
+
+      loop {
+        let (inst_sram, data_sram, debug_info) = self.dut.step(self.dut.inst, self.dut.data).unwrap();
+
+        if data_sram.en {
+          let p_addr = self
+            .cpu
+            .translate(data_sram.addr as u64, crate::cpu::AccessType::Instruction)
+            .unwrap();
+
+          // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
+          // should be `Exception::InstructionAccessFault`.
+          self.dut.data = self.cpu.bus.read(p_addr, crate::cpu::DOUBLEWORD).unwrap();
+
+          self.ui_buffer.dut.push(format!(
+            "[dut] ticks: {}, data_sram: addr: {:#x}, data: {:#018x}",
+            self.dut.ticks, data_sram.addr, self.dut.data
+          ))
+        }
+
+        if inst_sram.en {
+          let p_pc = self
+            .cpu
+            .translate(inst_sram.addr as u64, crate::cpu::AccessType::Instruction)
+            .unwrap();
+
+          // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
+          // should be `Exception::InstructionAccessFault`.
+          self.dut.inst = self.cpu.bus.read(p_pc, crate::cpu::WORD).unwrap() as u32;
+
+          self.ui_buffer.dut.push(format!(
+            "[dut] ticks: {}, inst_sram: addr: {:#x}, inst: {:#018x}",
+            self.dut.ticks, inst_sram.addr, self.dut.inst
+          ))
+        }
+
+        if debug_info.commit {
+          dut_diff = debug_info;
+          break;
+        }
+      }
+      self.ui_buffer.dut.push(format!(
+        "[dut] ticks: {} pc: {:#010x} wnum: {} wdata: {:#018x}",
+        self.dut.ticks,
+        self.dut.top.debug_pc(),
+        self.dut.top.debug_reg_wnum(),
+        self.dut.top.debug_wdata()
+      ));
+
+      // ==================== diff ====================
+      if cpu_diff != dut_diff {
+        // error!("difftest failed");
+        self.ui_buffer.diff.push("difftest failed".to_string());
+        // error!("last: {}", last_diff);
+        self.ui_buffer.diff.push(format!("last: {}", last_diff));
+        // error!("cpu : {}", cpu_diff);
+        self.ui_buffer.diff.push(format!("cpu : {}", cpu_diff));
+        // error!("dut : {}", dut_diff);
+        self.ui_buffer.diff.push(format!("dut : {}", dut_diff));
+
+        self.exit();
+      }
+      last_diff = cpu_diff;
+
+      // tui
+      terminal.draw(|frame| self.render_frame(frame)).unwrap();
+      self.handle_events().unwrap();
     }
   }
 }

@@ -2,7 +2,6 @@ mod top;
 use crate::emulator::DebugInfo;
 use std::time::Duration;
 use top::Top;
-use tracing::info;
 
 pub struct SramRequest {
   pub en: bool,
@@ -17,7 +16,7 @@ impl SramRequest {
 
 // sram interface
 pub struct Dut {
-  top: Top,
+  pub top: Top,
   clock: bool,
   reset: bool,
   pub ticks: u64,
@@ -76,14 +75,6 @@ impl Dut {
 
     self.ticks += 1;
 
-    info!(
-      "[dut] ticks: {} commit: {} pc: {:#010x} wnum: {} wdata: {:#018x}",
-      self.ticks,
-      self.top.debug_commit(),
-      self.top.debug_pc(),
-      self.top.debug_reg_wnum(),
-      self.top.debug_wdata()
-    );
 
     Ok({
       (

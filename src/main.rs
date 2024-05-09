@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use hemu::bus::DRAM_BASE;
 use hemu::emulator::Emulator;
 use hemu::log::log_trace;
+use hemu::tui;
 
 use clap::Parser;
 
@@ -30,7 +31,7 @@ struct Args {
 
   /// Enable tui
   #[arg(short, long)]
-  tui: bool
+  tui: bool,
 }
 
 /// Main function of RISC-V emulator for the CLI version.
@@ -61,10 +62,16 @@ fn main() -> anyhow::Result<()> {
   emu.initialize_disk(img_data);
   emu.initialize_pc(DRAM_BASE);
 
-  match args.diff {
-    true => emu.start_diff(),
-    false => emu.start(),
+  let mut terminal = tui::init()?;
+
+  match (args.diff, args.tui) {
+    (true, true) => emu.start_diff_tui(&mut terminal),
+    (true, false) => emu.start_diff(),
+    (false, false) => emu.start(),
+    _ => panic!("Tui without difftest is not supported yet."),
   }
+
+  tui::restore()?;
 
   Ok(())
 }
