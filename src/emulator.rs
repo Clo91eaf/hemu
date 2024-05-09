@@ -17,11 +17,7 @@ pub struct DebugInfo {
 
 impl fmt::Display for DebugInfo {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(
-      f,
-      "pc: {:#x}, wnum: {}, wdata: {:#x}",
-      self.pc, self.wnum, self.wdata
-    )
+    write!(f, "pc: {:#x}, wnum: {}, wdata: {:#x}", self.pc, self.wnum, self.wdata)
   }
 }
 
@@ -151,8 +147,24 @@ impl Emulator {
     }
   }
 
-  /// Start executing the emulator.
   pub fn start(&mut self) {
+    loop {
+      let pc = self.cpu.pc;
+      let trap = self.execute();
+      info!("pc: {:#x}, inst: {}", pc, self.cpu.inst);
+
+      match trap {
+        Trap::Fatal => {
+          info!("fatal pc: {:#x}, trap {:#?}", self.cpu.pc, trap);
+          return;
+        }
+        _ => {}
+      }
+    }
+  }
+
+  /// Start executing the emulator.
+  pub fn start_diff(&mut self) {
     let mut last_diff = DebugInfo::default();
     loop {
       // ================ cpu ====================

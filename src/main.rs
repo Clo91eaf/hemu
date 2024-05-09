@@ -19,6 +19,10 @@ struct Args {
   /// A raw disk image
   #[arg(short = 'f', long = "file")]
   file: Option<PathBuf>,
+
+  /// Difftest
+  #[arg(short, long)]
+  diff: bool,
 }
 
 /// Main function of RISC-V emulator for the CLI version.
@@ -46,7 +50,10 @@ fn main() -> anyhow::Result<()> {
   emu.initialize_disk(img_data);
   emu.initialize_pc(DRAM_BASE);
 
-  emu.start();
+  match args.diff {
+    true => emu.start_diff(),
+    false => emu.start(),
+  }
 
   Ok(())
 }
