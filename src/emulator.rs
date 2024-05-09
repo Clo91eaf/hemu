@@ -19,8 +19,8 @@ impl fmt::Display for DebugInfo {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(
       f,
-      "commit: {}, pc: {:#x}, wnum: {}, wdata: {:#x}",
-      self.commit, self.pc, self.wnum, self.wdata
+      "pc: {:#x}, wnum: {}, wdata: {:#x}",
+      self.pc, self.wnum, self.wdata
     )
   }
 }
@@ -153,6 +153,7 @@ impl Emulator {
 
   /// Start executing the emulator.
   pub fn start(&mut self) {
+    let mut last_diff = DebugInfo::default();
     loop {
       // ================ cpu ====================
       let cpu_diff;
@@ -185,10 +186,12 @@ impl Emulator {
       // ==================== diff ====================
       if cpu_diff != dut_diff {
         error!("difftest failed");
-        error!("cpu: {}", cpu_diff);
-        error!("dut: {}", dut_diff);
+        error!("last: {}", last_diff);
+        error!("cpu : {}", cpu_diff);
+        error!("dut : {}", dut_diff);
         return;
       }
+      last_diff = cpu_diff;
     }
   }
 }

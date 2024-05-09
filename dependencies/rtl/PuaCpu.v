@@ -1021,17 +1021,16 @@ module Bru(	// playground/src/pipeline/execute/fu/Bru.scala:8:7
     + {1'h0, io_in_src_info_src2_data ^ {64{~(io_in_info_op[3])}}}
     + {64'h0, ~(io_in_info_op[3])};	// playground/src/defines/isa/Instructions.scala:74:{36,41}, playground/src/pipeline/execute/fu/Bru.scala:25:16, :26:{22,31,37,54}
   wire [63:0] xor_0 = io_in_src_info_src1_data ^ io_in_src_info_src2_data;	// playground/src/pipeline/execute/fu/Bru.scala:27:21
-  wire        io_out_branch_0 =
+  assign io_out_branch =
     io_in_info_fusel == 3'h5 & io_in_info_valid
-    & ((io_in_info_op[2:1] == 2'h0 & xor_0 == 64'h0 | io_in_info_op[2:1] == 2'h2
-        & (xor_0[63] ^ ~(_adder_T_3[64])) | (&(io_in_info_op[2:1])) & ~(_adder_T_3[64]))
-       ^ io_in_info_op[0] | io_in_info_op[3]);	// playground/src/defines/Util.scala:46:34, playground/src/defines/isa/Instructions.scala:74:41, :77:40, :78:40, playground/src/pipeline/execute/fu/Bru.scala:21:22, :26:{37,54}, :27:21, :28:{16,22}, :29:{19,30}, :31:53, :35:26, :36:{53,84}, src/main/scala/chisel3/util/Mux.scala:30:73
-  assign io_out_branch = io_out_branch_0;	// playground/src/pipeline/execute/fu/Bru.scala:8:7, :35:26
+    & (io_in_info_op[3]
+       | (io_in_info_op[2:1] == 2'h0 & xor_0 == 64'h0 | io_in_info_op[2:1] == 2'h2
+          & (xor_0[63] ^ ~(_adder_T_3[64])) | (&(io_in_info_op[2:1])) & ~(_adder_T_3[64]))
+       ^ io_in_info_op[0]);	// playground/src/defines/Util.scala:46:34, playground/src/defines/isa/Instructions.scala:74:41, :77:40, :78:40, playground/src/pipeline/execute/fu/Bru.scala:8:7, :21:22, :26:{37,54}, :27:21, :28:{16,22}, :29:{19,30}, :31:53, :37:67, :41:{26,37}, src/main/scala/chisel3/util/Mux.scala:30:73
   assign io_out_target =
-    (io_out_branch_0 ? io_in_pc + io_in_info_imm : 64'h0)
-    | (io_in_info_op == 7'hA
-         ? io_in_src_info_src1_data + io_in_src_info_src2_data & 64'hFFFFFFFFFFFFFFFE
-         : 64'h0);	// playground/src/pipeline/execute/fu/Bru.scala:8:7, :26:37, :35:26, :40:44, :41:{11,41,49,51}, src/main/scala/chisel3/util/Mux.scala:30:73
+    io_in_info_op == 7'hA
+      ? io_in_src_info_src1_data + io_in_src_info_src2_data & 64'hFFFFFFFFFFFFFFFE
+      : io_in_pc + io_in_info_imm;	// playground/src/pipeline/execute/fu/Bru.scala:8:7, :39:20, :42:{23,40,48,50,75}
 endmodule
 
 module Mul(	// playground/src/pipeline/execute/fu/Mul.scala:9:7
