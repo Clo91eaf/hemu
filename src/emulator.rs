@@ -6,18 +6,13 @@ use tracing::{error, info, trace};
 use crate::cpu::Cpu;
 use crate::dut::Dut;
 use crate::exception::Trap;
-use crate::tui;
+use crate::tui::{UI, Tui};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{
   prelude::*,
   widgets::{block::*, *},
 };
-use std::{collections::VecDeque, io};
-
-const INST_BUFFER_SIZE: usize = 10;
-const CPU_BUFFER_SIZE: usize = 10;
-const DUT_BUFFER_SIZE: usize = 10;
-const DIFF_BUFFER_SIZE: usize = 5;
+use std::io;
 
 #[derive(Default)]
 pub struct DebugInfo {
@@ -52,60 +47,6 @@ impl DebugInfo {
   }
 }
 
-#[derive(Default)]
-struct Buffer {
-  info: VecDeque<String>,
-  size: usize,
-}
-
-impl Buffer {
-  fn new(size: usize) -> Self {
-    Self {
-      info: VecDeque::new(),
-      size,
-    }
-  }
-
-  fn push(&mut self, info: String) {
-    if self.info.len() >= self.size {
-      self.info.pop_front();
-    }
-    self.info.push_back(info);
-  }
-
-  fn clear(&mut self) {
-    self.info.clear();
-  }
-}
-
-impl fmt::Display for Buffer {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    for info in &self.info {
-      write!(f, "{}\n", info)?;
-    }
-    Ok(())
-  }
-}
-
-#[derive(Default)]
-struct UIBuffer {
-  inst: Buffer,
-  cpu: Buffer,
-  dut: Buffer,
-  diff: Buffer,
-}
-
-impl UIBuffer {
-  pub fn new() -> Self {
-    UIBuffer {
-      inst: Buffer::new(INST_BUFFER_SIZE),
-      cpu: Buffer::new(CPU_BUFFER_SIZE),
-      dut: Buffer::new(DUT_BUFFER_SIZE),
-      diff: Buffer::new(DIFF_BUFFER_SIZE),
-    }
-  }
-}
-
 /// The emulator to hold a CPU.
 pub struct Emulator {
   /// The CPU which is the core implementation of this emulator.
@@ -114,14 +55,8 @@ pub struct Emulator {
   /// The DUT which is the peripheral devices of this emulator.
   pub dut: Option<Dut>,
 
-  /// UI information
-  ui_buffer: UIBuffer,
-
-  /// The flag to exit the emulator.
-  exit: bool,
-
-  /// The flag to continue the emulator.
-  cont: bool,
+  /// UI
+  ui: UI,
 }
 
 impl Emulator {
@@ -131,9 +66,7 @@ impl Emulator {
     Self {
       cpu: Cpu::new(),
       dut,
-      ui_buffer: UIBuffer::new(),
-      cont: false,
-      exit: false,
+      ui: UI::new(),
     }
   }
 
@@ -143,18 +76,18 @@ impl Emulator {
   }
 
   fn exit(&mut self) {
-    self.exit = true;
+    self.ui.cmd.exit = true;
   }
 
-  fn quit(&mut self, terminal: &mut tui::Tui) {
-    while !self.exit {
+  fn quit(&mut self, terminal: &mut Tui) {
+    while !self.ui.cmd.exit {
       terminal.draw(|frame| self.render_frame(frame)).unwrap();
       self.handle_events().unwrap();
     }
   }
 
-  fn cont(&mut self) {
-    self.cont = true;
+  fn r#continue(&mut self) {
+    self.ui.cmd.r#continue = true;
   }
 
   /// Set binary data to the beginning of the DRAM from the emulator console.
@@ -208,7 +141,7 @@ impl Emulator {
 
     // render
     frame.render_widget(
-      Paragraph::new(self.ui_buffer.inst.to_string())
+      Paragraph::new(self.ui.buffer.inst.to_string())
         .block(
           Block::bordered()
             .title("Instructions")
@@ -221,7 +154,7 @@ impl Emulator {
     );
 
     frame.render_widget(
-      Paragraph::new(self.ui_buffer.cpu.to_string())
+      Paragraph::new(self.ui.buffer.cpu.to_string())
         .block(
           Block::bordered()
             .title("CPU")
@@ -234,7 +167,7 @@ impl Emulator {
     );
 
     frame.render_widget(
-      Paragraph::new(self.ui_buffer.dut.to_string())
+      Paragraph::new(self.ui.buffer.dut.to_string())
         .block(
           Block::bordered()
             .title("DUT")
@@ -247,7 +180,7 @@ impl Emulator {
     );
 
     frame.render_widget(
-      Paragraph::new(self.ui_buffer.diff.to_string())
+      Paragraph::new(self.ui.buffer.diff.to_string())
         .block(
           Block::bordered()
             .title("Difftest Status")
@@ -263,7 +196,7 @@ impl Emulator {
   fn handle_key_event(&mut self, key_event: KeyEvent) {
     match key_event.code {
       KeyCode::Char('q') | KeyCode::Char('Q') => self.exit(),
-      KeyCode::Char('c') | KeyCode::Char('C') => self.cont(),
+      KeyCode::Char('c') | KeyCode::Char('C') => self.r#continue(),
 
       _ => {}
     }
@@ -394,11 +327,11 @@ impl Emulator {
   }
 
   /// Start executing the emulator with difftest and tui.
-  pub fn start_diff_tui(&mut self, terminal: &mut tui::Tui) {
-    self.ui_buffer.diff.push("running".to_string());
+  pub fn start_diff_tui(&mut self, terminal: &mut Tui) {
+    self.ui.buffer.diff.push("running".to_string());
     let mut last_diff = DebugInfo::default();
 
-    while !self.exit {
+    while !self.ui.cmd.exit {
       // ================ cpu ====================
       let cpu_diff;
       loop {
@@ -406,14 +339,16 @@ impl Emulator {
         let trap = self.execute();
 
         self
-          .ui_buffer
+          .ui
+          .buffer
           .inst
           .push(format!("pc: {:#x}, inst: {}", pc, self.cpu.inst));
 
         match trap {
           Trap::Fatal => {
             self
-              .ui_buffer
+              .ui
+              .buffer
               .diff
               .push(format!("fatal pc: {:#x}, trap {:#?}", self.cpu.pc, trap));
 
@@ -428,14 +363,16 @@ impl Emulator {
           Some((wnum, wdata)) => {
             cpu_diff = DebugInfo::new(true, pc, wnum, wdata);
             self
-              .ui_buffer
+              .ui
+              .buffer
               .cpu
               .push(format!("record: true, pc: {:#x}, inst: {}", pc, self.cpu.inst));
             break;
           }
           None => {
             self
-              .ui_buffer
+              .ui
+              .buffer
               .cpu
               .push(format!("record: false, pc: {:#x}, inst: {}", pc, self.cpu.inst));
           }
@@ -458,7 +395,7 @@ impl Emulator {
           // should be `Exception::InstructionAccessFault`.
           dut.data = self.cpu.bus.read(p_addr, crate::cpu::DOUBLEWORD).unwrap();
 
-          self.ui_buffer.dut.push(format!(
+          self.ui.buffer.dut.push(format!(
             "{}, data_sram: addr: {:#x}, data: {:#018x}",
             dut.ticks, data_sram.addr, dut.data
           ))
@@ -474,7 +411,7 @@ impl Emulator {
           // should be `Exception::InstructionAccessFault`.
           dut.inst = self.cpu.bus.read(p_pc, crate::cpu::WORD).unwrap() as u32;
 
-          self.ui_buffer.dut.push(format!(
+          self.ui.buffer.dut.push(format!(
             "{}, inst_sram: pc: {:#x}, inst: {:#010x}",
             dut.ticks, inst_sram.addr, dut.inst
           ))
@@ -485,7 +422,7 @@ impl Emulator {
           break;
         }
       }
-      self.ui_buffer.dut.push(format!(
+      self.ui.buffer.dut.push(format!(
         "{}, pc: {:#010x} wnum: {} wdata: {:#018x}",
         dut.ticks,
         dut.top.debug_pc(),
@@ -495,12 +432,16 @@ impl Emulator {
 
       // ==================== diff ====================
       if cpu_diff != dut_diff {
-        self.ui_buffer.diff.clear();
+        self.ui.buffer.diff.clear();
 
-        self.ui_buffer.diff.push("difftest failed. press 'q' or 'Q' to quit. ".to_string());
-        self.ui_buffer.diff.push(format!("last: {}", last_diff));
-        self.ui_buffer.diff.push(format!("cpu : {}", cpu_diff));
-        self.ui_buffer.diff.push(format!("dut : {}", dut_diff));
+        self
+          .ui
+          .buffer
+          .diff
+          .push("difftest failed. press 'q' or 'Q' to quit. ".to_string());
+        self.ui.buffer.diff.push(format!("last: {}", last_diff));
+        self.ui.buffer.diff.push(format!("cpu : {}", cpu_diff));
+        self.ui.buffer.diff.push(format!("dut : {}", dut_diff));
 
         self.quit(terminal);
 
@@ -510,7 +451,7 @@ impl Emulator {
 
       // tui
       terminal.draw(|frame| self.render_frame(frame)).unwrap();
-      if !self.cont {
+      if !self.ui.cmd.r#continue {
         self.handle_events().unwrap();
       }
     }
