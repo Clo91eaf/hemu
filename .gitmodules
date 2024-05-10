@@ -1,3 +1,4 @@
 [submodule "dependencies/verilated-rs"]
 	path = dependencies/verilated-rs
 	url = git@github.com:Anillc/verilated-rs.git
+	branch = fix
