@@ -1,12 +1,18 @@
 name: test
-on: push
+on: 
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
 jobs:
   am-test:
     name: am-test
     runs-on: ubuntu-latest
     steps:
     - name: checkout
-      uses: actions/checkout@master
+      uses: actions/checkout@v2
+      with:
+        submodule: true
     - name: test
       run: cargo test --test am-tests
   riscv-test-rv64ui:
@@ -14,7 +20,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: checkout
-      uses: actions/checkout@master
+      uses: actions/checkout@v2
+      with:
+        submodule: true
     - name: test
       run: cargo test --test riscv-tests-rv64ui
   riscv-test-rv64mi:
@@ -22,7 +30,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: checkout
-      uses: actions/checkout@master
+      uses: actions/checkout@v2
+      with:
+        submodule: true
     - name: test
       run: cargo test --test riscv-tests-rv64mi
   riscv-test-rv64si:
@@ -30,7 +40,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: checkout
-      uses: actions/checkout@master
+      uses: actions/checkout@v2
+      with:
+        submodule: true
     - name: test
       run: cargo test --test riscv-tests-rv64si
   riscv-test-rv64um:
@@ -38,7 +50,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: checkout
-      uses: actions/checkout@master
+      uses: actions/checkout@v2
+      with:
+        submodule: true
     - name: test
       run: cargo test --test riscv-tests-rv64um
   riscv-test-rv64ua:
@@ -46,6 +60,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: checkout
-      uses: actions/checkout@master
+      uses: actions/checkout@v2
+      with:
+        submodule: true
     - name: test
       run: cargo test --test riscv-tests-rv64ua
