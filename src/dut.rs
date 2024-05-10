@@ -17,8 +17,6 @@ impl SramRequest {
 // sram interface
 pub struct Dut {
   pub top: Top,
-  clock: bool,
-  reset: bool,
   pub ticks: u64,
   pub prepare_for_difftest: bool,
   pub inst: u32,
@@ -36,24 +34,12 @@ impl Dut {
 
     Dut {
       top,
-      clock: false,
-      reset: false,
       ticks: 0,
       prepare_for_difftest: false,
       inst: 0,
       data: 0,
       trace,
     }
-  }
-
-  fn clock_toggle(&mut self) {
-    self.clock = !self.clock;
-    self.top.clock_toggle();
-  }
-
-  fn reset_toggle(&mut self) {
-    self.reset = !self.reset;
-    self.top.reset_toggle();
   }
 
   fn trace(&mut self, ticks: u64) {
@@ -65,12 +51,12 @@ impl Dut {
   /// drive the instruction SRAM interface
   pub fn step(&mut self, inst: u32, data: u64) -> anyhow::Result<(SramRequest, SramRequest, DebugInfo)> {
     match self.ticks {
-      0 | 2 => self.reset_toggle(),
+      0 | 2 => self.top.reset_toggle(),
       _ => {}
     }
 
     // a little trick: there must be 2 state transitions after clock posedge
-    self.clock_toggle();
+    self.top.clock_toggle();
     self.top.eval();
     if self.ticks >= 2 {
       self.top.set_inst_sram_rdata(inst);
@@ -79,7 +65,7 @@ impl Dut {
     }
     self.trace(self.ticks * 2);
 
-    self.clock_toggle();
+    self.top.clock_toggle();
     self.top.eval();
     self.trace(self.ticks * 2 + 1);
 
