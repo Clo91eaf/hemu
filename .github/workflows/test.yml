@@ -27,43 +27,11 @@ jobs:
       run: cargo test --test am-tests
     - name: riscv-tests-rv64ui
       run: cargo test --test riscv-tests-rv64ui
-  # riscv-test-rv64mi:
-  #   name: riscv-test-rv64mi
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - name: checkout
-  #     uses: actions/checkout@v2
-  #     with:
-  #       submodules: true
-  #   - name: test
-  #     run: cargo test --test riscv-tests-rv64mi
-  # riscv-test-rv64si:
-  #   name: riscv-test-rv64si
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - name: checkout
-  #     uses: actions/checkout@v2
-  #     with:
-  #       submodules: true
-  #   - name: test
-  #     run: cargo test --test riscv-tests-rv64si
-  # riscv-test-rv64um:
-  #   name: riscv-test-rv64um
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - name: checkout
-  #     uses: actions/checkout@v2
-  #     with:
-  #       submodules: true
-  #   - name: test
-  #     run: cargo test --test riscv-tests-rv64um
-  # riscv-test-rv64ua:
-  #   name: riscv-test-rv64ua
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - name: checkout
-  #     uses: actions/checkout@v2
-  #     with:
-  #       submodules: true
-  #   - name: test
-  #     run: cargo test --test riscv-tests-rv64ua
+    - name: riscv-test-rv64mi
+      run: cargo test --test riscv-tests-rv64mi
+    - name: riscv-test-rv64si
+      run: cargo test --test riscv-tests-rv64si
+    - name: riscv-test-rv64um
+      run: cargo test --test riscv-tests-rv64um
+    - name: riscv-test-rv64ua
+      run: cargo test --test riscv-tests-rv64ua
