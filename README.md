@@ -1,11 +1,5 @@
-```
-██╗  ██╗███████╗███╗   ███╗██╗   ██╗
-██║  ██║██╔════╝████╗ ████║██║   ██║
-███████║█████╗  ██╔████╔██║██║   ██║
-██╔══██║██╔══╝  ██║╚██╔╝██║██║   ██║
-██║  ██║███████╗██║ ╚═╝ ██║╚██████╔╝
-╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝ ╚═════╝ 
-```
+![HEMU](./doc/pic.png)
+
 # HEMU 🚀 - A Rust Riscv Emulator
 
 HEMU (HDU Emulator) is a RISCV64 processor simulator written in Rust. It draws inspiration from NEMU(NJU emulator)'s design philosophy and rewrites the logic of the processor using Rust, making the entire system more secure and efficient. Currently, it is an ISA-level simulator but has plans to expand into a cycle-level simulator in the future. At present, HEMU only supports the RISCV64IM instruction set architecture, but there are intentions to continue adding more instruction sets.
@@ -56,6 +50,8 @@ if you want to run difftest with TUI, you can use the following command:
 ```sh
 cargo run -- -k ./dependencies/tests/bin/am-tests/add --diff --tui
 ```
+
+In Tui, you can press 'c' to continue, 's' to step, 'q' to quit.
 
 #### Run opensbi
 
