@@ -114,11 +114,14 @@ pub struct Emulator {
   /// The DUT which is the peripheral devices of this emulator.
   pub dut: Dut,
 
+  /// UI information
+  ui_buffer: UIBuffer,
+
   /// The flag to exit the emulator.
   exit: bool,
 
-  /// UI information
-  ui_buffer: UIBuffer,
+  /// The flag to continue the emulator.
+  cont: bool,
 }
 
 impl Emulator {
@@ -127,8 +130,9 @@ impl Emulator {
     Self {
       cpu: Cpu::new(),
       dut: Dut::new(),
-      exit: false,
       ui_buffer: UIBuffer::new(),
+      cont: false,
+      exit: false,
     }
   }
 
@@ -139,6 +143,17 @@ impl Emulator {
 
   fn exit(&mut self) {
     self.exit = true;
+  }
+
+  fn quit(&mut self, terminal: &mut tui::Tui) {
+    while !self.exit {
+      terminal.draw(|frame| self.render_frame(frame)).unwrap();
+      self.handle_events().unwrap();
+    }
+  }
+
+  fn cont(&mut self) {
+    self.cont = true;
   }
 
   /// Set binary data to the beginning of the DRAM from the emulator console.
@@ -232,22 +247,23 @@ impl Emulator {
 
     frame.render_widget(
       Paragraph::new(self.ui_buffer.diff.to_string())
-      .block(
-        Block::bordered()
-          .title("Difftest Status")
-          .title_alignment(Alignment::Center)
-          .border_type(BorderType::Rounded),
-      )
-      .style(Style::default().fg(Color::Cyan))
-      .centered(),
+        .block(
+          Block::bordered()
+            .title("Difftest Status")
+            .title_alignment(Alignment::Center)
+            .border_type(BorderType::Rounded),
+        )
+        .style(Style::default().fg(Color::Cyan))
+        .centered(),
       layout_vertical[2],
     );
   }
 
   fn handle_key_event(&mut self, key_event: KeyEvent) {
     match key_event.code {
-      KeyCode::Char('q') => self.exit(),
-      KeyCode::Char('Q') => self.exit(),
+      KeyCode::Char('q') | KeyCode::Char('Q') => self.exit(),
+      KeyCode::Char('c') | KeyCode::Char('C') => self.cont(),
+
       _ => {}
     }
   }
@@ -398,6 +414,9 @@ impl Emulator {
               .ui_buffer
               .diff
               .push(format!("fatal pc: {:#x}, trap {:#?}", self.cpu.pc, trap));
+
+            self.quit(terminal);
+
             return;
           }
           _ => {}
@@ -480,10 +499,7 @@ impl Emulator {
         self.ui_buffer.diff.push(format!("cpu : {}", cpu_diff));
         self.ui_buffer.diff.push(format!("dut : {}", dut_diff));
 
-        while !self.exit {
-          terminal.draw(|frame| self.render_frame(frame)).unwrap();
-          self.handle_events().unwrap();
-        }
+        self.quit(terminal);
 
         return;
       }
@@ -491,7 +507,9 @@ impl Emulator {
 
       // tui
       terminal.draw(|frame| self.render_frame(frame)).unwrap();
-      self.handle_events().unwrap();
+      if !self.cont {
+        self.handle_events().unwrap();
+      }
     }
   }
 }
