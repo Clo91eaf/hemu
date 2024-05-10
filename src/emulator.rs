@@ -112,7 +112,7 @@ pub struct Emulator {
   pub cpu: Cpu,
 
   /// The DUT which is the peripheral devices of this emulator.
-  pub dut: Dut,
+  pub dut: Option<Dut>,
 
   /// UI information
   ui_buffer: UIBuffer,
@@ -126,10 +126,11 @@ pub struct Emulator {
 
 impl Emulator {
   /// Constructor for an emulator.
-  pub fn new(trace: bool) -> Emulator {
+  pub fn new(trace: bool, diff: bool) -> Emulator {
+    let dut = if diff { Some(Dut::new(trace)) } else { None };
     Self {
       cpu: Cpu::new(),
-      dut: Dut::new(trace),
+      dut,
       ui_buffer: UIBuffer::new(),
       cont: false,
       exit: false,
@@ -326,9 +327,10 @@ impl Emulator {
       }
 
       let dut_diff;
+      let dut = self.dut.as_mut().unwrap();
 
       loop {
-        let (inst_sram, data_sram, debug_info) = self.dut.step(self.dut.inst, self.dut.data).unwrap();
+        let (inst_sram, data_sram, debug_info) = dut.step(dut.inst, dut.data).unwrap();
 
         if data_sram.en {
           let p_addr = self
@@ -338,12 +340,12 @@ impl Emulator {
 
           // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
           // should be `Exception::InstructionAccessFault`.
-          self.dut.data = self.cpu.bus.read(p_addr, crate::cpu::DOUBLEWORD).unwrap();
+          dut.data = self.cpu.bus.read(p_addr, crate::cpu::DOUBLEWORD).unwrap();
           trace!(
             "[dut] ticks: {}, data_sram: addr: {:#x}, data: {:#018x}",
-            self.dut.ticks,
+            dut.ticks,
             data_sram.addr,
-            self.dut.data
+            dut.data
           );
         }
 
@@ -355,13 +357,13 @@ impl Emulator {
 
           // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
           // should be `Exception::InstructionAccessFault`.
-          self.dut.inst = self.cpu.bus.read(p_pc, crate::cpu::WORD).unwrap() as u32;
+          dut.inst = self.cpu.bus.read(p_pc, crate::cpu::WORD).unwrap() as u32;
 
           trace!(
             "[dut] ticks: {}, inst_sram: addr: {:#x}, inst: {:#018x}",
-            self.dut.ticks,
+            dut.ticks,
             inst_sram.addr,
-            self.dut.inst
+            dut.inst
           );
         }
 
@@ -372,11 +374,11 @@ impl Emulator {
       }
       info!(
         "[dut] ticks: {} commit: {} pc: {:#010x} wnum: {} wdata: {:#018x}",
-        self.dut.ticks,
-        self.dut.top.debug_commit(),
-        self.dut.top.debug_pc(),
-        self.dut.top.debug_reg_wnum(),
-        self.dut.top.debug_wdata()
+        dut.ticks,
+        dut.top.debug_commit(),
+        dut.top.debug_pc(),
+        dut.top.debug_reg_wnum(),
+        dut.top.debug_wdata()
       );
 
       // ==================== diff ====================
@@ -441,9 +443,10 @@ impl Emulator {
       }
 
       let dut_diff;
+      let dut = self.dut.as_mut().unwrap();
 
       loop {
-        let (inst_sram, data_sram, debug_info) = self.dut.step(self.dut.inst, self.dut.data).unwrap();
+        let (inst_sram, data_sram, debug_info) = dut.step(dut.inst, dut.data).unwrap();
 
         if data_sram.en {
           let p_addr = self
@@ -453,11 +456,11 @@ impl Emulator {
 
           // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
           // should be `Exception::InstructionAccessFault`.
-          self.dut.data = self.cpu.bus.read(p_addr, crate::cpu::DOUBLEWORD).unwrap();
+          dut.data = self.cpu.bus.read(p_addr, crate::cpu::DOUBLEWORD).unwrap();
 
           self.ui_buffer.dut.push(format!(
             "{}, data_sram: addr: {:#x}, data: {:#018x}",
-            self.dut.ticks, data_sram.addr, self.dut.data
+            dut.ticks, data_sram.addr, dut.data
           ))
         }
 
@@ -469,11 +472,11 @@ impl Emulator {
 
           // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
           // should be `Exception::InstructionAccessFault`.
-          self.dut.inst = self.cpu.bus.read(p_pc, crate::cpu::WORD).unwrap() as u32;
+          dut.inst = self.cpu.bus.read(p_pc, crate::cpu::WORD).unwrap() as u32;
 
           self.ui_buffer.dut.push(format!(
             "{}, inst_sram: pc: {:#x}, inst: {:#010x}",
-            self.dut.ticks, inst_sram.addr, self.dut.inst
+            dut.ticks, inst_sram.addr, dut.inst
           ))
         }
 
@@ -484,10 +487,10 @@ impl Emulator {
       }
       self.ui_buffer.dut.push(format!(
         "{}, pc: {:#010x} wnum: {} wdata: {:#018x}",
-        self.dut.ticks,
-        self.dut.top.debug_pc(),
-        self.dut.top.debug_reg_wnum(),
-        self.dut.top.debug_wdata()
+        dut.ticks,
+        dut.top.debug_pc(),
+        dut.top.debug_reg_wnum(),
+        dut.top.debug_wdata()
       ));
 
       // ==================== diff ====================

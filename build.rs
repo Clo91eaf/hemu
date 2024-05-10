@@ -13,6 +13,12 @@ macro_rules! t {
 }
 
 fn main() {
+  // if we are running tests, we don't need to generate the verilator code
+  if std::env::var("CARGO_CFG_TEST").is_ok() {
+    println!("cargo:test=1");
+    return;
+  }
+
   let out_dir = env::var("OUT_DIR").unwrap();
   let out_dir = PathBuf::from(out_dir);
   let _ = fs::remove_dir_all(&out_dir);

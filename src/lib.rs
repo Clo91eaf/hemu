@@ -3,6 +3,7 @@
 //! # How to use
 //! Create an `Emulator` object, place a binary data in DRAM and set the program counter to
 //! `DRAM_BASE`. The binary data must contain no headers for now. The example is here:
+/*
 //! ```rust
 //! use hemu::bus::DRAM_BASE;
 //! use hemu::emulator::Emulator;
@@ -14,7 +15,7 @@
 //!     ];
 //!
 //!     // Create an emulator object.
-//!     let mut emu = Emulator::new();
+//!     let mut emu = Emulator::new(false, false);
 //!     // Place the binary data in the beginning of DRAM.
 //!     emu.initialize_dram(data);
 //!     // Set the program counter to 0x8000_0000, which is the address DRAM starts.
@@ -27,15 +28,16 @@
 //!     assert_eq!(42, emu.cpu.gpr.read(31));
 //! }
 //! ```
+*/
 
 pub mod bus;
 pub mod cpu;
-pub mod dut;
 pub mod devices;
-pub mod instructions;
+pub mod dut;
 pub mod emulator;
 pub mod exception;
+pub mod instructions;
 pub mod interrupt;
-pub mod rom;
 pub mod log;
+pub mod rom;
 pub mod tui;

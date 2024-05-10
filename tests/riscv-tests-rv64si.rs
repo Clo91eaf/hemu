@@ -16,7 +16,7 @@ macro_rules! add_test {
       let mut data = Vec::new();
       file.read_to_end(&mut data)?;
 
-      let mut emu = Emulator::new();
+      let mut emu = Emulator::new(false, false);
       emu.initialize_dram(data);
       emu.initialize_pc(DRAM_BASE);
 
@@ -47,7 +47,7 @@ macro_rules! add_test_no_replace {
       let mut data = Vec::new();
       file.read_to_end(&mut data)?;
 
-      let mut emu = Emulator::new();
+      let mut emu = Emulator::new(false, false);
       emu.initialize_dram(data);
       emu.initialize_pc(DRAM_BASE);
 

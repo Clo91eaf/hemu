@@ -21,20 +21,20 @@ struct Args {
   #[arg(short = 'f', long = "file")]
   file: Option<PathBuf>,
 
-  /// Difftest
-  #[arg(short, long, default_value = "info")]
+  /// specify the log level. Including "error", "warn", "info", "debug", "trace"
+  #[arg(short = 'l', long = "log", default_value = "info")]
   log: String,
 
-  /// Difftest
+  /// Enable difftest
   #[arg(short, long)]
   diff: bool,
 
   /// Enable tui
-  #[arg(short, long)]
+  #[arg(long)]
   tui: bool,
 
   /// Enable wave trace
-  #[arg(short, long)]
+  #[arg(long)]
   trace: bool,
 }
 
@@ -58,7 +58,7 @@ fn main() -> anyhow::Result<()> {
   }
 
   // Create an emulator object and start the execution.
-  let mut emu = Emulator::new(args.trace);
+  let mut emu = Emulator::new(args.trace, args.diff);
 
   emu.reset();
 

@@ -18,7 +18,7 @@ mod rv64ui_p {
         let mut data = Vec::new();
         file.read_to_end(&mut data)?;
 
-        let mut emu = Emulator::new();
+        let mut emu = Emulator::new(false, false);
         emu.initialize_dram(data);
         emu.initialize_pc(DRAM_BASE);
 
@@ -109,7 +109,7 @@ mod rv64ui_v {
         let mut data = Vec::new();
         file.read_to_end(&mut data)?;
 
-        let mut emu = Emulator::new();
+        let mut emu = Emulator::new(false, false);
         emu.initialize_dram(data);
         emu.initialize_pc(DRAM_BASE);
 
