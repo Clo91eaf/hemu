@@ -17,8 +17,14 @@ To install HEMU, you will need to have Rust installed on your machine. You can d
 Once Rust is installed, you can clone the HEMU repository from Github:
 
 ```sh
+git clone --recurse-submodules https://github.com/Clo91eaf/hemu.git
+```
+
+or
+
+```sh
 git clone https://github.com/Clo91eaf/hemu.git
-cd hemu
+git submodule update --init --recursive
 ```
 
 ### Runing
@@ -32,7 +38,23 @@ cargo run -- -k <path_to_binary>
 Where `<path_to_binary>` is the path to the binary file that you want to run. For example:
 
 ```sh
-cargo run -- -k ./resources/am-tests/add-riscv64-nemu.bin
+cargo run -- -k ./dependencies/tests/bin/am-tests/add
+```
+
+#### Difftest
+
+if you want to run difftest, you can use the following command:
+
+```sh
+cargo run -- -k ./dependencies/tests/bin/am-tests/add --diff
+```
+
+#### Difftest With Tui
+
+if you want to run difftest with TUI, you can use the following command:
+
+```sh
+cargo run -- -k ./dependencies/tests/bin/am-tests/add --diff --tui
 ```
 
 #### Run opensbi
@@ -85,10 +107,11 @@ There are several potential benefits to using Rust to rewrite Nemus's logic:
 - [x] Pass am-tests
 - [x] RISCV64IMAZicsr instruction set architecture
 - [x] Pass riscv-tests
-- [ ] Support for opensbi
+- [x] Support for opensbi
+- [x] Add TUI for debugging
 - [ ] Support for Linux
-- [ ] Add TUI for debugging
 
+- [ ] LA32 instruction set architecture
 - [ ] MIPS32 instruction set architecture
 - [ ] Added support for peripherals.
 - [ ] Added interrupt handling mechanisms.

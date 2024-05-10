@@ -6,7 +6,7 @@ use tracing::{error, info, trace};
 use crate::cpu::Cpu;
 use crate::dut::Dut;
 use crate::exception::Trap;
-use crate::tui::{UI, Tui};
+use crate::tui::{Tui, UI};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{
   prelude::*,
@@ -213,6 +213,7 @@ impl Emulator {
     Ok(())
   }
 
+  /// Start executing the emulator without difftest.
   pub fn start(&mut self) {
     loop {
       let pc = self.cpu.pc;
