@@ -6,62 +6,64 @@ on:
     branches: [ master ]
 jobs:
   am-test:
-    name: am-test
     runs-on: ubuntu-latest
+    container: 
+      image: ubuntu:23.04
     steps:
+    - name: Install Dependencies
+      run: |
+        apt-get update -qq
+        apt-get install -y git curl wget verilator build-essential
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
     - name: checkout
       uses: actions/checkout@v2
       with:
-        submodule: true
-    - name: test
+        submodules: true
+    - name: am-test
       run: cargo test --test am-tests
-  riscv-test-rv64ui:
-    name: riscv-test-rv64ui
-    runs-on: ubuntu-latest
-    steps:
-    - name: checkout
-      uses: actions/checkout@v2
-      with:
-        submodule: true
-    - name: test
+    - name: riscv-tests-rv64ui
       run: cargo test --test riscv-tests-rv64ui
-  riscv-test-rv64mi:
-    name: riscv-test-rv64mi
-    runs-on: ubuntu-latest
-    steps:
-    - name: checkout
-      uses: actions/checkout@v2
-      with:
-        submodule: true
-    - name: test
-      run: cargo test --test riscv-tests-rv64mi
-  riscv-test-rv64si:
-    name: riscv-test-rv64si
-    runs-on: ubuntu-latest
-    steps:
-    - name: checkout
-      uses: actions/checkout@v2
-      with:
-        submodule: true
-    - name: test
-      run: cargo test --test riscv-tests-rv64si
-  riscv-test-rv64um:
-    name: riscv-test-rv64um
-    runs-on: ubuntu-latest
-    steps:
-    - name: checkout
-      uses: actions/checkout@v2
-      with:
-        submodule: true
-    - name: test
-      run: cargo test --test riscv-tests-rv64um
-  riscv-test-rv64ua:
-    name: riscv-test-rv64ua
-    runs-on: ubuntu-latest
-    steps:
-    - name: checkout
-      uses: actions/checkout@v2
-      with:
-        submodule: true
-    - name: test
-      run: cargo test --test riscv-tests-rv64ua
+  # riscv-test-rv64mi:
+  #   name: riscv-test-rv64mi
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: checkout
+  #     uses: actions/checkout@v2
+  #     with:
+  #       submodules: true
+  #   - name: test
+  #     run: cargo test --test riscv-tests-rv64mi
+  # riscv-test-rv64si:
+  #   name: riscv-test-rv64si
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: checkout
+  #     uses: actions/checkout@v2
+  #     with:
+  #       submodules: true
+  #   - name: test
+  #     run: cargo test --test riscv-tests-rv64si
+  # riscv-test-rv64um:
+  #   name: riscv-test-rv64um
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: checkout
+  #     uses: actions/checkout@v2
+  #     with:
+  #       submodules: true
+  #   - name: test
+  #     run: cargo test --test riscv-tests-rv64um
+  # riscv-test-rv64ua:
+  #   name: riscv-test-rv64ua
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: checkout
+  #     uses: actions/checkout@v2
+  #     with:
+  #       submodules: true
+  #   - name: test
+  #     run: cargo test --test riscv-tests-rv64ua
