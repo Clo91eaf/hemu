@@ -494,7 +494,7 @@ impl Emulator {
       if cpu_diff != dut_diff {
         self.ui_buffer.diff.clear();
 
-        self.ui_buffer.diff.push("difftest failed".to_string());
+        self.ui_buffer.diff.push("difftest failed. press 'q' or 'Q' to quit. ".to_string());
         self.ui_buffer.diff.push(format!("last: {}", last_diff));
         self.ui_buffer.diff.push(format!("cpu : {}", cpu_diff));
         self.ui_buffer.diff.push(format!("dut : {}", dut_diff));
