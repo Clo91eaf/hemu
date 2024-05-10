@@ -22,14 +22,17 @@ pub struct Dut {
   pub ticks: u64,
   pub prepare_for_difftest: bool,
   pub inst: u32,
-  pub data: u64
+  pub data: u64,
+  pub trace: bool,
 }
 
 impl Dut {
-  pub fn new() -> Self {
+  pub fn new(trace: bool) -> Self {
     let mut top = Top::default();
 
-    top.open_trace("wave.vcd", 99).unwrap();
+    if trace {
+      top.open_trace("wave.vcd", 99).unwrap();
+    }
 
     Dut {
       top,
@@ -38,7 +41,8 @@ impl Dut {
       ticks: 0,
       prepare_for_difftest: false,
       inst: 0,
-      data: 0
+      data: 0,
+      trace,
     }
   }
 
@@ -52,11 +56,17 @@ impl Dut {
     self.top.reset_toggle();
   }
 
+  fn trace(&mut self, ticks: u64) {
+    if self.trace {
+      self.top.trace_at(Duration::from_nanos(ticks));
+    }
+  }
+
   /// drive the instruction SRAM interface
   pub fn step(&mut self, inst: u32, data: u64) -> anyhow::Result<(SramRequest, SramRequest, DebugInfo)> {
     match self.ticks {
       0 | 2 => self.reset_toggle(),
-      _ => {},
+      _ => {}
     }
 
     // a little trick: there must be 2 state transitions after clock posedge
@@ -66,15 +76,14 @@ impl Dut {
       self.top.set_inst_sram_rdata(inst);
       self.top.set_data_sram_rdata(data);
       self.top.eval();
-    } 
-    self.top.trace_at(Duration::from_nanos(self.ticks * 2));
+    }
+    self.trace(self.ticks * 2);
 
     self.clock_toggle();
     self.top.eval();
-    self.top.trace_at(Duration::from_nanos(self.ticks * 2 + 1));
+    self.trace(self.ticks * 2 + 1);
 
     self.ticks += 1;
-
 
     Ok({
       (

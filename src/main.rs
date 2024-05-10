@@ -32,6 +32,10 @@ struct Args {
   /// Enable tui
   #[arg(short, long)]
   tui: bool,
+
+  /// Enable wave trace
+  #[arg(short, long)]
+  trace: bool,
 }
 
 /// Main function of RISC-V emulator for the CLI version.
@@ -54,7 +58,7 @@ fn main() -> anyhow::Result<()> {
   }
 
   // Create an emulator object and start the execution.
-  let mut emu = Emulator::new();
+  let mut emu = Emulator::new(args.trace);
 
   emu.reset();
 

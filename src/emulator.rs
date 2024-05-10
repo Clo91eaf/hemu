@@ -126,10 +126,10 @@ pub struct Emulator {
 
 impl Emulator {
   /// Constructor for an emulator.
-  pub fn new() -> Emulator {
+  pub fn new(trace: bool) -> Emulator {
     Self {
       cpu: Cpu::new(),
-      dut: Dut::new(),
+      dut: Dut::new(trace),
       ui_buffer: UIBuffer::new(),
       cont: false,
       exit: false,
