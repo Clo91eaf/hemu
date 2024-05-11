@@ -221,9 +221,6 @@ impl Emulator {
     };
     let cpu_diff = DebugInfo::new(gpr_info, mem_info);
 
-    info!("[cpu] pc: {:#x}, inst: {}", pc, self.cpu.inst);
-    trace!("gpr: {}", self.cpu.gpr);
-
     return (cpu_diff, trap);
   }
 
@@ -236,7 +233,7 @@ impl Emulator {
       if data_sram.en {
         let p_addr = self
           .cpu
-          .translate(data_sram.addr as u64, crate::cpu::AccessType::Instruction)
+          .translate(( data_sram.addr >> 3 << 3 ) as u64, crate::cpu::AccessType::Instruction)
           .unwrap();
 
         // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
@@ -269,13 +266,6 @@ impl Emulator {
       }
 
       if debug_info.gpr.commit {
-        info!(
-          "[dut] pc: {:#010x}, wnum: {} wdata: {:#018x} ticks: {}",
-          dut.top.debug_pc(),
-          dut.top.debug_rf_wnum(),
-          dut.top.debug_rf_wdata(),
-          dut.ticks
-        );
         return debug_info;
       }
     }
@@ -286,8 +276,19 @@ impl Emulator {
     let mut last_diff = DebugInfo::default();
     loop {
       let (cpu_diff, trap) = self.cpu_exec();
+      info!("[cpu] pc: {:#x}, inst: {}", self.cpu.pc, self.cpu.inst);
 
       let dut_diff = self.dut_exec();
+      if let Some(ref dut) = self.dut {
+        let pc = dut.top.debug_pc();
+        let wnum = dut.top.debug_rf_wnum();
+        let wdata = dut.top.debug_rf_wdata();
+        let ticks = dut.ticks;
+        info!(
+          "[dut] pc: {:#010x}, wnum: {} wdata: {:#018x} ticks: {}",
+          pc, wnum, wdata, ticks
+        );
+      }
 
       match trap {
         Trap::Fatal => {
@@ -310,154 +311,98 @@ impl Emulator {
 
   /// Start executing the emulator with difftest and tui.
   pub fn start_diff_tui(&mut self, terminal: &mut Tui) {
-    // self.ui.selected_tab.diff_buffer.diff.push("running".to_string());
-    // let mut last_diff = DebugInfo::default();
+    self.ui.selected_tab.diff_buffer.diff.push("running".to_string());
+    let mut last_diff = DebugInfo::default();
 
-    // while !self.ui.cmd.exit {
-    //   // ================ cpu ====================
-    //   let cpu_diff;
-    //   loop {
-    //     let pc = self.cpu.pc;
-    //     let trap = self.execute();
+    while !self.ui.cmd.exit {
+      // ================ cpu ====================
+      let (cpu_diff, trap) = self.cpu_exec();
 
-    //     self
-    //       .ui
-    //       .selected_tab
-    //       .diff_buffer
-    //       .inst
-    //       .push(format!("pc: {:#x}, inst: {}", pc, self.cpu.inst));
+      match trap {
+        Trap::Fatal => {
+          self.ui.selected_tab.diff_buffer.diff.clear();
 
-    //     match trap {
-    //       Trap::Fatal => {
-    //         self
-    //           .ui
-    //           .selected_tab
-    //           .diff_buffer
-    //           .diff
-    //           .push(format!("fatal pc: {:#x}, trap {:#?}", self.cpu.pc, trap));
+          self
+            .ui
+            .selected_tab
+            .diff_buffer
+            .diff
+            .push(format!("fatal pc: {:#x}, trap {:#?}", self.cpu.pc, trap));
 
-    //         self.quit(terminal);
+          self.quit(terminal);
 
-    //         return;
-    //       }
-    //       _ => {}
-    //     }
+          return;
+        }
+        _ => {}
+      }
+      self
+        .ui
+        .selected_tab
+        .diff_buffer
+        .inst
+        .push(format!("pc: {:#x}, inst: {}", self.cpu.pc, self.cpu.inst));
 
-    //     match self.cpu.gpr.record {
-    //       Some((wnum, wdata)) => {
-    //         cpu_diff = DebugInfo::new(true, pc, wnum, wdata);
-    //         self
-    //           .ui
-    //           .selected_tab
-    //           .diff_buffer
-    //           .cpu
-    //           .push(format!("record: true,  pc: {:#x}, inst: {}", pc, self.cpu.inst));
-    //         break;
-    //       }
-    //       None => {
-    //         self
-    //           .ui
-    //           .selected_tab
-    //           .diff_buffer
-    //           .cpu
-    //           .push(format!("record: false, pc: {:#x}, inst: {}", pc, self.cpu.inst));
-    //       }
-    //     }
-    //   }
+      self
+        .ui
+        .selected_tab
+        .diff_buffer
+        .cpu
+        .push(format!("pc: {:#x}, inst: {}", self.cpu.pc, self.cpu.inst));
 
-    //   let dut_diff;
-    //   let dut = self.dut.as_mut().unwrap();
+      let dut_diff = self.dut_exec();
+      if let Some(ref dut) = self.dut {
+        let pc = dut.top.debug_pc();
+        let wnum = dut.top.debug_rf_wnum();
+        let wdata = dut.top.debug_rf_wdata();
+        let ticks = dut.ticks;
+        self.ui.selected_tab.diff_buffer.dut.push(format!(
+          "pc: {:#010x}, wnum: {} wdata: {:#018x} ticks: {}",
+          pc, wnum, wdata, ticks
+        ));
+      }
 
-    //   loop {
-    //     let (inst_sram, data_sram, debug_info) = dut.step(dut.inst, dut.data).unwrap();
+      // ==================== diff ====================
+      if cpu_diff != dut_diff {
+        self.ui.selected_tab.diff_buffer.diff.clear();
 
-    //     if data_sram.en {
-    //       let p_addr = self
-    //         .cpu
-    //         .translate(data_sram.addr as u64, crate::cpu::AccessType::Instruction)
-    //         .unwrap();
+        self
+          .ui
+          .selected_tab
+          .diff_buffer
+          .diff
+          .push("difftest failed. press 'q' or 'Q' to quit. ".to_string());
+        self
+          .ui
+          .selected_tab
+          .diff_buffer
+          .diff
+          .push(format!("last: {}", last_diff));
+        self
+          .ui
+          .selected_tab
+          .diff_buffer
+          .diff
+          .push(format!("cpu : {}", cpu_diff));
+        self
+          .ui
+          .selected_tab
+          .diff_buffer
+          .diff
+          .push(format!("dut : {}", dut_diff));
 
-    //       // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
-    //       // should be `Exception::InstructionAccessFault`.
-    //       dut.data = self.cpu.bus.read(p_addr, crate::cpu::DOUBLEWORD).unwrap();
+        self.quit(terminal);
 
-    //       self.ui.selected_tab.diff_buffer.dut.push(format!(
-    //         "{}, data_sram: addr: {:#x}, data: {:#018x}",
-    //         dut.ticks, data_sram.addr, dut.data
-    //       ))
-    //     }
+        return;
+      }
+      last_diff = cpu_diff;
 
-    //     if inst_sram.en {
-    //       let p_pc = self
-    //         .cpu
-    //         .translate(inst_sram.addr as u64, crate::cpu::AccessType::Instruction)
-    //         .unwrap();
-
-    //       // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
-    //       // should be `Exception::InstructionAccessFault`.
-    //       dut.inst = self.cpu.bus.read(p_pc, crate::cpu::WORD).unwrap() as u32;
-
-    //       self.ui.selected_tab.diff_buffer.dut.push(format!(
-    //         "{}, inst_sram: pc: {:#x}, inst: {:#010x}",
-    //         dut.ticks, inst_sram.addr, dut.inst
-    //       ))
-    //     }
-
-    //     if debug_info.commit {
-    //       dut_diff = debug_info;
-    //       break;
-    //     }
-    //   }
-    //   self.ui.selected_tab.diff_buffer.dut.push(format!(
-    //     "{}, pc: {:#010x} wnum: {} wdata: {:#018x}",
-    //     dut.ticks,
-    //     dut.top.debug_pc(),
-    //     dut.top.debug_reg_wnum(),
-    //     dut.top.debug_wdata()
-    //   ));
-
-    //   // ==================== diff ====================
-    //   if cpu_diff != dut_diff {
-    //     self.ui.selected_tab.diff_buffer.diff.clear();
-
-    //     self
-    //       .ui
-    //       .selected_tab
-    //       .diff_buffer
-    //       .diff
-    //       .push("difftest failed. press 'q' or 'Q' to quit. ".to_string());
-    //     self
-    //       .ui
-    //       .selected_tab
-    //       .diff_buffer
-    //       .diff
-    //       .push(format!("last: {}", last_diff));
-    //     self
-    //       .ui
-    //       .selected_tab
-    //       .diff_buffer
-    //       .diff
-    //       .push(format!("cpu : {}", cpu_diff));
-    //     self
-    //       .ui
-    //       .selected_tab
-    //       .diff_buffer
-    //       .diff
-    //       .push(format!("dut : {}", dut_diff));
-
-    //     self.quit(terminal);
-
-    //     return;
-    //   }
-    //   last_diff = cpu_diff;
-
-    //   // tui
-    //   terminal
-    //     .draw(|frame| frame.render_widget(&self.ui, frame.size()))
-    //     .unwrap();
-    //   if !self.ui.cmd.r#continue {
-    //     self.handle_events().unwrap();
-    //   }
-    // }
+      // tui
+      terminal
+        .draw(|frame| frame.render_widget(&self.ui, frame.size()))
+        .unwrap();
+      if !self.ui.cmd.r#continue {
+        self.handle_events().unwrap();
+      }
+    }
   }
 }
