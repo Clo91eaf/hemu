@@ -103,17 +103,17 @@ There are several potential benefits to using Rust to rewrite Nemus's logic:
 - [x] Pass am-tests
 - [x] RISCV64IMAZicsr instruction set architecture
 - [x] Pass riscv-tests
+- [x] Add CI
 - [x] Support for opensbi
 - [x] Add TUI for debugging
+- [x] Added support for peripherals.
+- [x] Added interrupt handling mechanisms.
+- [x] Added support for TLB (Translation Lookaside Buffer).
+- [x] Simulated a bus.
 - [ ] Support for Linux
-
 - [ ] LA32 instruction set architecture
 - [ ] MIPS32 instruction set architecture
-- [ ] Added support for peripherals.
-- [ ] Added interrupt handling mechanisms.
-- [ ] Added support for TLB (Translation Lookaside Buffer).
 - [ ] Designed a cycle-level processor.
-- [ ] Simulated a bus.
 - [ ] Simulated cache functionality.
 
 - [ ] Add some emoji to make it look better.
