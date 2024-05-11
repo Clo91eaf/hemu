@@ -1108,7 +1108,8 @@ module Mdu(	// playground/src/pipeline/execute/fu/Mdu.scala:9:7
 endmodule
 
 module Lsu(	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
-  input         io_info_valid,	// playground/src/pipeline/execute/fu/Lsu.scala:11:14
+  input         clock,	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
+                io_info_valid,	// playground/src/pipeline/execute/fu/Lsu.scala:11:14
   input  [2:0]  io_info_fusel,	// playground/src/pipeline/execute/fu/Lsu.scala:11:14
   input  [6:0]  io_info_op,	// playground/src/pipeline/execute/fu/Lsu.scala:11:14
   input  [63:0] io_info_imm,	// playground/src/pipeline/execute/fu/Lsu.scala:11:14
@@ -1119,19 +1120,20 @@ module Lsu(	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
   output [63:0] io_dataSram_wdata,	// playground/src/pipeline/execute/fu/Lsu.scala:11:14
   output [7:0]  io_dataSram_wen,	// playground/src/pipeline/execute/fu/Lsu.scala:11:14
   input  [63:0] io_dataSram_rdata,	// playground/src/pipeline/execute/fu/Lsu.scala:11:14
+  input         allow_to_go__bore,
   output [63:0] result__bore
 );
 
   wire        valid = io_info_valid & io_info_fusel == 3'h1;	// playground/src/pipeline/execute/fu/Lsu.scala:61:{36,53}
   wire        is_store = valid & io_info_op[3];	// playground/src/defines/isa/Instructions.scala:109:39, playground/src/pipeline/execute/fu/Lsu.scala:61:36, :64:28
-  wire [31:0] _addr_T = io_src_info_src1_data[31:0] + io_info_imm[31:0];	// playground/src/pipeline/execute/fu/Lsu.scala:65:44
-  wire        _req_wmask_T_1 = io_info_op[1:0] == 2'h1;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:68:24
-  wire        _req_wmask_T_2 = io_info_op[1:0] == 2'h2;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:68:24
+  wire [63:0] _addr_T = io_src_info_src1_data + io_info_imm;	// playground/src/pipeline/execute/fu/Lsu.scala:65:44
+  wire        _req_wmask_T_1 = io_info_op[1:0] == 2'h1;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :68:24
+  wire        _req_wmask_T_2 = io_info_op[1:0] == 2'h2;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :68:24
   wire [14:0] req_wmask =
     {7'h0,
      {4'h0,
       {2'h0, {1'h0, ~(|(io_info_op[1:0]))} | {2{_req_wmask_T_1}}} | {4{_req_wmask_T_2}}}
-       | {8{&(io_info_op[1:0])}}} << _addr_T[2:0];	// playground/src/defines/Util.scala:46:34, playground/src/defines/isa/Instructions.scala:110:35, playground/src/pipeline/execute/fu/Lsu.scala:26:{7,14}, :65:44, :68:24, src/main/scala/chisel3/util/Mux.scala:30:73
+       | {8{&(io_info_op[1:0])}}} << _addr_T[2:0];	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :26:{7,14}, :65:44, :68:24, src/main/scala/chisel3/util/Mux.scala:30:73
   wire [63:0] _rdata64_T_17 = (|(_addr_T[2:0])) ? 64'h0 : io_dataSram_rdata;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:26:14, :65:44, src/main/scala/chisel3/util/Mux.scala:30:73
   wire [55:0] _GEN =
     _rdata64_T_17[55:0] | (_addr_T[2:0] == 3'h1 ? io_dataSram_rdata[63:8] : 56'h0);	// playground/src/defines/Util.scala:34:49, :46:34, playground/src/pipeline/execute/fu/Lsu.scala:26:14, :61:53, :65:44, :78:24, src/main/scala/chisel3/util/Mux.scala:30:73
@@ -1146,7 +1148,8 @@ module Lsu(	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
   wire [15:0] _GEN_4 =
     _GEN_3[15:0] | (_addr_T[2:0] == 3'h6 ? io_dataSram_rdata[63:48] : 16'h0);	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:26:14, :65:44, :83:24, src/main/scala/chisel3/util/Mux.scala:30:73
   wire [7:0]  _rdata_partial_result_T_9 =
-    _GEN_4[7:0] | ((&(_addr_T[2:0])) ? io_dataSram_rdata[63:56] : 8'h0);	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:26:14, :65:44, :84:24, :119:40, src/main/scala/chisel3/util/Mux.scala:30:73
+    _GEN_4[7:0] | ((&(_addr_T[2:0])) ? io_dataSram_rdata[63:56] : 8'h0);	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:26:14, :65:44, :84:24, :124:40, src/main/scala/chisel3/util/Mux.scala:30:73
+  reg  [63:0] addr_last;	// playground/src/pipeline/execute/fu/Lsu.scala:121:28
   wire [63:0] result =
     ~is_store & io_info_op != 7'h3
       ? (io_info_op == 7'h0
@@ -1177,23 +1180,48 @@ module Lsu(	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
          _GEN_2[31:24],
          _GEN_3[23:16],
          _GEN_4[15:8],
-         _rdata_partial_result_T_9};	// playground/src/defines/Util.scala:33:20, :34:{44,49}, :41:44, :46:34, playground/src/pipeline/execute/fu/Lsu.scala:26:7, :64:28, :67:{22,32,39}, :100:49, :101:49, :102:49, :123:20, :124:16, src/main/scala/chisel3/util/Mux.scala:30:73
+         _rdata_partial_result_T_9};	// playground/src/defines/Util.scala:33:20, :34:{44,49}, :41:44, :46:34, playground/src/pipeline/execute/fu/Lsu.scala:26:7, :64:28, :67:{22,32,39}, :100:49, :101:49, :102:49, :128:20, :129:16, src/main/scala/chisel3/util/Mux.scala:30:73
+  always @(posedge clock) begin	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
+    if (allow_to_go__bore)
+      addr_last <= _addr_T;	// playground/src/pipeline/execute/fu/Lsu.scala:65:44, :121:28
+  end // always @(posedge)
+  `ifdef ENABLE_INITIAL_REG_	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
+    `ifdef FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
+      `FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
+    `endif // FIRRTL_BEFORE_INITIAL
+    initial begin	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
+      automatic logic [31:0] _RANDOM[0:1];	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
+      `ifdef INIT_RANDOM_PROLOG_	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
+        `INIT_RANDOM_PROLOG_	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
+      `endif // INIT_RANDOM_PROLOG_
+      `ifdef RANDOMIZE_REG_INIT	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
+        for (logic [1:0] i = 2'h0; i < 2'h2; i += 2'h1) begin
+          _RANDOM[i[0]] = `RANDOM;	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
+        end	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
+        addr_last = {_RANDOM[1'h0], _RANDOM[1'h1]};	// playground/src/pipeline/execute/fu/Lsu.scala:10:7, :121:28
+      `endif // RANDOMIZE_REG_INIT
+    end // initial
+    `ifdef FIRRTL_AFTER_INITIAL	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
+      `FIRRTL_AFTER_INITIAL	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
+    `endif // FIRRTL_AFTER_INITIAL
+  `endif // ENABLE_INITIAL_REG_
   assign io_dataSram_en =
     valid
     & (~(|(io_info_op[1:0])) | io_info_op[1:0] == 2'h1 & ~(_addr_T[0])
        | io_info_op[1:0] == 2'h2 & _addr_T[1:0] == 2'h0 | (&(io_info_op[1:0]))
-       & ~(|(_addr_T[2:0])));	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :26:14, :61:36, :65:44, :68:24, :88:9, :112:{23,27}, :113:30, :114:30, :118:30, src/main/scala/chisel3/util/Mux.scala:30:73
-  assign io_dataSram_addr = _addr_T;	// playground/src/pipeline/execute/fu/Lsu.scala:10:7, :65:44
+       & ~(|(_addr_T[2:0])));	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :26:14, :61:36, :65:44, :68:24, :88:9, :112:{23,27}, :113:30, :114:30, :123:30, src/main/scala/chisel3/util/Mux.scala:30:73
+  assign io_dataSram_addr = allow_to_go__bore ? _addr_T[31:0] : addr_last[31:0];	// playground/src/pipeline/execute/fu/Lsu.scala:10:7, :65:44, :121:28, :125:27
   assign io_dataSram_wdata =
     ((|(io_info_op[1:0])) ? 64'h0 : {2{{2{{2{io_src_info_src2_data[7:0]}}}}}})
     | (_req_wmask_T_1 ? {2{{2{io_src_info_src2_data[15:0]}}}} : 64'h0)
     | (_req_wmask_T_2 ? {2{io_src_info_src2_data[31:0]}} : 64'h0)
     | ((&(io_info_op[1:0])) ? io_src_info_src2_data : 64'h0);	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :32:{24,32}, :33:{24,32}, :34:{24,32}, :68:24, src/main/scala/chisel3/util/Mux.scala:30:73
-  assign io_dataSram_wen = req_wmask[7:0] & {8{is_store}};	// playground/src/pipeline/execute/fu/Lsu.scala:10:7, :26:7, :64:28, :119:{34,40}
-  assign result__bore = result;	// playground/src/pipeline/execute/fu/Lsu.scala:10:7, :123:20
+  assign io_dataSram_wen = req_wmask[7:0] & {8{is_store}};	// playground/src/pipeline/execute/fu/Lsu.scala:10:7, :26:7, :64:28, :124:{34,40}
+  assign result__bore = result;	// playground/src/pipeline/execute/fu/Lsu.scala:10:7, :128:20
 endmodule
 
 module Fu(	// playground/src/pipeline/execute/Fu.scala:9:7
+  input         clock,	// playground/src/pipeline/execute/Fu.scala:9:7
   input  [63:0] io_data_pc,	// playground/src/pipeline/execute/Fu.scala:10:14
   input         io_data_info_valid,	// playground/src/pipeline/execute/Fu.scala:10:14
   input  [2:0]  io_data_info_fusel,	// playground/src/pipeline/execute/Fu.scala:10:14
@@ -1211,7 +1239,8 @@ module Fu(	// playground/src/pipeline/execute/Fu.scala:9:7
   input  [63:0] io_dataSram_rdata,	// playground/src/pipeline/execute/Fu.scala:10:14
   output        io_ctrl_flush,	// playground/src/pipeline/execute/Fu.scala:10:14
   output [63:0] io_ctrl_target,	// playground/src/pipeline/execute/Fu.scala:10:14
-                Lsu_result__bore
+  input         Lsu_allow_to_go__bore,
+  output [63:0] Lsu_result__bore
 );
 
   Alu Alu (	// playground/src/pipeline/execute/Fu.scala:27:19
@@ -1238,6 +1267,7 @@ module Fu(	// playground/src/pipeline/execute/Fu.scala:9:7
     .io_result             (io_data_rd_info_wdata_2)
   );
   Lsu Lsu (	// playground/src/pipeline/execute/Fu.scala:30:19
+    .clock                 (clock),
     .io_info_valid         (io_data_info_valid),
     .io_info_fusel         (io_data_info_fusel),
     .io_info_op            (io_data_info_op),
@@ -1249,58 +1279,61 @@ module Fu(	// playground/src/pipeline/execute/Fu.scala:9:7
     .io_dataSram_wdata     (io_dataSram_wdata),
     .io_dataSram_wen       (io_dataSram_wen),
     .io_dataSram_rdata     (io_dataSram_rdata),
+    .allow_to_go__bore     (Lsu_allow_to_go__bore),
     .result__bore          (Lsu_result__bore)
   );
   assign io_data_rd_info_wdata_5 = io_data_pc + 64'h4;	// playground/src/pipeline/execute/Fu.scala:9:7, :48:51
 endmodule
 
-module ExecuteUnit(	// playground/src/pipeline/execute/ExecuteUnit.scala:9:7
-  output        io_ctrl_data_is_load,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  output [4:0]  io_ctrl_data_reg_waddr,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  output        io_ctrl_flush,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  output [63:0] io_ctrl_target,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  input  [63:0] io_executeStage_data_pc,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  input         io_executeStage_data_info_valid,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  input  [2:0]  io_executeStage_data_info_fusel,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  input  [6:0]  io_executeStage_data_info_op,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  input         io_executeStage_data_info_reg_wen,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  input  [4:0]  io_executeStage_data_info_reg_waddr,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  input  [63:0] io_executeStage_data_info_imm,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-                io_executeStage_data_src_info_src1_data,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-                io_executeStage_data_src_info_src2_data,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  output        io_decodeUnit_forward_exe_wen,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  output [4:0]  io_decodeUnit_forward_exe_waddr,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  output [63:0] io_decodeUnit_forward_exe_wdata,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  output        io_decodeUnit_forward_is_load,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  output [63:0] io_memoryStage_data_pc,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  output        io_memoryStage_data_info_valid,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  output [2:0]  io_memoryStage_data_info_fusel,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  output        io_memoryStage_data_info_reg_wen,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  output [4:0]  io_memoryStage_data_info_reg_waddr,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  output [63:0] io_memoryStage_data_rd_info_wdata_0,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-                io_memoryStage_data_rd_info_wdata_2,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-                io_memoryStage_data_rd_info_wdata_5,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  output [31:0] io_memoryStage_sram_waddr,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  output [63:0] io_memoryStage_sram_wdata,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  output [7:0]  io_memoryStage_sram_wen,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  output        io_dataSram_en,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  output [31:0] io_dataSram_addr,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  output [63:0] io_dataSram_wdata,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  output [7:0]  io_dataSram_wen,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
-  input  [63:0] io_dataSram_rdata,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:14
+module ExecuteUnit(	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
+  input         clock,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
+  output        io_ctrl_data_is_load,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output [4:0]  io_ctrl_data_reg_waddr,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output        io_ctrl_flush,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output [63:0] io_ctrl_target,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  input         io_ctrl_ctrlSignal_allow_to_go,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  input  [63:0] io_executeStage_data_pc,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  input         io_executeStage_data_info_valid,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  input  [2:0]  io_executeStage_data_info_fusel,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  input  [6:0]  io_executeStage_data_info_op,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  input         io_executeStage_data_info_reg_wen,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  input  [4:0]  io_executeStage_data_info_reg_waddr,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  input  [63:0] io_executeStage_data_info_imm,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                io_executeStage_data_src_info_src1_data,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                io_executeStage_data_src_info_src2_data,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output        io_decodeUnit_forward_exe_wen,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output [4:0]  io_decodeUnit_forward_exe_waddr,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output [63:0] io_decodeUnit_forward_exe_wdata,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output        io_decodeUnit_forward_is_load,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output [63:0] io_memoryStage_data_pc,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output        io_memoryStage_data_info_valid,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output [2:0]  io_memoryStage_data_info_fusel,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output        io_memoryStage_data_info_reg_wen,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output [4:0]  io_memoryStage_data_info_reg_waddr,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output [63:0] io_memoryStage_data_rd_info_wdata_0,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                io_memoryStage_data_rd_info_wdata_2,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                io_memoryStage_data_rd_info_wdata_5,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output [31:0] io_memoryStage_sram_waddr,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output [63:0] io_memoryStage_sram_wdata,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output [7:0]  io_memoryStage_sram_wen,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output        io_dataSram_en,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output [31:0] io_dataSram_addr,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output [63:0] io_dataSram_wdata,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output [7:0]  io_dataSram_wen,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  input  [63:0] io_dataSram_rdata,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
   output [63:0] Fu_Lsu_result__bore
 );
 
-  wire [63:0]      _Fu_io_data_rd_info_wdata_0;	// playground/src/pipeline/execute/ExecuteUnit.scala:28:18
-  wire [63:0]      _Fu_io_data_rd_info_wdata_2;	// playground/src/pipeline/execute/ExecuteUnit.scala:28:18
-  wire [63:0]      _Fu_io_data_rd_info_wdata_5;	// playground/src/pipeline/execute/ExecuteUnit.scala:28:18
-  wire [31:0]      _Fu_io_dataSram_addr;	// playground/src/pipeline/execute/ExecuteUnit.scala:28:18
-  wire [63:0]      _Fu_io_dataSram_wdata;	// playground/src/pipeline/execute/ExecuteUnit.scala:28:18
-  wire [7:0]       _Fu_io_dataSram_wen;	// playground/src/pipeline/execute/ExecuteUnit.scala:28:18
-  wire             _Fu_io_ctrl_flush;	// playground/src/pipeline/execute/ExecuteUnit.scala:28:18
+  wire [63:0]      _Fu_io_data_rd_info_wdata_0;	// playground/src/pipeline/execute/ExecuteUnit.scala:32:18
+  wire [63:0]      _Fu_io_data_rd_info_wdata_2;	// playground/src/pipeline/execute/ExecuteUnit.scala:32:18
+  wire [63:0]      _Fu_io_data_rd_info_wdata_5;	// playground/src/pipeline/execute/ExecuteUnit.scala:32:18
+  wire [31:0]      _Fu_io_dataSram_addr;	// playground/src/pipeline/execute/ExecuteUnit.scala:32:18
+  wire [63:0]      _Fu_io_dataSram_wdata;	// playground/src/pipeline/execute/ExecuteUnit.scala:32:18
+  wire [7:0]       _Fu_io_dataSram_wen;	// playground/src/pipeline/execute/ExecuteUnit.scala:32:18
+  wire             _Fu_io_ctrl_flush;	// playground/src/pipeline/execute/ExecuteUnit.scala:32:18
   wire             io_ctrl_data_is_load_0 =
     io_executeStage_data_info_fusel == 3'h1 & ~(io_executeStage_data_info_op[3])
-    & ~(io_executeStage_data_info_op[5]);	// playground/src/defines/isa/Instructions.scala:108:39, :109:39, :110:{35,52}, playground/src/pipeline/execute/ExecuteUnit.scala:39:{35,50}
+    & ~(io_executeStage_data_info_op[5]);	// playground/src/defines/isa/Instructions.scala:108:39, :109:39, :110:{35,52}, playground/src/pipeline/execute/ExecuteUnit.scala:43:{35,50}
   wire [7:0][63:0] _GEN =
     {{_Fu_io_data_rd_info_wdata_0},
      {_Fu_io_data_rd_info_wdata_0},
@@ -1309,8 +1342,9 @@ module ExecuteUnit(	// playground/src/pipeline/execute/ExecuteUnit.scala:9:7
      {64'h0},
      {_Fu_io_data_rd_info_wdata_2},
      {64'h0},
-     {_Fu_io_data_rd_info_wdata_0}};	// playground/src/pipeline/execute/ExecuteUnit.scala:9:7, :10:14, :28:18, :53:35
-  Fu Fu (	// playground/src/pipeline/execute/ExecuteUnit.scala:28:18
+     {_Fu_io_data_rd_info_wdata_0}};	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :11:14, :32:18, :57:35
+  Fu Fu (	// playground/src/pipeline/execute/ExecuteUnit.scala:32:18
+    .clock                      (clock),
     .io_data_pc                 (io_executeStage_data_pc),
     .io_data_info_valid         (io_executeStage_data_info_valid),
     .io_data_info_fusel         (io_executeStage_data_info_fusel),
@@ -1328,29 +1362,31 @@ module ExecuteUnit(	// playground/src/pipeline/execute/ExecuteUnit.scala:9:7
     .io_dataSram_rdata          (io_dataSram_rdata),
     .io_ctrl_flush              (_Fu_io_ctrl_flush),
     .io_ctrl_target             (io_ctrl_target),
+    .Lsu_allow_to_go__bore      (io_ctrl_ctrlSignal_allow_to_go),
     .Lsu_result__bore           (Fu_Lsu_result__bore)
   );
-  assign io_ctrl_data_is_load = io_ctrl_data_is_load_0;	// playground/src/pipeline/execute/ExecuteUnit.scala:9:7, :39:50
-  assign io_ctrl_data_reg_waddr = io_executeStage_data_info_reg_waddr;	// playground/src/pipeline/execute/ExecuteUnit.scala:9:7
-  assign io_ctrl_flush = io_executeStage_data_info_valid & _Fu_io_ctrl_flush;	// playground/src/pipeline/execute/ExecuteUnit.scala:9:7, :28:18, :41:35
-  assign io_decodeUnit_forward_exe_wen = io_executeStage_data_info_reg_wen;	// playground/src/pipeline/execute/ExecuteUnit.scala:9:7
-  assign io_decodeUnit_forward_exe_waddr = io_executeStage_data_info_reg_waddr;	// playground/src/pipeline/execute/ExecuteUnit.scala:9:7
-  assign io_decodeUnit_forward_exe_wdata = _GEN[io_executeStage_data_info_fusel];	// playground/src/pipeline/execute/ExecuteUnit.scala:9:7, :53:35
-  assign io_decodeUnit_forward_is_load = io_ctrl_data_is_load_0;	// playground/src/pipeline/execute/ExecuteUnit.scala:9:7, :39:50
-  assign io_memoryStage_data_pc = io_executeStage_data_pc;	// playground/src/pipeline/execute/ExecuteUnit.scala:9:7
-  assign io_memoryStage_data_info_valid = io_executeStage_data_info_valid;	// playground/src/pipeline/execute/ExecuteUnit.scala:9:7
-  assign io_memoryStage_data_info_fusel = io_executeStage_data_info_fusel;	// playground/src/pipeline/execute/ExecuteUnit.scala:9:7
-  assign io_memoryStage_data_info_reg_wen = io_executeStage_data_info_reg_wen;	// playground/src/pipeline/execute/ExecuteUnit.scala:9:7
-  assign io_memoryStage_data_info_reg_waddr = io_executeStage_data_info_reg_waddr;	// playground/src/pipeline/execute/ExecuteUnit.scala:9:7
-  assign io_memoryStage_data_rd_info_wdata_0 = _Fu_io_data_rd_info_wdata_0;	// playground/src/pipeline/execute/ExecuteUnit.scala:9:7, :28:18
-  assign io_memoryStage_data_rd_info_wdata_2 = _Fu_io_data_rd_info_wdata_2;	// playground/src/pipeline/execute/ExecuteUnit.scala:9:7, :28:18
-  assign io_memoryStage_data_rd_info_wdata_5 = _Fu_io_data_rd_info_wdata_5;	// playground/src/pipeline/execute/ExecuteUnit.scala:9:7, :28:18
-  assign io_memoryStage_sram_waddr = _Fu_io_dataSram_addr;	// playground/src/pipeline/execute/ExecuteUnit.scala:9:7, :28:18
-  assign io_memoryStage_sram_wdata = _Fu_io_dataSram_wdata;	// playground/src/pipeline/execute/ExecuteUnit.scala:9:7, :28:18
-  assign io_memoryStage_sram_wen = _Fu_io_dataSram_wen;	// playground/src/pipeline/execute/ExecuteUnit.scala:9:7, :28:18
-  assign io_dataSram_addr = _Fu_io_dataSram_addr;	// playground/src/pipeline/execute/ExecuteUnit.scala:9:7, :28:18
-  assign io_dataSram_wdata = _Fu_io_dataSram_wdata;	// playground/src/pipeline/execute/ExecuteUnit.scala:9:7, :28:18
-  assign io_dataSram_wen = _Fu_io_dataSram_wen;	// playground/src/pipeline/execute/ExecuteUnit.scala:9:7, :28:18
+  assign io_ctrl_data_is_load = io_ctrl_data_is_load_0;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :43:50
+  assign io_ctrl_data_reg_waddr = io_executeStage_data_info_reg_waddr;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
+  assign io_ctrl_flush =
+    io_executeStage_data_info_valid & io_ctrl_ctrlSignal_allow_to_go & _Fu_io_ctrl_flush;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :32:18, :45:35
+  assign io_decodeUnit_forward_exe_wen = io_executeStage_data_info_reg_wen;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
+  assign io_decodeUnit_forward_exe_waddr = io_executeStage_data_info_reg_waddr;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
+  assign io_decodeUnit_forward_exe_wdata = _GEN[io_executeStage_data_info_fusel];	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :57:35
+  assign io_decodeUnit_forward_is_load = io_ctrl_data_is_load_0;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :43:50
+  assign io_memoryStage_data_pc = io_executeStage_data_pc;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
+  assign io_memoryStage_data_info_valid = io_executeStage_data_info_valid;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
+  assign io_memoryStage_data_info_fusel = io_executeStage_data_info_fusel;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
+  assign io_memoryStage_data_info_reg_wen = io_executeStage_data_info_reg_wen;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
+  assign io_memoryStage_data_info_reg_waddr = io_executeStage_data_info_reg_waddr;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
+  assign io_memoryStage_data_rd_info_wdata_0 = _Fu_io_data_rd_info_wdata_0;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :32:18
+  assign io_memoryStage_data_rd_info_wdata_2 = _Fu_io_data_rd_info_wdata_2;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :32:18
+  assign io_memoryStage_data_rd_info_wdata_5 = _Fu_io_data_rd_info_wdata_5;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :32:18
+  assign io_memoryStage_sram_waddr = _Fu_io_dataSram_addr;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :32:18
+  assign io_memoryStage_sram_wdata = _Fu_io_dataSram_wdata;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :32:18
+  assign io_memoryStage_sram_wen = _Fu_io_dataSram_wen;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :32:18
+  assign io_dataSram_addr = _Fu_io_dataSram_addr;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :32:18
+  assign io_dataSram_wdata = _Fu_io_dataSram_wdata;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :32:18
+  assign io_dataSram_wen = _Fu_io_dataSram_wen;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :32:18
 endmodule
 
 module MemoryStage(	// playground/src/pipeline/memory/MemoryStage.scala:22:7
@@ -1962,10 +1998,12 @@ module Core(	// playground/src/Core.scala:10:7
       (_ExecuteStage_io_executeUnit_data_src_info_src2_data)
   );
   ExecuteUnit ExecuteUnit (	// playground/src/Core.scala:24:30
+    .clock                                   (clock),
     .io_ctrl_data_is_load                    (_ExecuteUnit_io_ctrl_data_is_load),
     .io_ctrl_data_reg_waddr                  (_ExecuteUnit_io_ctrl_data_reg_waddr),
     .io_ctrl_flush                           (_ExecuteUnit_io_ctrl_flush),
     .io_ctrl_target                          (_ExecuteUnit_io_ctrl_target),
+    .io_ctrl_ctrlSignal_allow_to_go          (1'h1),	// playground/src/Core.scala:18:30, :24:30, :25:30, :26:30, :27:30, :28:30
     .io_executeStage_data_pc                 (_ExecuteStage_io_executeUnit_data_pc),	// playground/src/Core.scala:23:30
     .io_executeStage_data_info_valid
       (_ExecuteStage_io_executeUnit_data_info_valid),	// playground/src/Core.scala:23:30
