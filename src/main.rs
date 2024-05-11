@@ -47,6 +47,9 @@ fn main() -> anyhow::Result<()> {
   let level = args.log.parse()?;
   log_trace(level);
 
+  assert!(!(args.tui && level < tracing::Level::INFO), "Tui requires log level >= INFO.");
+  assert!(!(!args.diff && args.tui), "Tui without difftest is not supported yet.");
+
   // Read the kernel bin(after objcopy) and the disk image.
   let mut kernel_file = File::open(args.kernel)?;
   let mut kernel_data = Vec::new();
