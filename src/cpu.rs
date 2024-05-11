@@ -462,6 +462,7 @@ impl Cpu {
 
     // Reset the record of the register for difftest.
     self.gpr.reset_record();
+    self.bus.reset_record();
 
     // Fetch. It can be optimized by only one fetch.
     let inst16 = self.fetch(HALFWORD)?;

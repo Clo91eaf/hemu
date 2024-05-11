@@ -1,5 +1,5 @@
 mod top;
-use crate::emulator::DebugInfo;
+use crate::emulator::{DebugInfo, GprInfo, MemInfo};
 use std::time::Duration;
 use top::Top;
 
@@ -76,10 +76,17 @@ impl Dut {
         SramRequest::new(self.top.inst_sram_en() != 0, self.top.inst_sram_addr()),
         SramRequest::new(self.top.data_sram_en() != 0, self.top.data_sram_addr()),
         DebugInfo::new(
-          self.top.debug_commit() != 0,
-          self.top.debug_pc(),
-          self.top.debug_reg_wnum(),
-          self.top.debug_wdata(),
+          GprInfo::new(
+            self.top.debug_commit() != 0,
+            self.top.debug_pc(),
+            self.top.debug_rf_wnum(),
+            self.top.debug_rf_wdata(),
+          ),
+          MemInfo::new(
+            self.top.debug_sram_wen() != 0,
+            self.top.debug_sram_waddr(),
+            self.top.debug_sram_wdata(),
+          ),
         ),
       )
     })

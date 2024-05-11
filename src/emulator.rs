@@ -11,35 +11,84 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use std::io;
 
 #[derive(Default)]
-pub struct DebugInfo {
+pub struct GprInfo {
   pub commit: bool,
   pub pc: u64,
   pub wnum: u8,
   pub wdata: u64,
 }
 
-impl fmt::Display for DebugInfo {
+impl GprInfo {
+  pub fn new(commit: bool, pc: u64, wnum: u8, wdata: u64) -> Self {
+    GprInfo {
+      commit,
+      pc,
+      wnum,
+      wdata,
+    }
+  }
+}
+
+impl PartialEq for GprInfo {
+  fn eq(&self, other: &Self) -> bool {
+    self.pc == other.pc && (self.wnum == 0 || (self.wnum == other.wnum && self.wdata == other.wdata))
+  }
+}
+
+impl fmt::Display for GprInfo {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(f, "pc: {:#x}, wnum: {}, wdata: {:#x}", self.pc, self.wnum, self.wdata)
   }
 }
 
+#[derive(Default)]
+pub struct MemInfo {
+  pub wen: bool,
+  pub addr: u32,
+  pub data: u64,
+}
+
+impl MemInfo {
+  pub fn new(wen: bool, addr: u32, data: u64) -> Self {
+    MemInfo { wen, addr, data }
+  }
+}
+
+impl fmt::Display for MemInfo {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "wen: {}, waddr: {:#x}, wdata: {:#x}", self.wen, self.addr, self.data)
+  }
+}
+
+impl PartialEq for MemInfo {
+  fn eq(&self, other: &Self) -> bool {
+    !self.wen || self.wen == other.wen && self.addr == other.addr && self.data == other.data
+  }
+}
+
+#[derive(Default)]
+pub struct DebugInfo {
+  gpr: GprInfo,
+  mem: MemInfo,
+}
+
 impl PartialEq for DebugInfo {
   fn eq(&self, other: &Self) -> bool {
-    self.pc == other.pc && (self.wnum == 0 || (self.wnum == other.wnum && self.wdata == other.wdata))
+    self.gpr == other.gpr && self.mem == other.mem
+  }
+}
+
+impl fmt::Display for DebugInfo {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "gpr: {}, mem: {}", self.gpr, self.mem)
   }
 }
 
 impl Eq for DebugInfo {}
 
 impl DebugInfo {
-  pub fn new(commit: bool, pc: u64, wnum: u8, wdata: u64) -> Self {
-    DebugInfo {
-      commit,
-      pc,
-      wnum,
-      wdata,
-    }
+  pub fn new(gpr: GprInfo, mem: MemInfo) -> Self {
+    DebugInfo { gpr, mem }
   }
 }
 
@@ -166,10 +215,15 @@ impl Emulator {
       // ================ cpu ====================
       let pc = self.cpu.pc;
       let trap = self.execute();
-      let cpu_diff = match self.cpu.gpr.record {
-        Some((wnum, wdata)) => DebugInfo::new(true, pc, wnum, wdata),
-        None => DebugInfo::new(true, pc, 0, 0),
+      let gpr_info = match self.cpu.gpr.record {
+        Some((wnum, wdata)) => GprInfo::new(true, pc, wnum, wdata),
+        None => GprInfo::new(true, pc, 0, 0),
       };
+      let mem_info = match self.cpu.bus.record {
+        Some((addr, data)) => MemInfo::new(true, addr, data),
+        None => MemInfo::new(false, 0, 0),
+      };
+      let cpu_diff = DebugInfo::new(gpr_info, mem_info);
 
       match trap {
         Trap::Fatal => {
@@ -222,7 +276,7 @@ impl Emulator {
           );
         }
 
-        if debug_info.commit {
+        if debug_info.gpr.commit {
           dut_diff = debug_info;
           break;
         }
@@ -230,8 +284,8 @@ impl Emulator {
       info!(
         "[dut] pc: {:#010x}, wnum: {} wdata: {:#018x} ticks: {}",
         dut.top.debug_pc(),
-        dut.top.debug_reg_wnum(),
-        dut.top.debug_wdata(),
+        dut.top.debug_rf_wnum(),
+        dut.top.debug_rf_wdata(),
         dut.ticks
       );
 
@@ -249,154 +303,154 @@ impl Emulator {
 
   /// Start executing the emulator with difftest and tui.
   pub fn start_diff_tui(&mut self, terminal: &mut Tui) {
-    self.ui.selected_tab.diff_buffer.diff.push("running".to_string());
-    let mut last_diff = DebugInfo::default();
+    // self.ui.selected_tab.diff_buffer.diff.push("running".to_string());
+    // let mut last_diff = DebugInfo::default();
 
-    while !self.ui.cmd.exit {
-      // ================ cpu ====================
-      let cpu_diff;
-      loop {
-        let pc = self.cpu.pc;
-        let trap = self.execute();
+    // while !self.ui.cmd.exit {
+    //   // ================ cpu ====================
+    //   let cpu_diff;
+    //   loop {
+    //     let pc = self.cpu.pc;
+    //     let trap = self.execute();
 
-        self
-          .ui
-          .selected_tab
-          .diff_buffer
-          .inst
-          .push(format!("pc: {:#x}, inst: {}", pc, self.cpu.inst));
+    //     self
+    //       .ui
+    //       .selected_tab
+    //       .diff_buffer
+    //       .inst
+    //       .push(format!("pc: {:#x}, inst: {}", pc, self.cpu.inst));
 
-        match trap {
-          Trap::Fatal => {
-            self
-              .ui
-              .selected_tab
-              .diff_buffer
-              .diff
-              .push(format!("fatal pc: {:#x}, trap {:#?}", self.cpu.pc, trap));
+    //     match trap {
+    //       Trap::Fatal => {
+    //         self
+    //           .ui
+    //           .selected_tab
+    //           .diff_buffer
+    //           .diff
+    //           .push(format!("fatal pc: {:#x}, trap {:#?}", self.cpu.pc, trap));
 
-            self.quit(terminal);
+    //         self.quit(terminal);
 
-            return;
-          }
-          _ => {}
-        }
+    //         return;
+    //       }
+    //       _ => {}
+    //     }
 
-        match self.cpu.gpr.record {
-          Some((wnum, wdata)) => {
-            cpu_diff = DebugInfo::new(true, pc, wnum, wdata);
-            self
-              .ui
-              .selected_tab
-              .diff_buffer
-              .cpu
-              .push(format!("record: true,  pc: {:#x}, inst: {}", pc, self.cpu.inst));
-            break;
-          }
-          None => {
-            self
-              .ui
-              .selected_tab
-              .diff_buffer
-              .cpu
-              .push(format!("record: false, pc: {:#x}, inst: {}", pc, self.cpu.inst));
-          }
-        }
-      }
+    //     match self.cpu.gpr.record {
+    //       Some((wnum, wdata)) => {
+    //         cpu_diff = DebugInfo::new(true, pc, wnum, wdata);
+    //         self
+    //           .ui
+    //           .selected_tab
+    //           .diff_buffer
+    //           .cpu
+    //           .push(format!("record: true,  pc: {:#x}, inst: {}", pc, self.cpu.inst));
+    //         break;
+    //       }
+    //       None => {
+    //         self
+    //           .ui
+    //           .selected_tab
+    //           .diff_buffer
+    //           .cpu
+    //           .push(format!("record: false, pc: {:#x}, inst: {}", pc, self.cpu.inst));
+    //       }
+    //     }
+    //   }
 
-      let dut_diff;
-      let dut = self.dut.as_mut().unwrap();
+    //   let dut_diff;
+    //   let dut = self.dut.as_mut().unwrap();
 
-      loop {
-        let (inst_sram, data_sram, debug_info) = dut.step(dut.inst, dut.data).unwrap();
+    //   loop {
+    //     let (inst_sram, data_sram, debug_info) = dut.step(dut.inst, dut.data).unwrap();
 
-        if data_sram.en {
-          let p_addr = self
-            .cpu
-            .translate(data_sram.addr as u64, crate::cpu::AccessType::Instruction)
-            .unwrap();
+    //     if data_sram.en {
+    //       let p_addr = self
+    //         .cpu
+    //         .translate(data_sram.addr as u64, crate::cpu::AccessType::Instruction)
+    //         .unwrap();
 
-          // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
-          // should be `Exception::InstructionAccessFault`.
-          dut.data = self.cpu.bus.read(p_addr, crate::cpu::DOUBLEWORD).unwrap();
+    //       // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
+    //       // should be `Exception::InstructionAccessFault`.
+    //       dut.data = self.cpu.bus.read(p_addr, crate::cpu::DOUBLEWORD).unwrap();
 
-          self.ui.selected_tab.diff_buffer.dut.push(format!(
-            "{}, data_sram: addr: {:#x}, data: {:#018x}",
-            dut.ticks, data_sram.addr, dut.data
-          ))
-        }
+    //       self.ui.selected_tab.diff_buffer.dut.push(format!(
+    //         "{}, data_sram: addr: {:#x}, data: {:#018x}",
+    //         dut.ticks, data_sram.addr, dut.data
+    //       ))
+    //     }
 
-        if inst_sram.en {
-          let p_pc = self
-            .cpu
-            .translate(inst_sram.addr as u64, crate::cpu::AccessType::Instruction)
-            .unwrap();
+    //     if inst_sram.en {
+    //       let p_pc = self
+    //         .cpu
+    //         .translate(inst_sram.addr as u64, crate::cpu::AccessType::Instruction)
+    //         .unwrap();
 
-          // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
-          // should be `Exception::InstructionAccessFault`.
-          dut.inst = self.cpu.bus.read(p_pc, crate::cpu::WORD).unwrap() as u32;
+    //       // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
+    //       // should be `Exception::InstructionAccessFault`.
+    //       dut.inst = self.cpu.bus.read(p_pc, crate::cpu::WORD).unwrap() as u32;
 
-          self.ui.selected_tab.diff_buffer.dut.push(format!(
-            "{}, inst_sram: pc: {:#x}, inst: {:#010x}",
-            dut.ticks, inst_sram.addr, dut.inst
-          ))
-        }
+    //       self.ui.selected_tab.diff_buffer.dut.push(format!(
+    //         "{}, inst_sram: pc: {:#x}, inst: {:#010x}",
+    //         dut.ticks, inst_sram.addr, dut.inst
+    //       ))
+    //     }
 
-        if debug_info.commit {
-          dut_diff = debug_info;
-          break;
-        }
-      }
-      self.ui.selected_tab.diff_buffer.dut.push(format!(
-        "{}, pc: {:#010x} wnum: {} wdata: {:#018x}",
-        dut.ticks,
-        dut.top.debug_pc(),
-        dut.top.debug_reg_wnum(),
-        dut.top.debug_wdata()
-      ));
+    //     if debug_info.commit {
+    //       dut_diff = debug_info;
+    //       break;
+    //     }
+    //   }
+    //   self.ui.selected_tab.diff_buffer.dut.push(format!(
+    //     "{}, pc: {:#010x} wnum: {} wdata: {:#018x}",
+    //     dut.ticks,
+    //     dut.top.debug_pc(),
+    //     dut.top.debug_reg_wnum(),
+    //     dut.top.debug_wdata()
+    //   ));
 
-      // ==================== diff ====================
-      if cpu_diff != dut_diff {
-        self.ui.selected_tab.diff_buffer.diff.clear();
+    //   // ==================== diff ====================
+    //   if cpu_diff != dut_diff {
+    //     self.ui.selected_tab.diff_buffer.diff.clear();
 
-        self
-          .ui
-          .selected_tab
-          .diff_buffer
-          .diff
-          .push("difftest failed. press 'q' or 'Q' to quit. ".to_string());
-        self
-          .ui
-          .selected_tab
-          .diff_buffer
-          .diff
-          .push(format!("last: {}", last_diff));
-        self
-          .ui
-          .selected_tab
-          .diff_buffer
-          .diff
-          .push(format!("cpu : {}", cpu_diff));
-        self
-          .ui
-          .selected_tab
-          .diff_buffer
-          .diff
-          .push(format!("dut : {}", dut_diff));
+    //     self
+    //       .ui
+    //       .selected_tab
+    //       .diff_buffer
+    //       .diff
+    //       .push("difftest failed. press 'q' or 'Q' to quit. ".to_string());
+    //     self
+    //       .ui
+    //       .selected_tab
+    //       .diff_buffer
+    //       .diff
+    //       .push(format!("last: {}", last_diff));
+    //     self
+    //       .ui
+    //       .selected_tab
+    //       .diff_buffer
+    //       .diff
+    //       .push(format!("cpu : {}", cpu_diff));
+    //     self
+    //       .ui
+    //       .selected_tab
+    //       .diff_buffer
+    //       .diff
+    //       .push(format!("dut : {}", dut_diff));
 
-        self.quit(terminal);
+    //     self.quit(terminal);
 
-        return;
-      }
-      last_diff = cpu_diff;
+    //     return;
+    //   }
+    //   last_diff = cpu_diff;
 
-      // tui
-      terminal
-        .draw(|frame| frame.render_widget(&self.ui, frame.size()))
-        .unwrap();
-      if !self.ui.cmd.r#continue {
-        self.handle_events().unwrap();
-      }
-    }
+    //   // tui
+    //   terminal
+    //     .draw(|frame| frame.render_widget(&self.ui, frame.size()))
+    //     .unwrap();
+    //   if !self.ui.cmd.r#continue {
+    //     self.handle_events().unwrap();
+    //   }
+    // }
   }
 }
