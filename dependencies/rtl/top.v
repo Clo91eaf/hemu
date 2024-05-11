@@ -1,6 +1,10 @@
 module top(
     input         clock,
     input         reset,
+    // interrupts
+    input         MEI, // to PLIC
+    input         MSI, // to CLINT
+    input         MTI, // to CLINT
     // inst sram interface
     output        inst_sram_en,
     output [ 3:0] inst_sram_wen,
@@ -16,17 +20,22 @@ module top(
     // trace debug interface
     output        debug_commit,
     output [63:0] debug_pc,
-    output [4:0 ] debug_reg_wnum,
-    output [63:0] debug_wdata
+    output [4:0 ] debug_rf_wnum,
+    output [63:0] debug_rf_wdata,
+    // sram
+    output [7:0]  debug_sram_wen,
+    output [31:0] debug_sram_waddr,
+    output [63:0] debug_sram_wdata
+
 );
 
 PuaCpu core(
     .clock                    (clock),
     .reset                    (reset),
     // interrupts     
-    .io_ext_int_ei            (1'b0), // to PLIC
-    .io_ext_int_si            (1'b0), // to CLINT
-    .io_ext_int_ti            (1'b0), // to CLINT
+    .io_ext_int_ei            (MEI), // to PLIC
+    .io_ext_int_si            (MSI), // to CLINT
+    .io_ext_int_ti            (MTI), // to CLINT
     // inst sram interface 
     .io_inst_sram_en          (inst_sram_en),
     .io_inst_sram_wen         (inst_sram_wen),
@@ -40,10 +49,14 @@ PuaCpu core(
     .io_data_sram_wdata       (data_sram_wdata),
     .io_data_sram_rdata       (data_sram_rdata),
     // debug
-    .io_debug_wb_pc           (debug_pc),
-    .io_debug_wb_rf_wen       (debug_commit),
-    .io_debug_wb_rf_wnum      (debug_reg_wnum),
-    .io_debug_wb_rf_wdata     (debug_wdata)
+    .io_debug_pc              (debug_pc),
+    .io_debug_commit          (debug_commit),
+    .io_debug_rf_wnum         (debug_rf_wnum),
+    .io_debug_rf_wdata        (debug_rf_wdata),
+    // sram
+    .io_debug_sram_wen        (debug_sram_wen),
+    .io_debug_sram_waddr      (debug_sram_waddr),
+    .io_debug_sram_wdata      (debug_sram_wdata)
 );
 
 endmodule

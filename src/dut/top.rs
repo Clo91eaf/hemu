@@ -34,7 +34,14 @@ pub struct Top {
   #[port(output)]
   pub debug_pc: [bool; 64],
   #[port(output)]
-  pub debug_reg_wnum: [bool; 5],
+  pub debug_rf_wnum: [bool; 5],
   #[port(output)]
-  pub debug_wdata: [bool; 64],
+  pub debug_rf_wdata: [bool; 64],
+  // trace memory interface
+  #[port(output)]
+  pub debug_sram_wen: [bool; 8],
+  #[port(output)]
+  pub debug_sram_waddr: [bool; 32],
+  #[port(output)]
+  pub debug_sram_wdata: [bool; 64],
 }
