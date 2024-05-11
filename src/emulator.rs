@@ -26,7 +26,7 @@ impl fmt::Display for DebugInfo {
 
 impl PartialEq for DebugInfo {
   fn eq(&self, other: &Self) -> bool {
-    self.commit == other.commit && self.pc == other.pc && self.wnum == other.wnum && self.wdata == other.wdata
+    self.pc == other.pc && (self.wnum == 0 || (self.wnum == other.wnum && self.wdata == other.wdata))
   }
 }
 
@@ -164,30 +164,22 @@ impl Emulator {
     let mut last_diff = DebugInfo::default();
     loop {
       // ================ cpu ====================
-      let cpu_diff;
-      loop {
-        let pc = self.cpu.pc;
-        let trap = self.execute();
+      let pc = self.cpu.pc;
+      let trap = self.execute();
+      let cpu_diff = match self.cpu.gpr.record {
+        Some((wnum, wdata)) => DebugInfo::new(true, pc, wnum, wdata),
+        None => DebugInfo::new(true, pc, 0, 0),
+      };
 
-        match trap {
-          Trap::Fatal => {
-            info!("[cpu] fatal pc: {:#x}, trap {:#?}", self.cpu.pc, trap);
-            return;
-          }
-          _ => {}
+      match trap {
+        Trap::Fatal => {
+          info!("[cpu] fatal pc: {:#x}, trap {:#?}", self.cpu.pc, trap);
+          return;
         }
-
-        match self.cpu.gpr.record {
-          Some((wnum, wdata)) => {
-            cpu_diff = DebugInfo::new(true, pc, wnum, wdata);
-            info!("[cpu] record: true,  pc: {:#x}, inst: {}", pc, self.cpu.inst);
-            break;
-          }
-          None => {
-            info!("[cpu] record: false, pc: {:#x}, inst: {}", pc, self.cpu.inst);
-          }
-        }
+        _ => {}
       }
+
+      info!("[cpu] pc: {:#x}, inst: {}", pc, self.cpu.inst);
 
       let dut_diff;
       let dut = self.dut.as_mut().unwrap();
@@ -236,12 +228,11 @@ impl Emulator {
         }
       }
       info!(
-        "[dut] ticks: {} commit: {} pc: {:#010x} wnum: {} wdata: {:#018x}",
-        dut.ticks,
-        dut.top.debug_commit(),
+        "[dut] pc: {:#010x}, wnum: {} wdata: {:#018x} ticks: {}",
         dut.top.debug_pc(),
         dut.top.debug_reg_wnum(),
-        dut.top.debug_wdata()
+        dut.top.debug_wdata(),
+        dut.ticks
       );
 
       // ==================== diff ====================

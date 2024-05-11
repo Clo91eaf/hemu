@@ -76,7 +76,7 @@ impl Dut {
         SramRequest::new(self.top.inst_sram_en() != 0, self.top.inst_sram_addr()),
         SramRequest::new(self.top.data_sram_en() != 0, self.top.data_sram_addr()),
         DebugInfo::new(
-          self.top.debug_commit() != 0 && self.top.debug_reg_wnum() != 0,
+          self.top.debug_commit() != 0,
           self.top.debug_pc(),
           self.top.debug_reg_wnum(),
           self.top.debug_wdata(),
