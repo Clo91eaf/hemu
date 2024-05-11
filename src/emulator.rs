@@ -8,10 +8,6 @@ use crate::dut::Dut;
 use crate::exception::Trap;
 use crate::tui::{Tui, UI};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
-use ratatui::{
-  prelude::*,
-  widgets::{block::*, *},
-};
 use std::io;
 
 #[derive(Default)]
@@ -81,7 +77,9 @@ impl Emulator {
 
   fn quit(&mut self, terminal: &mut Tui) {
     while !self.ui.cmd.exit {
-      terminal.draw(|frame| self.render_frame(frame)).unwrap();
+      terminal
+        .draw(|frame| frame.render_widget(&self.ui, frame.size()))
+        .unwrap();
       self.handle_events().unwrap();
     }
   }
@@ -123,81 +121,12 @@ impl Emulator {
     }
   }
 
-  fn render_frame(&self, frame: &mut Frame) {
-    // layout
-    let layout_vertical = Layout::default()
-      .direction(Direction::Vertical)
-      .constraints(vec![
-        Constraint::Percentage(40),
-        Constraint::Percentage(40),
-        Constraint::Percentage(20),
-      ])
-      .split(frame.size());
-
-    let layout_horizontal = Layout::default()
-      .direction(Direction::Horizontal)
-      .constraints(vec![Constraint::Percentage(50), Constraint::Percentage(50)])
-      .split(layout_vertical[1]);
-
-    // render
-    frame.render_widget(
-      Paragraph::new(self.ui.buffer.inst.to_string())
-        .block(
-          Block::bordered()
-            .title("Instructions")
-            .title_alignment(Alignment::Left)
-            .border_type(BorderType::Rounded),
-        )
-        .style(Style::default().fg(Color::Cyan))
-        .left_aligned(),
-      layout_vertical[0],
-    );
-
-    frame.render_widget(
-      Paragraph::new(self.ui.buffer.cpu.to_string())
-        .block(
-          Block::bordered()
-            .title("CPU")
-            .title_alignment(Alignment::Left)
-            .border_type(BorderType::Rounded),
-        )
-        .style(Style::default().fg(Color::Cyan))
-        .left_aligned(),
-      layout_horizontal[0],
-    );
-
-    frame.render_widget(
-      Paragraph::new(self.ui.buffer.dut.to_string())
-        .block(
-          Block::bordered()
-            .title("DUT")
-            .title_alignment(Alignment::Left)
-            .border_type(BorderType::Rounded),
-        )
-        .style(Style::default().fg(Color::Cyan))
-        .left_aligned(),
-      layout_horizontal[1],
-    );
-
-    frame.render_widget(
-      Paragraph::new(self.ui.buffer.diff.to_string())
-        .block(
-          Block::bordered()
-            .title("Difftest Status")
-            .title_alignment(Alignment::Center)
-            .border_type(BorderType::Rounded),
-        )
-        .style(Style::default().fg(Color::Cyan))
-        .centered(),
-      layout_vertical[2],
-    );
-  }
-
   fn handle_key_event(&mut self, key_event: KeyEvent) {
     match key_event.code {
       KeyCode::Char('q') | KeyCode::Char('Q') => self.exit(),
       KeyCode::Char('c') | KeyCode::Char('C') => self.r#continue(),
-
+      KeyCode::Char('h') | KeyCode::Left => self.ui.previous_tab(),
+      KeyCode::Char('l') | KeyCode::Right => self.ui.next_tab(),
       _ => {}
     }
   }
@@ -251,7 +180,7 @@ impl Emulator {
         match self.cpu.gpr.record {
           Some((wnum, wdata)) => {
             cpu_diff = DebugInfo::new(true, pc, wnum, wdata);
-            info!("[cpu] record: true, pc: {:#x}, inst: {}", pc, self.cpu.inst);
+            info!("[cpu] record: true,  pc: {:#x}, inst: {}", pc, self.cpu.inst);
             break;
           }
           None => {
@@ -329,7 +258,7 @@ impl Emulator {
 
   /// Start executing the emulator with difftest and tui.
   pub fn start_diff_tui(&mut self, terminal: &mut Tui) {
-    self.ui.buffer.diff.push("running".to_string());
+    self.ui.selected_tab.ui_buffer.diff.push("running".to_string());
     let mut last_diff = DebugInfo::default();
 
     while !self.ui.cmd.exit {
@@ -341,7 +270,8 @@ impl Emulator {
 
         self
           .ui
-          .buffer
+          .selected_tab
+          .ui_buffer
           .inst
           .push(format!("pc: {:#x}, inst: {}", pc, self.cpu.inst));
 
@@ -349,7 +279,8 @@ impl Emulator {
           Trap::Fatal => {
             self
               .ui
-              .buffer
+              .selected_tab
+              .ui_buffer
               .diff
               .push(format!("fatal pc: {:#x}, trap {:#?}", self.cpu.pc, trap));
 
@@ -365,7 +296,8 @@ impl Emulator {
             cpu_diff = DebugInfo::new(true, pc, wnum, wdata);
             self
               .ui
-              .buffer
+              .selected_tab
+              .ui_buffer
               .cpu
               .push(format!("record: true, pc: {:#x}, inst: {}", pc, self.cpu.inst));
             break;
@@ -373,7 +305,8 @@ impl Emulator {
           None => {
             self
               .ui
-              .buffer
+              .selected_tab
+              .ui_buffer
               .cpu
               .push(format!("record: false, pc: {:#x}, inst: {}", pc, self.cpu.inst));
           }
@@ -396,7 +329,7 @@ impl Emulator {
           // should be `Exception::InstructionAccessFault`.
           dut.data = self.cpu.bus.read(p_addr, crate::cpu::DOUBLEWORD).unwrap();
 
-          self.ui.buffer.dut.push(format!(
+          self.ui.selected_tab.ui_buffer.dut.push(format!(
             "{}, data_sram: addr: {:#x}, data: {:#018x}",
             dut.ticks, data_sram.addr, dut.data
           ))
@@ -412,7 +345,7 @@ impl Emulator {
           // should be `Exception::InstructionAccessFault`.
           dut.inst = self.cpu.bus.read(p_pc, crate::cpu::WORD).unwrap() as u32;
 
-          self.ui.buffer.dut.push(format!(
+          self.ui.selected_tab.ui_buffer.dut.push(format!(
             "{}, inst_sram: pc: {:#x}, inst: {:#010x}",
             dut.ticks, inst_sram.addr, dut.inst
           ))
@@ -423,7 +356,7 @@ impl Emulator {
           break;
         }
       }
-      self.ui.buffer.dut.push(format!(
+      self.ui.selected_tab.ui_buffer.dut.push(format!(
         "{}, pc: {:#010x} wnum: {} wdata: {:#018x}",
         dut.ticks,
         dut.top.debug_pc(),
@@ -433,16 +366,17 @@ impl Emulator {
 
       // ==================== diff ====================
       if cpu_diff != dut_diff {
-        self.ui.buffer.diff.clear();
+        self.ui.selected_tab.ui_buffer.diff.clear();
 
         self
           .ui
-          .buffer
+          .selected_tab
+          .ui_buffer
           .diff
           .push("difftest failed. press 'q' or 'Q' to quit. ".to_string());
-        self.ui.buffer.diff.push(format!("last: {}", last_diff));
-        self.ui.buffer.diff.push(format!("cpu : {}", cpu_diff));
-        self.ui.buffer.diff.push(format!("dut : {}", dut_diff));
+        self.ui.selected_tab.ui_buffer.diff.push(format!("last: {}", last_diff));
+        self.ui.selected_tab.ui_buffer.diff.push(format!("cpu : {}", cpu_diff));
+        self.ui.selected_tab.ui_buffer.diff.push(format!("dut : {}", dut_diff));
 
         self.quit(terminal);
 
@@ -451,7 +385,9 @@ impl Emulator {
       last_diff = cpu_diff;
 
       // tui
-      terminal.draw(|frame| self.render_frame(frame)).unwrap();
+      terminal
+        .draw(|frame| frame.render_widget(&self.ui, frame.size()))
+        .unwrap();
       if !self.ui.cmd.r#continue {
         self.handle_events().unwrap();
       }

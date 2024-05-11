@@ -14,6 +14,7 @@ tracing = "0.1.40"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 crossterm = "0.27.0"
 ratatui = "0.26.2"
+strum = "0.26.2"
 
 [build-dependencies]
 verilator = { path = "./dependencies/verilated-rs/verilator", features = ["gen", "module"] }

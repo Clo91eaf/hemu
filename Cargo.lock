@@ -271,6 +271,7 @@ dependencies = [
  "clap",
  "crossterm",
  "ratatui",
+ "strum",
  "tracing",
  "tracing-subscriber",
  "verilated",

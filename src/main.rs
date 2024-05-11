@@ -66,16 +66,16 @@ fn main() -> anyhow::Result<()> {
   emu.initialize_disk(img_data);
   emu.initialize_pc(DRAM_BASE);
 
-  let mut terminal = tui::init()?;
-
   match (args.diff, args.tui) {
-    (true, true) => emu.start_diff_tui(&mut terminal),
+    (true, true) => {
+      let mut terminal = tui::init()?;
+      emu.start_diff_tui(&mut terminal);
+      tui::restore()?;
+    }
     (true, false) => emu.start_diff(),
     (false, false) => emu.start(),
     _ => panic!("Tui without difftest is not supported yet."),
   }
-
-  tui::restore()?;
 
   Ok(())
 }
