@@ -93,7 +93,7 @@ impl Bus {
 
   /// Store a `size`-bit data to the device that connects to the system bus.
   pub fn write(&mut self, addr: u64, value: u64, size: u8) -> Result<(), Exception> {
-    self.record = Some((size as u32, value));
+    self.record = Some((addr as u32, value));
     match addr {
       CLINT_BASE..=CLINT_END => self.clint.write(addr, value, size),
       PLIC_BASE..=PLIC_END => self.plic.write(addr, value, size),

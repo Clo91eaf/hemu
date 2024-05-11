@@ -234,6 +234,7 @@ impl Emulator {
       }
 
       info!("[cpu] pc: {:#x}, inst: {}", pc, self.cpu.inst);
+      trace!("gpr: {}", self.cpu.gpr);
 
       let dut_diff;
       let dut = self.dut.as_mut().unwrap();
