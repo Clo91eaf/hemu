@@ -258,7 +258,7 @@ impl Emulator {
 
   /// Start executing the emulator with difftest and tui.
   pub fn start_diff_tui(&mut self, terminal: &mut Tui) {
-    self.ui.selected_tab.ui_buffer.diff.push("running".to_string());
+    self.ui.selected_tab.diff_buffer.diff.push("running".to_string());
     let mut last_diff = DebugInfo::default();
 
     while !self.ui.cmd.exit {
@@ -271,7 +271,7 @@ impl Emulator {
         self
           .ui
           .selected_tab
-          .ui_buffer
+          .diff_buffer
           .inst
           .push(format!("pc: {:#x}, inst: {}", pc, self.cpu.inst));
 
@@ -280,7 +280,7 @@ impl Emulator {
             self
               .ui
               .selected_tab
-              .ui_buffer
+              .diff_buffer
               .diff
               .push(format!("fatal pc: {:#x}, trap {:#?}", self.cpu.pc, trap));
 
@@ -297,16 +297,16 @@ impl Emulator {
             self
               .ui
               .selected_tab
-              .ui_buffer
+              .diff_buffer
               .cpu
-              .push(format!("record: true, pc: {:#x}, inst: {}", pc, self.cpu.inst));
+              .push(format!("record: true,  pc: {:#x}, inst: {}", pc, self.cpu.inst));
             break;
           }
           None => {
             self
               .ui
               .selected_tab
-              .ui_buffer
+              .diff_buffer
               .cpu
               .push(format!("record: false, pc: {:#x}, inst: {}", pc, self.cpu.inst));
           }
@@ -329,7 +329,7 @@ impl Emulator {
           // should be `Exception::InstructionAccessFault`.
           dut.data = self.cpu.bus.read(p_addr, crate::cpu::DOUBLEWORD).unwrap();
 
-          self.ui.selected_tab.ui_buffer.dut.push(format!(
+          self.ui.selected_tab.diff_buffer.dut.push(format!(
             "{}, data_sram: addr: {:#x}, data: {:#018x}",
             dut.ticks, data_sram.addr, dut.data
           ))
@@ -345,7 +345,7 @@ impl Emulator {
           // should be `Exception::InstructionAccessFault`.
           dut.inst = self.cpu.bus.read(p_pc, crate::cpu::WORD).unwrap() as u32;
 
-          self.ui.selected_tab.ui_buffer.dut.push(format!(
+          self.ui.selected_tab.diff_buffer.dut.push(format!(
             "{}, inst_sram: pc: {:#x}, inst: {:#010x}",
             dut.ticks, inst_sram.addr, dut.inst
           ))
@@ -356,7 +356,7 @@ impl Emulator {
           break;
         }
       }
-      self.ui.selected_tab.ui_buffer.dut.push(format!(
+      self.ui.selected_tab.diff_buffer.dut.push(format!(
         "{}, pc: {:#010x} wnum: {} wdata: {:#018x}",
         dut.ticks,
         dut.top.debug_pc(),
@@ -366,17 +366,32 @@ impl Emulator {
 
       // ==================== diff ====================
       if cpu_diff != dut_diff {
-        self.ui.selected_tab.ui_buffer.diff.clear();
+        self.ui.selected_tab.diff_buffer.diff.clear();
 
         self
           .ui
           .selected_tab
-          .ui_buffer
+          .diff_buffer
           .diff
           .push("difftest failed. press 'q' or 'Q' to quit. ".to_string());
-        self.ui.selected_tab.ui_buffer.diff.push(format!("last: {}", last_diff));
-        self.ui.selected_tab.ui_buffer.diff.push(format!("cpu : {}", cpu_diff));
-        self.ui.selected_tab.ui_buffer.diff.push(format!("dut : {}", dut_diff));
+        self
+          .ui
+          .selected_tab
+          .diff_buffer
+          .diff
+          .push(format!("last: {}", last_diff));
+        self
+          .ui
+          .selected_tab
+          .diff_buffer
+          .diff
+          .push(format!("cpu : {}", cpu_diff));
+        self
+          .ui
+          .selected_tab
+          .diff_buffer
+          .diff
+          .push(format!("dut : {}", dut_diff));
 
         self.quit(terminal);
 
