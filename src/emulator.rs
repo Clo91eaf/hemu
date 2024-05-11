@@ -208,22 +208,86 @@ impl Emulator {
     }
   }
 
+  fn cpu_exec(&mut self) -> (DebugInfo, Trap) {
+    let pc = self.cpu.pc;
+    let trap = self.execute();
+    let gpr_info = match self.cpu.gpr.record {
+      Some((wnum, wdata)) => GprInfo::new(true, pc, wnum, wdata),
+      None => GprInfo::new(true, pc, 0, 0),
+    };
+    let mem_info = match self.cpu.bus.record {
+      Some((addr, data)) => MemInfo::new(true, addr, data),
+      None => MemInfo::new(false, 0, 0),
+    };
+    let cpu_diff = DebugInfo::new(gpr_info, mem_info);
+
+    info!("[cpu] pc: {:#x}, inst: {}", pc, self.cpu.inst);
+    trace!("gpr: {}", self.cpu.gpr);
+
+    return (cpu_diff, trap);
+  }
+
+  fn dut_exec(&mut self) -> DebugInfo {
+    let dut = self.dut.as_mut().unwrap();
+
+    loop {
+      let (inst_sram, data_sram, debug_info) = dut.step(dut.inst, dut.data).unwrap();
+
+      if data_sram.en {
+        let p_addr = self
+          .cpu
+          .translate(data_sram.addr as u64, crate::cpu::AccessType::Instruction)
+          .unwrap();
+
+        // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
+        // should be `Exception::InstructionAccessFault`.
+        dut.data = self.cpu.bus.read(p_addr, crate::cpu::DOUBLEWORD).unwrap();
+        trace!(
+          "[dut] ticks: {}, data_sram: addr: {:#x}, data: {:#018x}",
+          dut.ticks,
+          data_sram.addr,
+          dut.data
+        );
+      }
+
+      if inst_sram.en {
+        let p_pc = self
+          .cpu
+          .translate(inst_sram.addr as u64, crate::cpu::AccessType::Instruction)
+          .unwrap();
+
+        // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
+        // should be `Exception::InstructionAccessFault`.
+        dut.inst = self.cpu.bus.read(p_pc, crate::cpu::WORD).unwrap() as u32;
+
+        trace!(
+          "[dut] ticks: {}, inst_sram: addr: {:#x}, inst: {:#018x}",
+          dut.ticks,
+          inst_sram.addr,
+          dut.inst
+        );
+      }
+
+      if debug_info.gpr.commit {
+        info!(
+          "[dut] pc: {:#010x}, wnum: {} wdata: {:#018x} ticks: {}",
+          dut.top.debug_pc(),
+          dut.top.debug_rf_wnum(),
+          dut.top.debug_rf_wdata(),
+          dut.ticks
+        );
+        return debug_info;
+      }
+    }
+  }
+
   /// Start executing the emulator.
   pub fn start_diff(&mut self) {
     let mut last_diff = DebugInfo::default();
     loop {
-      // ================ cpu ====================
-      let pc = self.cpu.pc;
-      let trap = self.execute();
-      let gpr_info = match self.cpu.gpr.record {
-        Some((wnum, wdata)) => GprInfo::new(true, pc, wnum, wdata),
-        None => GprInfo::new(true, pc, 0, 0),
-      };
-      let mem_info = match self.cpu.bus.record {
-        Some((addr, data)) => MemInfo::new(true, addr, data),
-        None => MemInfo::new(false, 0, 0),
-      };
-      let cpu_diff = DebugInfo::new(gpr_info, mem_info);
+      let (cpu_diff, trap) = self.cpu_exec();
+
+      let dut_diff = self.dut_exec();
 
       match trap {
         Trap::Fatal => {
@@ -233,64 +297,6 @@ impl Emulator {
         _ => {}
       }
 
-      info!("[cpu] pc: {:#x}, inst: {}", pc, self.cpu.inst);
-      trace!("gpr: {}", self.cpu.gpr);
-
-      let dut_diff;
-      let dut = self.dut.as_mut().unwrap();
-
-      loop {
-        let (inst_sram, data_sram, debug_info) = dut.step(dut.inst, dut.data).unwrap();
-
-        if data_sram.en {
-          let p_addr = self
-            .cpu
-            .translate(data_sram.addr as u64, crate::cpu::AccessType::Instruction)
-            .unwrap();
-
-          // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
-          // should be `Exception::InstructionAccessFault`.
-          dut.data = self.cpu.bus.read(p_addr, crate::cpu::DOUBLEWORD).unwrap();
-          trace!(
-            "[dut] ticks: {}, data_sram: addr: {:#x}, data: {:#018x}",
-            dut.ticks,
-            data_sram.addr,
-            dut.data
-          );
-        }
-
-        if inst_sram.en {
-          let p_pc = self
-            .cpu
-            .translate(inst_sram.addr as u64, crate::cpu::AccessType::Instruction)
-            .unwrap();
-
-          // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
-          // should be `Exception::InstructionAccessFault`.
-          dut.inst = self.cpu.bus.read(p_pc, crate::cpu::WORD).unwrap() as u32;
-
-          trace!(
-            "[dut] ticks: {}, inst_sram: addr: {:#x}, inst: {:#018x}",
-            dut.ticks,
-            inst_sram.addr,
-            dut.inst
-          );
-        }
-
-        if debug_info.gpr.commit {
-          dut_diff = debug_info;
-          break;
-        }
-      }
-      info!(
-        "[dut] pc: {:#010x}, wnum: {} wdata: {:#018x} ticks: {}",
-        dut.top.debug_pc(),
-        dut.top.debug_rf_wnum(),
-        dut.top.debug_rf_wdata(),
-        dut.ticks
-      );
-
-      // ==================== diff ====================
       if cpu_diff != dut_diff {
         error!("difftest failed");
         error!("last: {}", last_diff);
