@@ -6,6 +6,8 @@ const INST_BUFFER_SIZE: usize = 10;
 const CPU_BUFFER_SIZE: usize = 10;
 const DUT_BUFFER_SIZE: usize = 10;
 const DIFF_BUFFER_SIZE: usize = 5;
+const MEMORY_BUFFER_SIZE: usize = 10;
+const FUNCTION_BUFFER_SIZE: usize = 10;
 
 #[derive(Clone)]
 pub struct InfoBuffer {
@@ -42,16 +44,16 @@ impl fmt::Display for InfoBuffer {
   }
 }
 #[derive(Clone)]
-pub struct UIBuffer {
+pub struct DiffBuffer {
   pub inst: InfoBuffer,
   pub cpu: InfoBuffer,
   pub dut: InfoBuffer,
   pub diff: InfoBuffer,
 }
 
-impl UIBuffer {
+impl DiffBuffer {
   pub fn new() -> Self {
-    UIBuffer {
+    DiffBuffer {
       inst: InfoBuffer::new(INST_BUFFER_SIZE),
       cpu: InfoBuffer::new(CPU_BUFFER_SIZE),
       dut: InfoBuffer::new(DUT_BUFFER_SIZE),
@@ -59,6 +61,24 @@ impl UIBuffer {
     }
   }
 }
+
+#[derive(Clone)]
+pub struct TraceBuffer {
+  pub itrace: InfoBuffer,
+  pub mtrace: InfoBuffer,
+  pub ftrace: InfoBuffer,
+}
+
+impl TraceBuffer {
+  pub fn new() -> Self {
+    TraceBuffer {
+      itrace: InfoBuffer::new(INST_BUFFER_SIZE),
+      mtrace: InfoBuffer::new(MEMORY_BUFFER_SIZE),
+      ftrace: InfoBuffer::new(FUNCTION_BUFFER_SIZE),
+    }
+  }
+}
+
 #[derive(Default, Clone, Copy, Display, FromRepr, EnumIter)]
 pub enum SelectedTabEnum {
   #[default]
@@ -103,14 +123,16 @@ impl SelectedTabEnum {
 
 #[derive(Clone)]
 pub struct SelectedTab {
-  pub diff_buffer: UIBuffer,
+  pub diff_buffer: DiffBuffer,
+  pub trace_buffer: TraceBuffer,
   pub state: SelectedTabEnum,
 }
 
 impl SelectedTab {
   pub fn new() -> Self {
     SelectedTab {
-      diff_buffer: UIBuffer::new(),
+      diff_buffer: DiffBuffer::new(),
+      trace_buffer: TraceBuffer::new(),
       state: SelectedTabEnum::default(),
     }
   }
