@@ -12,7 +12,7 @@ use clap::Parser;
 /// Command line arguments.
 #[derive(Parser, Debug)]
 #[clap(name = "hemu: RISC-V emulator", version = "0.0.1", author = "Clo91eaf <@qq.com>")]
-struct Args {
+pub struct Args {
   /// A kernel ELF image without headers
   #[arg(short = 'k', long = "kernel", required = true)]
   kernel: PathBuf,

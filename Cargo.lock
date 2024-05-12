@@ -817,6 +817,7 @@ checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
 [[package]]
 name = "verilated"
 version = "0.1.2"
+source = "git+https://github.com/Anillc/verilated-rs.git?branch=fix#b7efb7bc67e326f78321b7fd66ea144a948e92bd"
 dependencies = [
  "cc",
  "verilator",
@@ -825,6 +826,7 @@ dependencies = [
 [[package]]
 name = "verilated-module"
 version = "0.1.1"
+source = "git+https://github.com/Anillc/verilated-rs.git?branch=fix#b7efb7bc67e326f78321b7fd66ea144a948e92bd"
 dependencies = [
  "quote 0.5.2",
  "syn",
@@ -833,6 +835,7 @@ dependencies = [
 [[package]]
 name = "verilator"
 version = "0.1.6"
+source = "git+https://github.com/Anillc/verilated-rs.git?branch=fix#b7efb7bc67e326f78321b7fd66ea144a948e92bd"
 dependencies = [
  "fnv",
  "num_cpus",

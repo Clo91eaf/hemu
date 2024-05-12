@@ -6,8 +6,8 @@ edition = "2021"
 build = "build.rs"
 
 [dependencies]
-verilated = { path = "./dependencies/verilated-rs/verilated" }
-verilated-module = { path = "./dependencies/verilated-rs/verilated-module" }
+verilated = { git = "https://github.com/Anillc/verilated-rs.git", branch = "fix" }
+verilated-module = { git = "https://github.com/Anillc/verilated-rs.git", branch = "fix" }
 clap = { version = "4.3.11", features = ["derive"] }
 anyhow = "1.0.80"
 tracing = "0.1.40"
@@ -17,4 +17,4 @@ ratatui = "0.26.2"
 strum = "0.26.2"
 
 [build-dependencies]
-verilator = { path = "./dependencies/verilated-rs/verilator", features = ["gen", "module"] }
+verilator = { git = "https://github.com/Anillc/verilated-rs.git", branch = "fix", features = ["gen", "module"] }
