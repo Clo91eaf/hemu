@@ -62,7 +62,7 @@ impl fmt::Display for MemInfo {
 
 impl PartialEq for MemInfo {
   fn eq(&self, other: &Self) -> bool {
-    !self.wen || self.wen == other.wen && self.addr == other.addr && self.data == other.data
+    self.wen == other.wen && self.addr == other.addr && self.data == other.data
   }
 }
 
@@ -247,7 +247,7 @@ impl Emulator {
         );
       }
 
-      if inst_sram.en {
+      if inst_sram.en && inst_sram.addr != 0 {
         let p_pc = self
           .cpu
           .translate(inst_sram.addr as u64, crate::cpu::AccessType::Instruction)
@@ -276,7 +276,8 @@ impl Emulator {
     let mut last_diff = DebugInfo::default();
     loop {
       let (cpu_diff, trap) = self.cpu_exec();
-      info!("[cpu] pc: {:#x}, inst: {}", self.cpu.pc, self.cpu.inst);
+      info!("[cpu] pc: {:#x}, inst: {}", cpu_diff.gpr.pc, self.cpu.inst);
+      trace!("cpu_diff: {}", self.cpu.gpr);
 
       let dut_diff = self.dut_exec();
       if let Some(ref dut) = self.dut {
@@ -349,7 +350,7 @@ impl Emulator {
       let wdata = dut.top.debug_rf_wdata();
       let ticks = dut.ticks;
       self.ui.selected_tab.diff.dut.push(format!(
-        "pc: {:#010x}, wnum: {} wdata: {:#018x} ticks: {}",
+        "pc: {:#010x}, wnum: {:02} wdata: {:#018x} ticks: {}",
         pc, wnum, wdata, ticks
       ));
     }
@@ -359,6 +360,22 @@ impl Emulator {
       if cpu_diff.mem.wen {
         self.ui.selected_tab.trace.mtrace[0].push(format!("pc: {:#010x}, {}", self.cpu.pc, cpu_diff.mem.to_string()));
       }
+
+      // difftest ui cpu inst
+      self
+        .ui
+        .selected_tab
+        .diff
+        .cpu
+        .push(format!("pc: {:#x}, inst: {}", cpu_diff.gpr.pc, self.cpu.inst));
+
+      // trace ui itrace
+      self
+        .ui
+        .selected_tab
+        .trace
+        .itrace
+        .push(format!("pc: {:#x}, inst: {}", cpu_diff.gpr.pc, self.cpu.inst));
     }
 
     // trace ui mtrace

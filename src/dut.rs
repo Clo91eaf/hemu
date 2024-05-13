@@ -3,6 +3,14 @@ use crate::emulator::{DebugInfo, GprInfo, MemInfo};
 use std::time::Duration;
 use top::Top;
 
+fn extend_to_64(n: u8) -> u64 {
+  let mut ans: u64 = 0;
+  for i in 0..8 {
+    ans |= ((n as u64 >> i & 1) * 0xff) << (i * 8);
+  }
+  ans
+}
+
 pub struct SramRequest {
   pub en: bool,
   pub addr: u32,
@@ -84,8 +92,18 @@ impl Dut {
           ),
           MemInfo::new(
             self.top.debug_sram_wen() != 0,
-            self.top.debug_sram_waddr(),
-            self.top.debug_sram_wdata(),
+            if self.top.debug_sram_wen() != 0 {
+              self.top.debug_sram_waddr()
+            } else {
+              0
+            },
+            if self.top.debug_sram_wen() != 0 {
+              let wdata_mask = extend_to_64(self.top.debug_sram_wen());
+              let align = wdata_mask.trailing_zeros();
+              (self.top.debug_sram_wdata() & wdata_mask) >> align
+            } else {
+              0
+            },
           ),
         ),
       )
