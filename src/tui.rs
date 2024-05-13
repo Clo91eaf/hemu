@@ -7,6 +7,8 @@ mod selected_tab;
 use selected_tab::{SelectedTab, SelectedTabEnum};
 use strum::IntoEnumIterator;
 
+mod buffers;
+
 /// A type alias for the terminal type used in this application
 pub type Tui = Terminal<CrosstermBackend<Stdout>>;
 
