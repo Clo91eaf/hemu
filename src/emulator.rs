@@ -56,7 +56,7 @@ impl MemInfo {
 
 impl fmt::Display for MemInfo {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, "wen: {}, waddr: {:#x}, wdata: {:#x}", self.wen, self.addr, self.data)
+    write!(f, "waddr: {:#x}, wdata: {:#x}", self.addr, self.data)
   }
 }
 
@@ -356,12 +356,16 @@ impl Emulator {
 
     // trace ui mtrace
     if let Some(cpu_diff) = cpu_diff {
-      self.ui.selected_tab.trace.mtrace[0].push(cpu_diff.mem.to_string());
+      if cpu_diff.mem.wen {
+        self.ui.selected_tab.trace.mtrace[0].push(format!("pc: {:#010x}, {}", self.cpu.pc, cpu_diff.mem.to_string()));
+      }
     }
 
     // trace ui mtrace
     if let Some(dut_diff) = dut_diff {
-      self.ui.selected_tab.trace.mtrace[1].push(dut_diff.mem.to_string());
+      if dut_diff.mem.wen {
+        self.ui.selected_tab.trace.mtrace[1].push(format!("pc: {:#010x}, {}", self.cpu.pc, dut_diff.mem.to_string()));
+      }
     }
   }
 
