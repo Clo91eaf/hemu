@@ -110,7 +110,7 @@
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="pbno2CQbFt3WqKcfYgoT-5" value="" style="edgeStyle=none;html=1;" edge="1" parent="1" source="I93BIOlDC6KEQSAcMWUn-26" target="pbno2CQbFt3WqKcfYgoT-3">
+                <mxCell id="pbno2CQbFt3WqKcfYgoT-5" value="" style="edgeStyle=none;html=1;" parent="1" source="I93BIOlDC6KEQSAcMWUn-26" target="pbno2CQbFt3WqKcfYgoT-3" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
                             <mxPoint x="691" y="211"/>
@@ -175,13 +175,13 @@
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="h0KfMxifnxzuF65pfsmT-2" value="" style="edgeStyle=none;html=1;" edge="1" parent="1" source="pbno2CQbFt3WqKcfYgoT-3" target="h0KfMxifnxzuF65pfsmT-1">
+                <mxCell id="h0KfMxifnxzuF65pfsmT-2" value="" style="edgeStyle=none;html=1;" parent="1" source="pbno2CQbFt3WqKcfYgoT-3" target="h0KfMxifnxzuF65pfsmT-1" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="pbno2CQbFt3WqKcfYgoT-3" value="&lt;h2&gt;接口模块&lt;/h2&gt;" style="whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+                <mxCell id="pbno2CQbFt3WqKcfYgoT-3" value="&lt;h2&gt;接口模块&lt;/h2&gt;" style="whiteSpace=wrap;html=1;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="751" y="258" width="120" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="h0KfMxifnxzuF65pfsmT-1" value="&lt;h2&gt;动态链接库&lt;/h2&gt;" style="whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+                <mxCell id="h0KfMxifnxzuF65pfsmT-1" value="&lt;h2&gt;动态链接库&lt;/h2&gt;" style="whiteSpace=wrap;html=1;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="751" y="360" width="120" height="60" as="geometry"/>
                 </mxCell>
             </root>
@@ -327,30 +327,59 @@
             </root>
         </mxGraphModel>
     </diagram>
-    <diagram id="n2Nk1UqJkd7nt65T3Mer" name="第 4 页">
-        <mxGraphModel dx="1198" dy="488" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <diagram id="n2Nk1UqJkd7nt65T3Mer" name="Verilator">
+        <mxGraphModel dx="924" dy="488" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
-                <mxCell id="tsttaKYRciWTLmpKxlOf-3" value="" style="edgeStyle=none;html=1;" edge="1" parent="1" source="tsttaKYRciWTLmpKxlOf-1" target="tsttaKYRciWTLmpKxlOf-2">
+                <mxCell id="tsttaKYRciWTLmpKxlOf-3" value="" style="edgeStyle=none;html=1;" parent="1" source="tsttaKYRciWTLmpKxlOf-1" target="tsttaKYRciWTLmpKxlOf-2" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="tsttaKYRciWTLmpKxlOf-1" value="&lt;h2&gt;RTL代码&lt;/h2&gt;" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="tsttaKYRciWTLmpKxlOf-1" value="&lt;h2&gt;RTL代码&lt;/h2&gt;" style="whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="280" y="200" width="120" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="tsttaKYRciWTLmpKxlOf-6" value="" style="edgeStyle=none;html=1;" edge="1" parent="1" source="tsttaKYRciWTLmpKxlOf-2" target="tsttaKYRciWTLmpKxlOf-5">
+                <mxCell id="tsttaKYRciWTLmpKxlOf-6" value="" style="edgeStyle=none;html=1;" parent="1" source="tsttaKYRciWTLmpKxlOf-2" target="tsttaKYRciWTLmpKxlOf-5" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="tsttaKYRciWTLmpKxlOf-2" value="&lt;h2&gt;Verilator&lt;/h2&gt;" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="tsttaKYRciWTLmpKxlOf-2" value="&lt;h2&gt;Verilator&lt;/h2&gt;" style="whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="280" y="300" width="120" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="tsttaKYRciWTLmpKxlOf-8" value="" style="edgeStyle=none;html=1;" edge="1" parent="1" source="tsttaKYRciWTLmpKxlOf-5" target="tsttaKYRciWTLmpKxlOf-7">
+                <mxCell id="tsttaKYRciWTLmpKxlOf-8" value="" style="edgeStyle=none;html=1;" parent="1" source="tsttaKYRciWTLmpKxlOf-5" target="tsttaKYRciWTLmpKxlOf-7" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="tsttaKYRciWTLmpKxlOf-5" value="&lt;h2&gt;C++代码&lt;/h2&gt;" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="tsttaKYRciWTLmpKxlOf-5" value="&lt;h2&gt;C++代码&lt;/h2&gt;" style="whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="280" y="400" width="120" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="tsttaKYRciWTLmpKxlOf-7" value="&lt;h2&gt;动态链接库&lt;/h2&gt;" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="tsttaKYRciWTLmpKxlOf-7" value="&lt;h2&gt;动态链接库&lt;/h2&gt;" style="whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="280" y="510" width="120" height="60" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram name="Verilator 的副本" id="g7roVR1HcxlUW07TmCoP">
+        <mxGraphModel dx="924" dy="488" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+            <root>
+                <mxCell id="cKgSp2rCt7vKHY-63Arg-0"/>
+                <mxCell id="cKgSp2rCt7vKHY-63Arg-1" parent="cKgSp2rCt7vKHY-63Arg-0"/>
+                <mxCell id="cKgSp2rCt7vKHY-63Arg-2" value="" style="edgeStyle=none;html=1;" edge="1" parent="cKgSp2rCt7vKHY-63Arg-1" source="cKgSp2rCt7vKHY-63Arg-3" target="cKgSp2rCt7vKHY-63Arg-5">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="cKgSp2rCt7vKHY-63Arg-3" value="&lt;h2&gt;RTL代码&lt;/h2&gt;" style="whiteSpace=wrap;html=1;" vertex="1" parent="cKgSp2rCt7vKHY-63Arg-1">
+                    <mxGeometry x="280" y="200" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="cKgSp2rCt7vKHY-63Arg-4" value="" style="edgeStyle=none;html=1;" edge="1" parent="cKgSp2rCt7vKHY-63Arg-1" source="cKgSp2rCt7vKHY-63Arg-5" target="cKgSp2rCt7vKHY-63Arg-7">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="cKgSp2rCt7vKHY-63Arg-5" value="&lt;h2&gt;Verilator&lt;/h2&gt;" style="whiteSpace=wrap;html=1;" vertex="1" parent="cKgSp2rCt7vKHY-63Arg-1">
+                    <mxGeometry x="280" y="300" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="cKgSp2rCt7vKHY-63Arg-6" value="" style="edgeStyle=none;html=1;" edge="1" parent="cKgSp2rCt7vKHY-63Arg-1" source="cKgSp2rCt7vKHY-63Arg-7" target="cKgSp2rCt7vKHY-63Arg-8">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="cKgSp2rCt7vKHY-63Arg-7" value="&lt;h2&gt;C++代码&lt;/h2&gt;" style="whiteSpace=wrap;html=1;" vertex="1" parent="cKgSp2rCt7vKHY-63Arg-1">
+                    <mxGeometry x="280" y="400" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="cKgSp2rCt7vKHY-63Arg-8" value="&lt;h2&gt;动态链接库&lt;/h2&gt;" style="whiteSpace=wrap;html=1;" vertex="1" parent="cKgSp2rCt7vKHY-63Arg-1">
                     <mxGeometry x="280" y="510" width="120" height="60" as="geometry"/>
                 </mxCell>
             </root>

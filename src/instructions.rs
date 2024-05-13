@@ -19,7 +19,7 @@ pub enum Instruction {
   Branch(BranchType),
   Jump(JumpType),
   Upper(UpperType),
-  ERROR,
+  Error,
 }
 
 #[allow(non_camel_case_types)]
@@ -277,7 +277,7 @@ impl Inst {
     // self
     Inst {
       bits: 0,
-      typ: Instruction::ERROR,
+      typ: Instruction::Error,
       type_name: "",
       ipt,
       rd: 0,
@@ -309,7 +309,7 @@ impl Inst {
         sext(bits(self.bits, 12, 32) << 12, 32) as i64)),
       Instruction::Jump(_) => Some((rd, 0, 0, 
         sext(bits(self.bits, 31, 32) << 20 | bits(self.bits, 21, 31) << 1 | bits(self.bits, 20, 21) << 11 | bits(self.bits, 12, 20) << 12, 21,) as i64)),
-      Instruction::ERROR => {None}
+      Instruction::Error => {None}
     }
   }
 

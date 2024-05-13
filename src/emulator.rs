@@ -10,7 +10,7 @@ use crate::tui::{Tui, UI};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use std::io;
 
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 pub struct GprInfo {
   pub commit: bool,
   pub pc: u64,
@@ -41,7 +41,7 @@ impl fmt::Display for GprInfo {
   }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 pub struct MemInfo {
   pub wen: bool,
   pub addr: u32,
@@ -66,7 +66,7 @@ impl PartialEq for MemInfo {
   }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 pub struct DebugInfo {
   gpr: GprInfo,
   mem: MemInfo,
@@ -233,7 +233,7 @@ impl Emulator {
       if data_sram.en {
         let p_addr = self
           .cpu
-          .translate(( data_sram.addr >> 3 << 3 ) as u64, crate::cpu::AccessType::Instruction)
+          .translate((data_sram.addr >> 3 << 3) as u64, crate::cpu::AccessType::Instruction)
           .unwrap();
 
         // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
@@ -309,9 +309,65 @@ impl Emulator {
     }
   }
 
+  pub fn ui_update(&mut self, cpu_diff: Option<DebugInfo>, dut_diff: Option<DebugInfo>, trap: bool) {
+    match trap {
+      true => {
+        self.ui.selected_tab.diff.diff.clear();
+
+        self
+          .ui
+          .selected_tab
+          .diff
+          .diff
+          .push(format!("fatal pc: {:#x}, trap {:#?}", self.cpu.pc, trap));
+
+        return;
+      }
+      false => {}
+    }
+
+    // difftest ui cpu inst
+    self
+      .ui
+      .selected_tab
+      .diff
+      .cpu
+      .push(format!("pc: {:#x}, inst: {}", self.cpu.pc, self.cpu.inst));
+
+    // trace ui itrace
+    self
+      .ui
+      .selected_tab
+      .trace
+      .itrace
+      .push(format!("pc: {:#x}, inst: {}", self.cpu.pc, self.cpu.inst));
+
+    // difftest ui dut inst
+    if let Some(ref dut) = self.dut {
+      let pc = dut.top.debug_pc();
+      let wnum = dut.top.debug_rf_wnum();
+      let wdata = dut.top.debug_rf_wdata();
+      let ticks = dut.ticks;
+      self.ui.selected_tab.diff.dut.push(format!(
+        "pc: {:#010x}, wnum: {} wdata: {:#018x} ticks: {}",
+        pc, wnum, wdata, ticks
+      ));
+    }
+
+    // trace ui mtrace
+    if let Some(cpu_diff) = cpu_diff {
+      self.ui.selected_tab.trace.mtrace[0].push(cpu_diff.mem.to_string());
+    }
+
+    // trace ui mtrace
+    if let Some(dut_diff) = dut_diff {
+      self.ui.selected_tab.trace.mtrace[1].push(dut_diff.mem.to_string());
+    }
+  }
+
   /// Start executing the emulator with difftest and tui.
   pub fn start_diff_tui(&mut self, terminal: &mut Tui) {
-    self.ui.selected_tab.diff_buffer.diff.push("running".to_string());
+    self.ui.selected_tab.diff.diff.push("running".to_string());
     let mut last_diff = DebugInfo::default();
 
     while !self.ui.cmd.exit {
@@ -320,75 +376,28 @@ impl Emulator {
 
       match trap {
         Trap::Fatal => {
-          self.ui.selected_tab.diff_buffer.diff.clear();
-
-          self
-            .ui
-            .selected_tab
-            .diff_buffer
-            .diff
-            .push(format!("fatal pc: {:#x}, trap {:#?}", self.cpu.pc, trap));
-
+          self.ui_update(None, None, true);
           self.quit(terminal);
-
           return;
         }
         _ => {}
       }
-      self
-        .ui
-        .selected_tab
-        .diff_buffer
-        .inst
-        .push(format!("pc: {:#x}, inst: {}", self.cpu.pc, self.cpu.inst));
-
-      self
-        .ui
-        .selected_tab
-        .diff_buffer
-        .cpu
-        .push(format!("pc: {:#x}, inst: {}", self.cpu.pc, self.cpu.inst));
 
       let dut_diff = self.dut_exec();
-      if let Some(ref dut) = self.dut {
-        let pc = dut.top.debug_pc();
-        let wnum = dut.top.debug_rf_wnum();
-        let wdata = dut.top.debug_rf_wdata();
-        let ticks = dut.ticks;
-        self.ui.selected_tab.diff_buffer.dut.push(format!(
-          "pc: {:#010x}, wnum: {} wdata: {:#018x} ticks: {}",
-          pc, wnum, wdata, ticks
-        ));
-      }
 
       // ==================== diff ====================
       if cpu_diff != dut_diff {
-        self.ui.selected_tab.diff_buffer.diff.clear();
+        self.ui.selected_tab.diff.diff.clear();
 
         self
           .ui
           .selected_tab
-          .diff_buffer
+          .diff
           .diff
           .push("difftest failed. press 'q' or 'Q' to quit. ".to_string());
-        self
-          .ui
-          .selected_tab
-          .diff_buffer
-          .diff
-          .push(format!("last: {}", last_diff));
-        self
-          .ui
-          .selected_tab
-          .diff_buffer
-          .diff
-          .push(format!("cpu : {}", cpu_diff));
-        self
-          .ui
-          .selected_tab
-          .diff_buffer
-          .diff
-          .push(format!("dut : {}", dut_diff));
+        self.ui.selected_tab.diff.diff.push(format!("last: {}", last_diff));
+        self.ui.selected_tab.diff.diff.push(format!("cpu : {}", cpu_diff));
+        self.ui.selected_tab.diff.diff.push(format!("dut : {}", dut_diff));
 
         self.quit(terminal);
 
@@ -396,6 +405,7 @@ impl Emulator {
       }
       last_diff = cpu_diff;
 
+      self.ui_update(Some(cpu_diff), Some(dut_diff), false);
       // tui
       terminal
         .draw(|frame| frame.render_widget(&self.ui, frame.size()))

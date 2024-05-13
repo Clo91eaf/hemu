@@ -2,11 +2,11 @@ use ratatui::{prelude::*, style::palette::tailwind, widgets::*};
 use std::{collections::VecDeque, fmt};
 use strum::{Display, EnumIter, FromRepr};
 
-const INST_BUFFER_SIZE: usize = 10;
-const CPU_BUFFER_SIZE: usize = 10;
-const DUT_BUFFER_SIZE: usize = 10;
+const CPU_BUFFER_SIZE: usize = 20;
+const DUT_BUFFER_SIZE: usize = 20;
 const DIFF_BUFFER_SIZE: usize = 5;
-const MEMORY_BUFFER_SIZE: usize = 10;
+const INST_BUFFER_SIZE: usize = 5;
+const MEMORY_BUFFER_SIZE: usize = 20;
 const FUNCTION_BUFFER_SIZE: usize = 10;
 
 #[derive(Clone)]
@@ -45,7 +45,6 @@ impl fmt::Display for InfoBuffer {
 }
 #[derive(Clone)]
 pub struct DiffBuffer {
-  pub inst: InfoBuffer,
   pub cpu: InfoBuffer,
   pub dut: InfoBuffer,
   pub diff: InfoBuffer,
@@ -54,7 +53,6 @@ pub struct DiffBuffer {
 impl DiffBuffer {
   pub fn new() -> Self {
     DiffBuffer {
-      inst: InfoBuffer::new(INST_BUFFER_SIZE),
       cpu: InfoBuffer::new(CPU_BUFFER_SIZE),
       dut: InfoBuffer::new(DUT_BUFFER_SIZE),
       diff: InfoBuffer::new(DIFF_BUFFER_SIZE),
@@ -65,7 +63,7 @@ impl DiffBuffer {
 #[derive(Clone)]
 pub struct TraceBuffer {
   pub itrace: InfoBuffer,
-  pub mtrace: InfoBuffer,
+  pub mtrace: Vec<InfoBuffer>,
   pub ftrace: InfoBuffer,
 }
 
@@ -73,7 +71,7 @@ impl TraceBuffer {
   pub fn new() -> Self {
     TraceBuffer {
       itrace: InfoBuffer::new(INST_BUFFER_SIZE),
-      mtrace: InfoBuffer::new(MEMORY_BUFFER_SIZE),
+      mtrace: vec![InfoBuffer::new(MEMORY_BUFFER_SIZE), InfoBuffer::new(MEMORY_BUFFER_SIZE)],
       ftrace: InfoBuffer::new(FUNCTION_BUFFER_SIZE),
     }
   }
@@ -82,12 +80,10 @@ impl TraceBuffer {
 #[derive(Default, Clone, Copy, Display, FromRepr, EnumIter)]
 pub enum SelectedTabEnum {
   #[default]
-  #[strum(to_string = "Main")]
-  Main,
-  #[strum(to_string = "Trace")]
-  Trace,
   #[strum(to_string = "Difftest")]
   Difftest,
+  #[strum(to_string = "Trace")]
+  Trace,
 }
 
 impl SelectedTabEnum {
@@ -114,25 +110,24 @@ impl SelectedTabEnum {
 
   pub const fn palette(self) -> tailwind::Palette {
     match self {
-      Self::Main => tailwind::BLUE,
-      Self::Trace => tailwind::EMERALD,
       Self::Difftest => tailwind::INDIGO,
+      Self::Trace => tailwind::EMERALD,
     }
   }
 }
 
 #[derive(Clone)]
 pub struct SelectedTab {
-  pub diff_buffer: DiffBuffer,
-  pub trace_buffer: TraceBuffer,
+  pub diff: DiffBuffer,
+  pub trace: TraceBuffer,
   pub state: SelectedTabEnum,
 }
 
 impl SelectedTab {
   pub fn new() -> Self {
     SelectedTab {
-      diff_buffer: DiffBuffer::new(),
-      trace_buffer: TraceBuffer::new(),
+      diff: DiffBuffer::new(),
+      trace: TraceBuffer::new(),
       state: SelectedTabEnum::default(),
     }
   }
@@ -142,35 +137,18 @@ impl Widget for SelectedTab {
   fn render(self, area: Rect, buf: &mut Buffer) {
     // in a real app these might be separate widgets
     match self.state {
-      SelectedTabEnum::Main => self.render_main(area, buf),
-      SelectedTabEnum::Trace => self.render_trace(area, buf),
       SelectedTabEnum::Difftest => self.render_difftest(area, buf),
+      SelectedTabEnum::Trace => self.render_trace(area, buf),
     }
   }
 }
 
 impl SelectedTab {
-  fn render_main(self, area: Rect, buf: &mut Buffer) {
-    Paragraph::new("Welcome to the Ratatui tabs example!")
-      .block(self.block())
-      .render(area, buf);
-  }
-
   fn render_trace(self, area: Rect, buf: &mut Buffer) {
-    Paragraph::new("Look! I'm different than others!")
-      .block(self.block())
-      .render(area, buf);
-  }
-
-  fn render_difftest(self, area: Rect, buf: &mut Buffer) {
     // layout
     let layout_vertical = Layout::default()
       .direction(Direction::Vertical)
-      .constraints(vec![
-        Constraint::Percentage(40),
-        Constraint::Percentage(40),
-        Constraint::Percentage(20),
-      ])
+      .constraints(vec![Constraint::Percentage(20), Constraint::Percentage(80)])
       .split(area);
 
     let layout_horizontal = Layout::default()
@@ -178,19 +156,65 @@ impl SelectedTab {
       .constraints(vec![Constraint::Percentage(50), Constraint::Percentage(50)])
       .split(layout_vertical[1]);
 
-    // render_frame
-    Paragraph::new(self.diff_buffer.inst.to_string())
+    Paragraph::new(self.trace.itrace.to_string())
       .block(
         Block::bordered()
-          .title("Instructions")
-          .title_alignment(Alignment::Left)
+          .title("Instruction Trace")
+          .title_alignment(Alignment::Center)
           .border_type(BorderType::Rounded),
       )
       .style(Style::default().fg(Color::Cyan))
       .left_aligned()
       .render(layout_vertical[0], buf);
 
-    Paragraph::new(self.diff_buffer.cpu.to_string())
+    Paragraph::new(self.trace.mtrace[0].to_string())
+      .block(
+        Block::bordered()
+          .title("CPU Memory Trace")
+          .title_alignment(Alignment::Center)
+          .border_type(BorderType::Rounded),
+      )
+      .style(Style::default().fg(Color::Cyan))
+      .left_aligned()
+      .render(layout_horizontal[0], buf);
+
+    Paragraph::new(self.trace.mtrace[1].to_string())
+      .block(
+        Block::bordered()
+          .title("DUT Memory Trace")
+          .title_alignment(Alignment::Center)
+          .border_type(BorderType::Rounded),
+      )
+      .style(Style::default().fg(Color::Cyan))
+      .left_aligned()
+      .render(layout_horizontal[1], buf);
+
+      // TODO: Funtion trace
+    // Paragraph::new(self.trace.ftrace.to_string())
+    //   .block(
+    //     Block::bordered()
+    //       .title("Function Trace")
+    //       .title_alignment(Alignment::Center)
+    //       .border_type(BorderType::Rounded),
+    //   )
+    //   .style(Style::default().fg(Color::Cyan))
+    //   .left_aligned()
+    //   .render(layout_vertical[2], buf);
+  }
+
+  fn render_difftest(self, area: Rect, buf: &mut Buffer) {
+    // layout
+    let layout_vertical = Layout::default()
+      .direction(Direction::Vertical)
+      .constraints(vec![Constraint::Percentage(80), Constraint::Percentage(20)])
+      .split(area);
+
+    let layout_horizontal = Layout::default()
+      .direction(Direction::Horizontal)
+      .constraints(vec![Constraint::Percentage(50), Constraint::Percentage(50)])
+      .split(layout_vertical[0]);
+
+    Paragraph::new(self.diff.cpu.to_string())
       .block(
         Block::bordered()
           .title("CPU")
@@ -201,7 +225,7 @@ impl SelectedTab {
       .left_aligned()
       .render(layout_horizontal[0], buf);
 
-    Paragraph::new(self.diff_buffer.dut.to_string())
+    Paragraph::new(self.diff.dut.to_string())
       .block(
         Block::bordered()
           .title("DUT")
@@ -212,7 +236,7 @@ impl SelectedTab {
       .left_aligned()
       .render(layout_horizontal[1], buf);
 
-    Paragraph::new(self.diff_buffer.diff.to_string())
+    Paragraph::new(self.diff.diff.to_string())
       .block(
         Block::bordered()
           .title("Difftest Status")
@@ -221,14 +245,6 @@ impl SelectedTab {
       )
       .style(Style::default().fg(Color::Cyan))
       .centered()
-      .render(layout_vertical[2], buf)
-  }
-
-  /// A block surrounding the tab's content
-  fn block(self) -> Block<'static> {
-    Block::bordered()
-      .border_set(symbols::border::PROPORTIONAL_TALL)
-      .padding(Padding::horizontal(1))
-      .border_style(self.state.palette().c700)
+      .render(layout_vertical[1], buf)
   }
 }
