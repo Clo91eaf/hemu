@@ -1,10 +1,6 @@
 module top(
     input         clock,
     input         reset,
-    // interrupts
-    input         MEI, // to PLIC
-    input         MSI, // to CLINT
-    input         MTI, // to CLINT
     // inst sram interface
     output        inst_sram_en,
     output [ 3:0] inst_sram_wen,
@@ -33,9 +29,11 @@ PuaCpu core(
     .clock                    (clock),
     .reset                    (reset),
     // interrupts     
-    .io_ext_int_ei            (MEI), // to PLIC
-    .io_ext_int_si            (MSI), // to CLINT
-    .io_ext_int_ti            (MTI), // to CLINT
+    .io_ext_int_mei           (1'b0),
+    .io_ext_int_mti           (1'b0),
+    .io_ext_int_msi           (1'b0),
+    .io_ext_int_sei           (1'b0),
+
     // inst sram interface 
     .io_inst_sram_en          (inst_sram_en),
     .io_inst_sram_wen         (inst_sram_wen),
