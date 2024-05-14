@@ -1,9 +1,10 @@
 mod top;
 use crate::bus::Bus;
-use crate::cpu::{BYTE, WORD, HALFWORD, DOUBLEWORD};
+use crate::cpu::{BYTE, DOUBLEWORD, HALFWORD, WORD};
 use crate::emulator::{DebugInfo, GprInfo, MemInfo};
 use std::time::Duration;
 use top::Top;
+use tracing::trace;
 
 fn extend_to_64(n: u8) -> u64 {
   let mut ans: u64 = 0;
@@ -58,6 +59,28 @@ impl Dut {
     }
   }
 
+  fn get_data_sram_mask_and_align(&self) -> (u64, u32) {
+    let data_sram_mask = extend_to_64(self.top.data_sram_wen());
+    let data_sram_align = data_sram_mask.trailing_zeros();
+    (data_sram_mask, data_sram_align)
+  }
+
+  fn get_data(&self) -> u64 {
+    let (data_sram_mask, data_sram_align) = self.get_data_sram_mask_and_align();
+    (self.top.data_sram_wdata() & data_sram_mask) >> data_sram_align
+  }
+
+  fn get_size(&self) -> u8 {
+    let (data_sram_mask, data_sram_align) = self.get_data_sram_mask_and_align();
+    match self.top.data_sram_wen() >> self.top.data_sram_wen().trailing_zeros() {
+      0b0000_0001 => BYTE,
+      0b0000_0011 => HALFWORD,
+      0b0000_1111 => WORD,
+      0b1111_1111 => DOUBLEWORD,
+      _ => panic!("Invalid data sram size: {:#x}", data_sram_mask >> data_sram_align),
+    }
+  }
+
   /// drive the instruction SRAM interface
   pub fn step(&mut self, inst: u32, data: u64) -> anyhow::Result<(SramRequest, SramRequest, DebugInfo)> {
     match self.ticks {
@@ -82,24 +105,20 @@ impl Dut {
     self.ticks += 1;
 
     // write data sram
+    let mem_info = MemInfo::default();
+    trace!("[dut] data sram wen = {:#010x}", self.top.data_sram_wen());
     if self.top.data_sram_wen() != 0 {
-      let data_sram_mask = extend_to_64(self.top.data_sram_wen());
-      let data_sram_align = data_sram_mask.trailing_zeros();
-      let data_sram_aligned = if data_sram_align == 0 {
-        0
-      } else {
-        (self.top.data_sram_wdata() & data_sram_mask) >> data_sram_align
-      };
-      let data_sram_size = match data_sram_mask >> data_sram_align {
-        0b0000_0001 => BYTE,
-        0b0000_0011 => HALFWORD,
-        0b0000_1111 => WORD,
-        0b1111_1111 => DOUBLEWORD,
-        _ => panic!("Invalid data sram size"),
-      };
-      let _ = self.bus.write(self.top.data_sram_addr() as u64, data_sram_aligned, data_sram_size);
+      let addr = self.top.data_sram_addr();
+      let data = self.get_data();
+      let size = self.get_size();
+      self.bus.write(addr as u64, data, size).unwrap();
+      trace!(
+        "[dut] write data sram: addr = {:#010x}, data = {:#018x}, size = {}",
+        addr,
+        data,
+        size
+      );
     }
-
 
     Ok({
       (
@@ -112,21 +131,7 @@ impl Dut {
             self.top.debug_rf_wnum(),
             self.top.debug_rf_wdata(),
           ),
-          MemInfo::new(
-            self.top.debug_sram_wen() != 0,
-            if self.top.debug_sram_wen() != 0 {
-              self.top.debug_sram_waddr()
-            } else {
-              0
-            },
-            if self.top.debug_sram_wen() != 0 {
-              let wdata_mask = extend_to_64(self.top.debug_sram_wen());
-              let align = wdata_mask.trailing_zeros();
-              (self.top.debug_sram_wdata() & wdata_mask) >> align
-            } else {
-              0
-            },
-          ),
+          mem_info,
         ),
       )
     })

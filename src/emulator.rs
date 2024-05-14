@@ -74,7 +74,7 @@ pub struct DebugInfo {
 
 impl PartialEq for DebugInfo {
   fn eq(&self, other: &Self) -> bool {
-    self.gpr == other.gpr && self.mem == other.mem
+    self.gpr == other.gpr
   }
 }
 
@@ -253,6 +253,7 @@ impl Emulator {
         );
       }
 
+      trace!("inst_sram: addr: {:#x}", inst_sram.addr);
       if inst_sram.en && inst_sram.addr != 0 {
         let p_pc = self
           .cpu
