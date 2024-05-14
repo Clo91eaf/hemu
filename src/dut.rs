@@ -1,4 +1,6 @@
 mod top;
+use crate::bus::Bus;
+use crate::cpu::{BYTE, WORD, HALFWORD, DOUBLEWORD};
 use crate::emulator::{DebugInfo, GprInfo, MemInfo};
 use std::time::Duration;
 use top::Top;
@@ -25,8 +27,8 @@ impl SramRequest {
 // sram interface
 pub struct Dut {
   pub top: Top,
+  pub bus: Bus,
   pub ticks: u64,
-  pub prepare_for_difftest: bool,
   pub inst: u32,
   pub data: u64,
   pub trace: bool,
@@ -43,7 +45,7 @@ impl Dut {
     Dut {
       top,
       ticks: 0,
-      prepare_for_difftest: false,
+      bus: Bus::new(),
       inst: 0,
       data: 0,
       trace,
@@ -78,6 +80,26 @@ impl Dut {
     self.trace(self.ticks * 2 + 1);
 
     self.ticks += 1;
+
+    // write data sram
+    if self.top.data_sram_wen() != 0 {
+      let data_sram_mask = extend_to_64(self.top.data_sram_wen());
+      let data_sram_align = data_sram_mask.trailing_zeros();
+      let data_sram_aligned = if data_sram_align == 0 {
+        0
+      } else {
+        (self.top.data_sram_wdata() & data_sram_mask) >> data_sram_align
+      };
+      let data_sram_size = match data_sram_mask >> data_sram_align {
+        0b0000_0001 => BYTE,
+        0b0000_0011 => HALFWORD,
+        0b0000_1111 => WORD,
+        0b1111_1111 => DOUBLEWORD,
+        _ => panic!("Invalid data sram size"),
+      };
+      let _ = self.bus.write(self.top.data_sram_addr() as u64, data_sram_aligned, data_sram_size);
+    }
+
 
     Ok({
       (
@@ -116,5 +138,18 @@ impl Drop for Dut {
     self.top.finish();
 
     println!("Simulation complete");
+  }
+}
+
+#[cfg(test)]
+mod test {
+  use super::*;
+
+  #[test]
+  fn test_extend_to_64() {
+    assert_eq!(extend_to_64(0b1111_1111), 0xffffffff_ffffffff);
+    assert_eq!(extend_to_64(0b0000_1111), 0x00000000_ffffffff);
+    assert_eq!(extend_to_64(0b0000_0001), 0x00000000_000000ff);
+    assert_eq!(extend_to_64(0b0001_0001), 0x000000ff_000000ff);
   }
 }

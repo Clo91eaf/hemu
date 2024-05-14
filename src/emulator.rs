@@ -139,12 +139,18 @@ impl Emulator {
 
   /// Set binary data to the beginning of the DRAM from the emulator console.
   pub fn initialize_dram(&mut self, data: Vec<u8>) {
-    self.cpu.bus.initialize_dram(data);
+    self.cpu.bus.initialize_dram(data.clone());
+    if let Some(ref mut dut) = self.dut {
+      dut.bus.initialize_dram(data);
+    }
   }
 
   /// Set binary data to the virtio disk from the emulator console.
   pub fn initialize_disk(&mut self, data: Vec<u8>) {
-    self.cpu.bus.initialize_disk(data);
+    self.cpu.bus.initialize_disk(data.clone());
+    if let Some(ref mut dut) = self.dut {
+      dut.bus.initialize_dram(data);
+    }
   }
 
   /// Set the program counter to the CPU field.
@@ -238,7 +244,7 @@ impl Emulator {
 
         // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
         // should be `Exception::InstructionAccessFault`.
-        dut.data = self.cpu.bus.read(p_addr, crate::cpu::DOUBLEWORD).unwrap();
+        dut.data = dut.bus.read(p_addr, crate::cpu::DOUBLEWORD).unwrap();
         trace!(
           "[dut] ticks: {}, data_sram: addr: {:#x}, data: {:#018x}",
           dut.ticks,
@@ -326,22 +332,6 @@ impl Emulator {
       }
       false => {}
     }
-
-    // difftest ui cpu inst
-    self
-      .ui
-      .selected_tab
-      .diff
-      .cpu
-      .push(format!("pc: {:#x}, inst: {}", self.cpu.pc, self.cpu.inst));
-
-    // trace ui itrace
-    self
-      .ui
-      .selected_tab
-      .trace
-      .itrace
-      .push(format!("pc: {:#x}, inst: {}", self.cpu.pc, self.cpu.inst));
 
     // difftest ui dut inst
     if let Some(ref dut) = self.dut {
