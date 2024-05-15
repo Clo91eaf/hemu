@@ -200,9 +200,9 @@ impl Emulator {
   /// Start executing the emulator without difftest.
   pub fn start(&mut self) {
     loop {
-      let pc = self.cpu.pc;
+      // let pc = self.cpu.pc;
       let trap = self.execute();
-      info!("pc: {:#x}, inst: {}", pc, self.cpu.inst);
+      // info!("pc: {:#x}, inst: {}", pc, self.cpu.inst);
 
       match trap {
         Trap::Fatal => {
