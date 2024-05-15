@@ -142,7 +142,7 @@ impl Drop for Dut {
   fn drop(&mut self) {
     self.top.finish();
 
-    println!("Simulation complete");
+    tracing::info!("Simulation complete, DUT dropped.");
   }
 }
 
