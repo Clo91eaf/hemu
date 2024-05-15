@@ -76,11 +76,6 @@ impl SelectedTab {
       .constraints(vec![Constraint::Percentage(20), Constraint::Percentage(80)])
       .split(area);
 
-    let layout_horizontal = Layout::default()
-      .direction(Direction::Horizontal)
-      .constraints(vec![Constraint::Percentage(50), Constraint::Percentage(50)])
-      .split(layout_vertical[1]);
-
     Paragraph::new(self.trace.itrace.to_string())
       .block(
         Block::bordered()
@@ -92,7 +87,7 @@ impl SelectedTab {
       .left_aligned()
       .render(layout_vertical[0], buf);
 
-    Paragraph::new(self.trace.mtrace[0].to_string())
+    Paragraph::new(self.trace.mtrace.to_string())
       .block(
         Block::bordered()
           .title("CPU Memory Trace")
@@ -101,18 +96,7 @@ impl SelectedTab {
       )
       .style(Style::default().fg(Color::Cyan))
       .left_aligned()
-      .render(layout_horizontal[0], buf);
-
-    Paragraph::new(self.trace.mtrace[1].to_string())
-      .block(
-        Block::bordered()
-          .title("DUT Memory Trace")
-          .title_alignment(Alignment::Center)
-          .border_type(BorderType::Rounded),
-      )
-      .style(Style::default().fg(Color::Cyan))
-      .left_aligned()
-      .render(layout_horizontal[1], buf);
+      .render(layout_vertical[1], buf);
 
       // TODO: Funtion trace
     // Paragraph::new(self.trace.ftrace.to_string())

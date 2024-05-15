@@ -317,7 +317,7 @@ impl Emulator {
     }
   }
 
-  pub fn ui_update(&mut self, cpu_diff: Option<DebugInfo>, dut_diff: Option<DebugInfo>, trap: bool) {
+  pub fn ui_update(&mut self, cpu_diff: Option<DebugInfo>, trap: bool) {
     match trap {
       true => {
         self.ui.selected_tab.diff.diff.clear();
@@ -349,7 +349,12 @@ impl Emulator {
     // trace ui mtrace
     if let Some(cpu_diff) = cpu_diff {
       if cpu_diff.mem.wen {
-        self.ui.selected_tab.trace.mtrace[0].push(format!("pc: {:#010x}, {}", self.cpu.pc, cpu_diff.mem.to_string()));
+        self
+          .ui
+          .selected_tab
+          .trace
+          .mtrace
+          .push(format!("pc: {:#010x}, {}", self.cpu.pc, cpu_diff.mem.to_string()));
       }
 
       // difftest ui cpu inst
@@ -368,13 +373,6 @@ impl Emulator {
         .itrace
         .push(format!("pc: {:#x}, inst: {}", cpu_diff.gpr.pc, self.cpu.inst));
     }
-
-    // trace ui mtrace
-    if let Some(dut_diff) = dut_diff {
-      if dut_diff.mem.wen {
-        self.ui.selected_tab.trace.mtrace[1].push(format!("pc: {:#010x}, {}", self.cpu.pc, dut_diff.mem.to_string()));
-      }
-    }
   }
 
   /// Start executing the emulator with difftest and tui.
@@ -388,7 +386,7 @@ impl Emulator {
 
       match trap {
         Trap::Fatal => {
-          self.ui_update(None, None, true);
+          self.ui_update(None, true);
           self.quit(terminal);
           return;
         }
@@ -417,7 +415,7 @@ impl Emulator {
       }
       last_diff = cpu_diff;
 
-      self.ui_update(Some(cpu_diff), Some(dut_diff), false);
+      self.ui_update(Some(cpu_diff), false);
       // tui
       terminal
         .draw(|frame| frame.render_widget(&self.ui, frame.size()))

@@ -61,7 +61,7 @@ impl DiffBuffer {
 #[derive(Clone)]
 pub struct TraceBuffer {
   pub itrace: InfoBuffer,
-  pub mtrace: Vec<InfoBuffer>,
+  pub mtrace: InfoBuffer,
   pub ftrace: InfoBuffer,
 }
 
@@ -69,7 +69,7 @@ impl TraceBuffer {
   pub fn new() -> Self {
     TraceBuffer {
       itrace: InfoBuffer::new(INST_BUFFER_SIZE),
-      mtrace: vec![InfoBuffer::new(MEMORY_BUFFER_SIZE), InfoBuffer::new(MEMORY_BUFFER_SIZE)],
+      mtrace: InfoBuffer::new(MEMORY_BUFFER_SIZE),
       ftrace: InfoBuffer::new(FUNCTION_BUFFER_SIZE),
     }
   }
