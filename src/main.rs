@@ -43,12 +43,14 @@ fn main() -> anyhow::Result<()> {
   let args = Args::parse();
 
   // Set the log level.
+  // system test is no need to print log
   // "error", "warn", "info", "debug", "trace"
-  let level = args.log.parse()?;
+  let level = "error".parse()?;
   log_trace(level);
 
   assert!(!(args.tui && level < tracing::Level::INFO), "Tui requires log level >= INFO.");
   assert!(!(!args.diff && args.tui), "Tui without difftest is not supported yet.");
+  assert!(!args.diff && !args.tui && !args.trace, "Only support no diff and no tui");
 
   // Read the kernel bin(after objcopy) and the disk image.
   let mut kernel_file = File::open(args.kernel)?;
