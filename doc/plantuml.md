@@ -118,3 +118,45 @@ C is 8008
 @250
 C is 800f
 ```
+
+```plantuml
+clock "Clock" as C with period 50
+binary "Reset"  as B
+scale 50 as 100 pixels
+
+@0
+
+@50
+B is high
+
+```
+
+```plantuml
+clock  "Clock" as C with period 50
+binary "Reset" as B
+concise "PC" as PC
+concise "INST" as INST
+scale 25 as 50 pixels
+
+@0
+PC is 0x00000000
+INST is 0x00000000
+
+@50
+B is high
+PC is 0x7FFFFFFC
+
+@100
+PC is 0x80000000
+INST is 0x00000413
+
+@150
+PC is 0x80000004
+INST is 0x00009117
+
+@175
+
+PC@75 -> INST@125 : SRAM Request
+PC@50 <-> @75 : Send SRAM Request
+
+```
