@@ -59,6 +59,14 @@ module top(
     output      debug_perf_bru_pred_fail
 );
 
+wire [1:0] axi_ar_bits_lock;
+wire [3:0] axi_ar_bits_cache;
+wire [2:0] axi_ar_bits_prot;
+wire [1:0] axi_aw_bits_lock;
+wire [3:0] axi_aw_bits_cache;
+wire [2:0] axi_aw_bits_prot;
+wire [3:0] axi_w_bits_id;
+
 PuaCpu core(
     .clock                    (clock),
     .reset                    (reset),
@@ -73,12 +81,16 @@ PuaCpu core(
     .io_axi_aw_bits_len       (MAXI_awlen),
     .io_axi_aw_bits_size      (MAXI_awsize),
     .io_axi_aw_bits_burst     (MAXI_awburst),
+    .io_axi_aw_bits_lock      (axi_aw_bits_lock),
+    .io_axi_aw_bits_cache     (axi_aw_bits_cache),
+    .io_axi_aw_bits_prot      (axi_aw_bits_prot),
     .io_axi_aw_valid          (MAXI_awvalid),
     .io_axi_aw_ready          (MAXI_awready),
     // w 
     .io_axi_w_bits_data       (MAXI_wdata),
     .io_axi_w_bits_strb       (MAXI_wstrb),
     .io_axi_w_bits_last       (MAXI_wlast),
+    .io_axi_w_bits_id         (axi_w_bits_id),
     .io_axi_w_valid           (MAXI_wvalid),
     .io_axi_w_ready           (MAXI_wready),
     // b 
@@ -92,6 +104,9 @@ PuaCpu core(
     .io_axi_ar_bits_len       (MAXI_arlen),
     .io_axi_ar_bits_size      (MAXI_arsize),
     .io_axi_ar_bits_burst     (MAXI_arburst),
+    .io_axi_ar_bits_lock      (axi_ar_bits_lock),
+    .io_axi_ar_bits_cache     (axi_ar_bits_cache),
+    .io_axi_ar_bits_prot      (axi_ar_bits_prot),
     .io_axi_ar_valid          (MAXI_arvalid),
     .io_axi_ar_ready          (MAXI_arready),
     // r 
