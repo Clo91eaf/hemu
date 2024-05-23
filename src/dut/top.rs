@@ -6,29 +6,70 @@ pub struct Top {
   pub clock: bool,
   #[port(reset)]
   pub reset: bool,
-  // inst sram interface
+  // axi aw
   #[port(output)]
-  pub inst_sram_en: bool,
+  pub MAXI_awid: [bool; 3],
   #[port(output)]
-  pub inst_sram_wen: [bool; 4],
+  pub MAXI_awaddr: [bool; 32],
   #[port(output)]
-  pub inst_sram_addr: [bool; 32],
+  pub MAXI_awlen: [bool; 8],
   #[port(output)]
-  pub inst_sram_wdata: [bool; 32],
+  pub MAXI_awsize: [bool; 3],
+  #[port(output)]
+  pub MAXI_awburst: [bool; 2],
+  #[port(output)]
+  pub MAXI_awvalid: bool,
   #[port(input)]
-  pub inst_sram_rdata: [bool; 32],
-  // data sram interface
+  pub MAXI_awready: bool,
+  // axi w
   #[port(output)]
-  pub data_sram_en: bool,
+  pub MAXI_wdata: [bool; 64],
   #[port(output)]
-  pub data_sram_wen: [bool; 8],
+  pub MAXI_wstrb: [bool; 8],
   #[port(output)]
-  pub data_sram_addr: [bool; 32],
+  pub MAXI_wlast: bool,
   #[port(output)]
-  pub data_sram_wdata: [bool; 64],
+  pub MAXI_wvalid: bool,
   #[port(input)]
-  pub data_sram_rdata: [bool; 64],
-  // trace debug interface
+  pub MAXI_wready: bool,
+  // axi b
+  #[port(input)]
+  pub MAXI_bid: [bool; 4],
+  #[port(input)]
+  pub MAXI_bresp: [bool; 2],
+  #[port(input)]
+  pub MAXI_bvalid: bool,
+  #[port(output)]
+  pub MAXI_bready: bool,
+  // axi ar
+  #[port(output)]
+  pub MAXI_arid: [bool; 4],
+  #[port(output)]
+  pub MAXI_araddr: [bool; 32],
+  #[port(output)]
+  pub MAXI_arlen: [bool; 8],
+  #[port(output)]
+  pub MAXI_arsize: [bool; 3],
+  #[port(output)]
+  pub MAXI_arburst: [bool; 2],
+  #[port(output)]
+  pub MAXI_arvalid: bool,
+  #[port(input)]
+  pub MAXI_arready: bool,
+  // axi r
+  #[port(input)]
+  pub MAXI_rid: [bool; 4],
+  #[port(input)]
+  pub MAXI_rdata: [bool; 64],
+  #[port(input)]
+  pub MAXI_rresp: [bool; 2],
+  #[port(input)]
+  pub MAXI_rlast: bool,
+  #[port(input)]
+  pub MAXI_rvalid: bool,
+  #[port(output)]
+  pub MAXI_rready: bool,
+  // debug
   #[port(output)]
   pub debug_commit: bool,
   #[port(output)]
@@ -37,11 +78,26 @@ pub struct Top {
   pub debug_rf_wnum: [bool; 5],
   #[port(output)]
   pub debug_rf_wdata: [bool; 64],
-  // trace memory interface
+  // debug csr
   #[port(output)]
-  pub debug_sram_wen: [bool; 8],
+  pub debug_csr_interrupt: bool,
   #[port(output)]
-  pub debug_sram_waddr: [bool; 32],
+  pub debug_csr_mcycle: [bool; 64],
   #[port(output)]
-  pub debug_sram_wdata: [bool; 64],
+  pub debug_csr_mip: [bool; 64],
+  #[port(output)]
+  pub debug_csr_minstret: [bool; 64],
+  // perf
+  #[port(output)]
+  pub debug_perf_icache_req: bool,
+  #[port(output)]
+  pub debug_perf_icache_hit: bool,
+  #[port(output)]
+  pub debug_perf_dcache_req: bool,
+  #[port(output)]
+  pub debug_perf_dcache_hit: bool,
+  #[port(output)]
+  pub debug_perf_bru_pred_branch: bool,
+  #[port(output)]
+  pub debug_perf_bru_pred_fail: bool,
 }
