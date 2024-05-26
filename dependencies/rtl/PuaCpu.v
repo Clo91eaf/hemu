@@ -137,70 +137,70 @@ module FetchUnit(	// playground/src/pipeline/fetch/FetchUnit.scala:9:7
   assign io_decodeStage_data_inst = {32'h0, io_instSram_rdata};	// playground/src/pipeline/fetch/FetchUnit.scala:9:7, :29:21, :41:39
   assign io_decodeStage_data_valid = state == 2'h2;	// playground/src/pipeline/fetch/FetchUnit.scala:9:7, :17:47, :39:48
   assign io_decodeStage_data_pc = pc;	// playground/src/pipeline/fetch/FetchUnit.scala:9:7, :29:21
-  assign io_instSram_en = ~reset & pc[1:0] == 2'h0;	// playground/src/pipeline/fetch/FetchUnit.scala:9:7, :29:21, :42:{44,51}, :44:{24,38}
+  assign io_instSram_en = ~reset;	// playground/src/pipeline/fetch/FetchUnit.scala:9:7, :43:24
   assign io_instSram_addr = _io_instSram_addr_T_4;	// playground/src/pipeline/fetch/FetchUnit.scala:9:7, src/main/scala/chisel3/util/Mux.scala:126:16
 endmodule
 
-module DecodeStage(	// playground/src/pipeline/decode/DecodeStage.scala:20:7
-  input         clock,	// playground/src/pipeline/decode/DecodeStage.scala:20:7
-                reset,	// playground/src/pipeline/decode/DecodeStage.scala:20:7
-                io_ctrl_allow_to_go,	// playground/src/pipeline/decode/DecodeStage.scala:21:14
-                io_ctrl_do_flush,	// playground/src/pipeline/decode/DecodeStage.scala:21:14
-  input  [63:0] io_fetchUnit_data_inst,	// playground/src/pipeline/decode/DecodeStage.scala:21:14
-  input         io_fetchUnit_data_valid,	// playground/src/pipeline/decode/DecodeStage.scala:21:14
-  input  [63:0] io_fetchUnit_data_pc,	// playground/src/pipeline/decode/DecodeStage.scala:21:14
-  output [63:0] io_decodeUnit_data_inst,	// playground/src/pipeline/decode/DecodeStage.scala:21:14
-  output        io_decodeUnit_data_valid,	// playground/src/pipeline/decode/DecodeStage.scala:21:14
-  output [63:0] io_decodeUnit_data_pc	// playground/src/pipeline/decode/DecodeStage.scala:21:14
+module DecodeStage(	// playground/src/pipeline/decode/DecodeStage.scala:19:7
+  input         clock,	// playground/src/pipeline/decode/DecodeStage.scala:19:7
+                reset,	// playground/src/pipeline/decode/DecodeStage.scala:19:7
+                io_ctrl_allow_to_go,	// playground/src/pipeline/decode/DecodeStage.scala:20:14
+                io_ctrl_do_flush,	// playground/src/pipeline/decode/DecodeStage.scala:20:14
+  input  [63:0] io_fetchUnit_data_inst,	// playground/src/pipeline/decode/DecodeStage.scala:20:14
+  input         io_fetchUnit_data_valid,	// playground/src/pipeline/decode/DecodeStage.scala:20:14
+  input  [63:0] io_fetchUnit_data_pc,	// playground/src/pipeline/decode/DecodeStage.scala:20:14
+  output [63:0] io_decodeUnit_data_inst,	// playground/src/pipeline/decode/DecodeStage.scala:20:14
+  output        io_decodeUnit_data_valid,	// playground/src/pipeline/decode/DecodeStage.scala:20:14
+  output [63:0] io_decodeUnit_data_pc	// playground/src/pipeline/decode/DecodeStage.scala:20:14
 );
 
-  reg [63:0] data_inst;	// playground/src/pipeline/decode/DecodeStage.scala:27:21
-  reg        data_valid;	// playground/src/pipeline/decode/DecodeStage.scala:27:21
-  reg [63:0] data_pc;	// playground/src/pipeline/decode/DecodeStage.scala:27:21
-  always @(posedge clock) begin	// playground/src/pipeline/decode/DecodeStage.scala:20:7
-    if (reset) begin	// playground/src/pipeline/decode/DecodeStage.scala:20:7
-      data_inst <= 64'h0;	// playground/src/pipeline/decode/DecodeStage.scala:27:{21,34}
-      data_valid <= 1'h0;	// playground/src/pipeline/decode/DecodeStage.scala:27:{21,34}
-      data_pc <= 64'h0;	// playground/src/pipeline/decode/DecodeStage.scala:27:{21,34}
+  reg [63:0] data_inst;	// playground/src/pipeline/decode/DecodeStage.scala:26:21
+  reg        data_valid;	// playground/src/pipeline/decode/DecodeStage.scala:26:21
+  reg [63:0] data_pc;	// playground/src/pipeline/decode/DecodeStage.scala:26:21
+  always @(posedge clock) begin	// playground/src/pipeline/decode/DecodeStage.scala:19:7
+    if (reset) begin	// playground/src/pipeline/decode/DecodeStage.scala:19:7
+      data_inst <= 64'h0;	// playground/src/pipeline/decode/DecodeStage.scala:26:{21,34}
+      data_valid <= 1'h0;	// playground/src/pipeline/decode/DecodeStage.scala:26:{21,34}
+      data_pc <= 64'h0;	// playground/src/pipeline/decode/DecodeStage.scala:26:{21,34}
     end
-    else begin	// playground/src/pipeline/decode/DecodeStage.scala:20:7
-      if (io_ctrl_do_flush) begin	// playground/src/pipeline/decode/DecodeStage.scala:21:14
-        data_inst <= 64'h0;	// playground/src/pipeline/decode/DecodeStage.scala:27:{21,34}
-        data_pc <= 64'h0;	// playground/src/pipeline/decode/DecodeStage.scala:27:{21,34}
+    else begin	// playground/src/pipeline/decode/DecodeStage.scala:19:7
+      if (io_ctrl_do_flush) begin	// playground/src/pipeline/decode/DecodeStage.scala:20:14
+        data_inst <= 64'h0;	// playground/src/pipeline/decode/DecodeStage.scala:26:{21,34}
+        data_pc <= 64'h0;	// playground/src/pipeline/decode/DecodeStage.scala:26:{21,34}
       end
-      else if (io_ctrl_allow_to_go) begin	// playground/src/pipeline/decode/DecodeStage.scala:21:14
-        data_inst <= io_fetchUnit_data_inst;	// playground/src/pipeline/decode/DecodeStage.scala:27:21
-        data_pc <= io_fetchUnit_data_pc;	// playground/src/pipeline/decode/DecodeStage.scala:27:21
+      else if (io_ctrl_allow_to_go) begin	// playground/src/pipeline/decode/DecodeStage.scala:20:14
+        data_inst <= io_fetchUnit_data_inst;	// playground/src/pipeline/decode/DecodeStage.scala:26:21
+        data_pc <= io_fetchUnit_data_pc;	// playground/src/pipeline/decode/DecodeStage.scala:26:21
       end
       data_valid <=
-        ~io_ctrl_do_flush & (io_ctrl_allow_to_go ? io_fetchUnit_data_valid : data_valid);	// playground/src/pipeline/decode/DecodeStage.scala:27:21, :29:26, :30:10, :31:35, :32:10
+        ~io_ctrl_do_flush & (io_ctrl_allow_to_go ? io_fetchUnit_data_valid : data_valid);	// playground/src/pipeline/decode/DecodeStage.scala:26:21, :28:26, :29:10, :30:35, :31:10
     end
   end // always @(posedge)
-  `ifdef ENABLE_INITIAL_REG_	// playground/src/pipeline/decode/DecodeStage.scala:20:7
-    `ifdef FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/decode/DecodeStage.scala:20:7
-      `FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/decode/DecodeStage.scala:20:7
+  `ifdef ENABLE_INITIAL_REG_	// playground/src/pipeline/decode/DecodeStage.scala:19:7
+    `ifdef FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/decode/DecodeStage.scala:19:7
+      `FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/decode/DecodeStage.scala:19:7
     `endif // FIRRTL_BEFORE_INITIAL
-    initial begin	// playground/src/pipeline/decode/DecodeStage.scala:20:7
-      automatic logic [31:0] _RANDOM[0:4];	// playground/src/pipeline/decode/DecodeStage.scala:20:7
-      `ifdef INIT_RANDOM_PROLOG_	// playground/src/pipeline/decode/DecodeStage.scala:20:7
-        `INIT_RANDOM_PROLOG_	// playground/src/pipeline/decode/DecodeStage.scala:20:7
+    initial begin	// playground/src/pipeline/decode/DecodeStage.scala:19:7
+      automatic logic [31:0] _RANDOM[0:4];	// playground/src/pipeline/decode/DecodeStage.scala:19:7
+      `ifdef INIT_RANDOM_PROLOG_	// playground/src/pipeline/decode/DecodeStage.scala:19:7
+        `INIT_RANDOM_PROLOG_	// playground/src/pipeline/decode/DecodeStage.scala:19:7
       `endif // INIT_RANDOM_PROLOG_
-      `ifdef RANDOMIZE_REG_INIT	// playground/src/pipeline/decode/DecodeStage.scala:20:7
+      `ifdef RANDOMIZE_REG_INIT	// playground/src/pipeline/decode/DecodeStage.scala:19:7
         for (logic [2:0] i = 3'h0; i < 3'h5; i += 3'h1) begin
-          _RANDOM[i] = `RANDOM;	// playground/src/pipeline/decode/DecodeStage.scala:20:7
-        end	// playground/src/pipeline/decode/DecodeStage.scala:20:7
-        data_inst = {_RANDOM[3'h0], _RANDOM[3'h1]};	// playground/src/pipeline/decode/DecodeStage.scala:20:7, :27:21
-        data_valid = _RANDOM[3'h2][0];	// playground/src/pipeline/decode/DecodeStage.scala:20:7, :27:21
-        data_pc = {_RANDOM[3'h2][31:1], _RANDOM[3'h3], _RANDOM[3'h4][0]};	// playground/src/pipeline/decode/DecodeStage.scala:20:7, :27:21
+          _RANDOM[i] = `RANDOM;	// playground/src/pipeline/decode/DecodeStage.scala:19:7
+        end	// playground/src/pipeline/decode/DecodeStage.scala:19:7
+        data_inst = {_RANDOM[3'h0], _RANDOM[3'h1]};	// playground/src/pipeline/decode/DecodeStage.scala:19:7, :26:21
+        data_valid = _RANDOM[3'h2][0];	// playground/src/pipeline/decode/DecodeStage.scala:19:7, :26:21
+        data_pc = {_RANDOM[3'h2][31:1], _RANDOM[3'h3], _RANDOM[3'h4][0]};	// playground/src/pipeline/decode/DecodeStage.scala:19:7, :26:21
       `endif // RANDOMIZE_REG_INIT
     end // initial
-    `ifdef FIRRTL_AFTER_INITIAL	// playground/src/pipeline/decode/DecodeStage.scala:20:7
-      `FIRRTL_AFTER_INITIAL	// playground/src/pipeline/decode/DecodeStage.scala:20:7
+    `ifdef FIRRTL_AFTER_INITIAL	// playground/src/pipeline/decode/DecodeStage.scala:19:7
+      `FIRRTL_AFTER_INITIAL	// playground/src/pipeline/decode/DecodeStage.scala:19:7
     `endif // FIRRTL_AFTER_INITIAL
   `endif // ENABLE_INITIAL_REG_
-  assign io_decodeUnit_data_inst = data_inst;	// playground/src/pipeline/decode/DecodeStage.scala:20:7, :27:21
-  assign io_decodeUnit_data_valid = data_valid;	// playground/src/pipeline/decode/DecodeStage.scala:20:7, :27:21
-  assign io_decodeUnit_data_pc = data_pc;	// playground/src/pipeline/decode/DecodeStage.scala:20:7, :27:21
+  assign io_decodeUnit_data_inst = data_inst;	// playground/src/pipeline/decode/DecodeStage.scala:19:7, :26:21
+  assign io_decodeUnit_data_valid = data_valid;	// playground/src/pipeline/decode/DecodeStage.scala:19:7, :26:21
+  assign io_decodeUnit_data_pc = data_pc;	// playground/src/pipeline/decode/DecodeStage.scala:19:7, :26:21
 endmodule
 
 module Decoder(	// playground/src/pipeline/decode/Decoder.scala:8:7
@@ -312,12 +312,12 @@ module Decoder(	// playground/src/pipeline/decode/Decoder.scala:8:7
                                           : _GEN_46 | _GEN_47
                                               ? 3'h4
                                               : _GEN_48 ? 3'h2 : _GEN_62 ? 3'h5 : 3'h0;	// src/main/scala/chisel3/util/Lookup.scala:31:38, :34:39
-  wire        _io_out_info_imm_T_31 = instrType == 3'h4;	// playground/src/defines/Util.scala:46:34, src/main/scala/chisel3/util/Lookup.scala:34:39
-  wire        _io_out_info_imm_T_35 = instrType == 3'h6;	// playground/src/defines/Util.scala:46:34, src/main/scala/chisel3/util/Lookup.scala:34:39
-  wire        _src2Type_T_15 = instrType == 3'h0;	// playground/src/defines/Util.scala:46:34, src/main/scala/chisel3/util/Lookup.scala:34:39
-  wire        src1Type = _io_out_info_imm_T_35 | (&instrType) | _src2Type_T_15;	// playground/src/defines/Util.scala:46:34, src/main/scala/chisel3/util/Lookup.scala:34:39, src/main/scala/chisel3/util/Mux.scala:30:73
+  wire        _io_out_info_imm_T_31 = instrType == 3'h4;	// playground/src/defines/Util.scala:22:34, src/main/scala/chisel3/util/Lookup.scala:34:39
+  wire        _io_out_info_imm_T_35 = instrType == 3'h6;	// playground/src/defines/Util.scala:22:34, src/main/scala/chisel3/util/Lookup.scala:34:39
+  wire        _src2Type_T_15 = instrType == 3'h0;	// playground/src/defines/Util.scala:22:34, src/main/scala/chisel3/util/Lookup.scala:34:39
+  wire        src1Type = _io_out_info_imm_T_35 | (&instrType) | _src2Type_T_15;	// playground/src/defines/Util.scala:22:34, src/main/scala/chisel3/util/Lookup.scala:34:39, src/main/scala/chisel3/util/Mux.scala:30:73
   wire        src2Type =
-    _io_out_info_imm_T_31 | _io_out_info_imm_T_35 | (&instrType) | _src2Type_T_15;	// playground/src/defines/Util.scala:46:34, src/main/scala/chisel3/util/Lookup.scala:34:39, src/main/scala/chisel3/util/Mux.scala:30:73
+    _io_out_info_imm_T_31 | _io_out_info_imm_T_35 | (&instrType) | _src2Type_T_15;	// playground/src/defines/Util.scala:22:34, src/main/scala/chisel3/util/Lookup.scala:34:39, src/main/scala/chisel3/util/Mux.scala:30:73
   assign io_out_info_src1_ren = ~src1Type;	// playground/src/pipeline/decode/Decoder.scala:8:7, :42:38, src/main/scala/chisel3/util/Mux.scala:30:73
   assign io_out_info_src1_raddr = src1Type ? 5'h0 : io_in_inst[19:15];	// playground/src/pipeline/decode/Decoder.scala:8:7, :37:27, :43:32, src/main/scala/chisel3/util/Mux.scala:30:73
   assign io_out_info_src2_ren = ~src2Type;	// playground/src/pipeline/decode/Decoder.scala:8:7, :44:38, src/main/scala/chisel3/util/Mux.scala:30:73
@@ -481,7 +481,7 @@ module Decoder(	// playground/src/pipeline/decode/Decoder.scala:8:7
             io_in_inst[20],
             io_in_inst[30:21],
             1'h0}
-         : 64'h0);	// playground/src/defines/Util.scala:33:20, :34:{44,49}, :46:34, playground/src/pipeline/decode/Decoder.scala:8:7, :37:55, :53:35, :54:39, :56:{39,49,58,72}, :57:{34,39}, :58:{49,63,73}, src/main/scala/chisel3/util/Lookup.scala:34:39, src/main/scala/chisel3/util/Mux.scala:30:73
+         : 64'h0);	// playground/src/defines/Util.scala:9:20, :10:{44,49}, :22:34, playground/src/pipeline/decode/Decoder.scala:8:7, :37:55, :53:35, :54:39, :56:{39,49,58,72}, :57:{34,39}, :58:{49,63,73}, src/main/scala/chisel3/util/Lookup.scala:34:39, src/main/scala/chisel3/util/Mux.scala:30:73
   assign io_out_info_inst = io_in_inst;	// playground/src/pipeline/decode/Decoder.scala:8:7
 endmodule
 
@@ -598,7 +598,7 @@ module DecodeUnit(	// playground/src/pipeline/decode/DecodeUnit.scala:14:7
   assign io_executeStage_data_src_info_src1_data =
     _Decoder_io_out_info_src1_ren
       ? _ForwardCtrl_io_out_data_src1_rdata
-      : _Decoder_io_out_info_inst[6:0] == 7'h37 ? 64'h0 : io_decodeStage_data_pc;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :25:23, :28:27, :53:{17,24}, :61:27, src/main/scala/chisel3/util/Mux.scala:126:16
+      : _Decoder_io_out_info_inst[6:0] == 7'h37 ? 64'h0 : io_decodeStage_data_pc;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :25:23, :28:27, :53:{17,24}, src/main/scala/chisel3/util/Mux.scala:126:16
   assign io_executeStage_data_src_info_src2_data =
     _Decoder_io_out_info_src2_ren
       ? _ForwardCtrl_io_out_data_src2_rdata
@@ -850,118 +850,118 @@ module ARegFile(	// playground/src/pipeline/decode/ARegfile.scala:25:7
           : _GEN[io_read_src2_raddr];	// playground/src/pipeline/decode/ARegfile.scala:25:7, :32:29, :35:39, :44:24, :50:{27,36}, :51:24, :53:24, :54:{23,45,65}, :55:26
 endmodule
 
-module ExecuteStage(	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
-  input         clock,	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
-                reset,	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
-                io_ctrl_allow_to_go,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
-                io_ctrl_do_flush,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
-  input  [63:0] io_decodeUnit_data_pc,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
-  input         io_decodeUnit_data_info_valid,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
-  input  [2:0]  io_decodeUnit_data_info_fusel,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
-  input  [6:0]  io_decodeUnit_data_info_op,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
-  input         io_decodeUnit_data_info_reg_wen,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
-  input  [4:0]  io_decodeUnit_data_info_reg_waddr,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
-  input  [63:0] io_decodeUnit_data_info_imm,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
-                io_decodeUnit_data_src_info_src1_data,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
-                io_decodeUnit_data_src_info_src2_data,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
-  output [63:0] io_executeUnit_data_pc,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
-  output        io_executeUnit_data_info_valid,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
-  output [2:0]  io_executeUnit_data_info_fusel,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
-  output [6:0]  io_executeUnit_data_info_op,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
-  output        io_executeUnit_data_info_reg_wen,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
-  output [4:0]  io_executeUnit_data_info_reg_waddr,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
-  output [63:0] io_executeUnit_data_info_imm,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
-                io_executeUnit_data_src_info_src1_data,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
-                io_executeUnit_data_src_info_src2_data	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+module ExecuteStage(	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
+  input         clock,	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
+                reset,	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
+                io_ctrl_allow_to_go,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
+                io_ctrl_do_flush,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
+  input  [63:0] io_decodeUnit_data_pc,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
+  input         io_decodeUnit_data_info_valid,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
+  input  [2:0]  io_decodeUnit_data_info_fusel,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
+  input  [6:0]  io_decodeUnit_data_info_op,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
+  input         io_decodeUnit_data_info_reg_wen,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
+  input  [4:0]  io_decodeUnit_data_info_reg_waddr,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
+  input  [63:0] io_decodeUnit_data_info_imm,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
+                io_decodeUnit_data_src_info_src1_data,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
+                io_decodeUnit_data_src_info_src2_data,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
+  output [63:0] io_executeUnit_data_pc,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
+  output        io_executeUnit_data_info_valid,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
+  output [2:0]  io_executeUnit_data_info_fusel,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
+  output [6:0]  io_executeUnit_data_info_op,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
+  output        io_executeUnit_data_info_reg_wen,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
+  output [4:0]  io_executeUnit_data_info_reg_waddr,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
+  output [63:0] io_executeUnit_data_info_imm,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
+                io_executeUnit_data_src_info_src1_data,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
+                io_executeUnit_data_src_info_src2_data	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
 );
 
-  reg [63:0] data_pc;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
-  reg        data_info_valid;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
-  reg [2:0]  data_info_fusel;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
-  reg [6:0]  data_info_op;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
-  reg        data_info_reg_wen;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
-  reg [4:0]  data_info_reg_waddr;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
-  reg [63:0] data_info_imm;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
-  reg [63:0] data_src_info_src1_data;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
-  reg [63:0] data_src_info_src2_data;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
-  always @(posedge clock) begin	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
-    if (reset) begin	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
-      data_pc <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:27:{21,34}
-      data_info_valid <= 1'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
-      data_info_fusel <= 3'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:27:{21,34}
-      data_info_op <= 7'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:27:{21,34}
-      data_info_reg_wen <= 1'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
-      data_info_reg_waddr <= 5'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:27:{21,34}
-      data_info_imm <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:27:{21,34}
-      data_src_info_src1_data <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:27:{21,34}
-      data_src_info_src2_data <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:27:{21,34}
+  reg [63:0] data_pc;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
+  reg        data_info_valid;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
+  reg [2:0]  data_info_fusel;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
+  reg [6:0]  data_info_op;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
+  reg        data_info_reg_wen;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
+  reg [4:0]  data_info_reg_waddr;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
+  reg [63:0] data_info_imm;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
+  reg [63:0] data_src_info_src1_data;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
+  reg [63:0] data_src_info_src2_data;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
+  always @(posedge clock) begin	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
+    if (reset) begin	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
+      data_pc <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
+      data_info_valid <= 1'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
+      data_info_fusel <= 3'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
+      data_info_op <= 7'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
+      data_info_reg_wen <= 1'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
+      data_info_reg_waddr <= 5'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
+      data_info_imm <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
+      data_src_info_src1_data <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
+      data_src_info_src2_data <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
     end
-    else begin	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
-      if (io_ctrl_do_flush) begin	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
-        data_pc <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:27:{21,34}
-        data_info_fusel <= 3'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:27:{21,34}
-        data_info_op <= 7'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:27:{21,34}
-        data_info_reg_waddr <= 5'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:27:{21,34}
-        data_info_imm <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:27:{21,34}
-        data_src_info_src1_data <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:27:{21,34}
-        data_src_info_src2_data <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:27:{21,34}
+    else begin	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
+      if (io_ctrl_do_flush) begin	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
+        data_pc <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
+        data_info_fusel <= 3'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
+        data_info_op <= 7'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
+        data_info_reg_waddr <= 5'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
+        data_info_imm <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
+        data_src_info_src1_data <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
+        data_src_info_src2_data <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
       end
-      else if (io_ctrl_allow_to_go) begin	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
-        data_pc <= io_decodeUnit_data_pc;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
-        data_info_fusel <= io_decodeUnit_data_info_fusel;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
-        data_info_op <= io_decodeUnit_data_info_op;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
-        data_info_reg_waddr <= io_decodeUnit_data_info_reg_waddr;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
-        data_info_imm <= io_decodeUnit_data_info_imm;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
-        data_src_info_src1_data <= io_decodeUnit_data_src_info_src1_data;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
-        data_src_info_src2_data <= io_decodeUnit_data_src_info_src2_data;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+      else if (io_ctrl_allow_to_go) begin	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
+        data_pc <= io_decodeUnit_data_pc;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
+        data_info_fusel <= io_decodeUnit_data_info_fusel;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
+        data_info_op <= io_decodeUnit_data_info_op;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
+        data_info_reg_waddr <= io_decodeUnit_data_info_reg_waddr;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
+        data_info_imm <= io_decodeUnit_data_info_imm;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
+        data_src_info_src1_data <= io_decodeUnit_data_src_info_src1_data;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
+        data_src_info_src2_data <= io_decodeUnit_data_src_info_src2_data;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
       end
       data_info_valid <=
         ~io_ctrl_do_flush
-        & (io_ctrl_allow_to_go ? io_decodeUnit_data_info_valid : data_info_valid);	// playground/src/pipeline/execute/ExecuteStage.scala:27:21, :29:26, :30:10, :31:35, :32:10
+        & (io_ctrl_allow_to_go ? io_decodeUnit_data_info_valid : data_info_valid);	// playground/src/pipeline/execute/ExecuteStage.scala:26:21, :28:26, :29:10, :30:35, :31:10
       data_info_reg_wen <=
         ~io_ctrl_do_flush
-        & (io_ctrl_allow_to_go ? io_decodeUnit_data_info_reg_wen : data_info_reg_wen);	// playground/src/pipeline/execute/ExecuteStage.scala:27:21, :29:26, :30:10, :31:35, :32:10
+        & (io_ctrl_allow_to_go ? io_decodeUnit_data_info_reg_wen : data_info_reg_wen);	// playground/src/pipeline/execute/ExecuteStage.scala:26:21, :28:26, :29:10, :30:35, :31:10
     end
   end // always @(posedge)
-  `ifdef ENABLE_INITIAL_REG_	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
-    `ifdef FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
-      `FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
+  `ifdef ENABLE_INITIAL_REG_	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
+    `ifdef FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
+      `FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
     `endif // FIRRTL_BEFORE_INITIAL
-    initial begin	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
-      automatic logic [31:0] _RANDOM[0:10];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
-      `ifdef INIT_RANDOM_PROLOG_	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
-        `INIT_RANDOM_PROLOG_	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
+    initial begin	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
+      automatic logic [31:0] _RANDOM[0:10];	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
+      `ifdef INIT_RANDOM_PROLOG_	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
+        `INIT_RANDOM_PROLOG_	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
       `endif // INIT_RANDOM_PROLOG_
-      `ifdef RANDOMIZE_REG_INIT	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
+      `ifdef RANDOMIZE_REG_INIT	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
         for (logic [3:0] i = 4'h0; i < 4'hB; i += 4'h1) begin
-          _RANDOM[i] = `RANDOM;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
-        end	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
-        data_pc = {_RANDOM[4'h0], _RANDOM[4'h1]};	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
-        data_info_valid = _RANDOM[4'h2][0];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
-        data_info_fusel = _RANDOM[4'h2][16:14];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
-        data_info_op = _RANDOM[4'h2][23:17];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
-        data_info_reg_wen = _RANDOM[4'h2][24];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
-        data_info_reg_waddr = _RANDOM[4'h2][29:25];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
-        data_info_imm = {_RANDOM[4'h2][31:30], _RANDOM[4'h3], _RANDOM[4'h4][29:0]};	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+          _RANDOM[i] = `RANDOM;	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
+        end	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
+        data_pc = {_RANDOM[4'h0], _RANDOM[4'h1]};	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
+        data_info_valid = _RANDOM[4'h2][0];	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
+        data_info_fusel = _RANDOM[4'h2][16:14];	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
+        data_info_op = _RANDOM[4'h2][23:17];	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
+        data_info_reg_wen = _RANDOM[4'h2][24];	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
+        data_info_reg_waddr = _RANDOM[4'h2][29:25];	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
+        data_info_imm = {_RANDOM[4'h2][31:30], _RANDOM[4'h3], _RANDOM[4'h4][29:0]};	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
         data_src_info_src1_data =
-          {_RANDOM[4'h6][31:30], _RANDOM[4'h7], _RANDOM[4'h8][29:0]};	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+          {_RANDOM[4'h6][31:30], _RANDOM[4'h7], _RANDOM[4'h8][29:0]};	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
         data_src_info_src2_data =
-          {_RANDOM[4'h8][31:30], _RANDOM[4'h9], _RANDOM[4'hA][29:0]};	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+          {_RANDOM[4'h8][31:30], _RANDOM[4'h9], _RANDOM[4'hA][29:0]};	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
       `endif // RANDOMIZE_REG_INIT
     end // initial
-    `ifdef FIRRTL_AFTER_INITIAL	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
-      `FIRRTL_AFTER_INITIAL	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
+    `ifdef FIRRTL_AFTER_INITIAL	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
+      `FIRRTL_AFTER_INITIAL	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
     `endif // FIRRTL_AFTER_INITIAL
   `endif // ENABLE_INITIAL_REG_
-  assign io_executeUnit_data_pc = data_pc;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
-  assign io_executeUnit_data_info_valid = data_info_valid;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
-  assign io_executeUnit_data_info_fusel = data_info_fusel;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
-  assign io_executeUnit_data_info_op = data_info_op;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
-  assign io_executeUnit_data_info_reg_wen = data_info_reg_wen;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
-  assign io_executeUnit_data_info_reg_waddr = data_info_reg_waddr;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
-  assign io_executeUnit_data_info_imm = data_info_imm;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
-  assign io_executeUnit_data_src_info_src1_data = data_src_info_src1_data;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
-  assign io_executeUnit_data_src_info_src2_data = data_src_info_src2_data;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_pc = data_pc;	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
+  assign io_executeUnit_data_info_valid = data_info_valid;	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
+  assign io_executeUnit_data_info_fusel = data_info_fusel;	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
+  assign io_executeUnit_data_info_op = data_info_op;	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
+  assign io_executeUnit_data_info_reg_wen = data_info_reg_wen;	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
+  assign io_executeUnit_data_info_reg_waddr = data_info_reg_waddr;	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
+  assign io_executeUnit_data_info_imm = data_info_imm;	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
+  assign io_executeUnit_data_src_info_src1_data = data_src_info_src1_data;	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
+  assign io_executeUnit_data_src_info_src2_data = data_src_info_src2_data;	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
 endmodule
 
 module Alu(	// playground/src/pipeline/execute/fu/Alu.scala:8:7
@@ -980,10 +980,10 @@ module Alu(	// playground/src/pipeline/execute/fu/Alu.scala:8:7
       ? {{32{io_src_info_src1_data[31]}}, io_src_info_src1_data[31:0]}
       : io_info_op == 7'h15
           ? {32'h0, io_src_info_src1_data[31:0]}
-          : io_src_info_src1_data;	// playground/src/defines/Util.scala:33:20, :34:{44,49}, :41:44, playground/src/pipeline/execute/fu/Alu.scala:23:48, :25:40
+          : io_src_info_src1_data;	// playground/src/defines/Util.scala:9:20, :10:{44,49}, :17:44, playground/src/pipeline/execute/fu/Alu.scala:23:48, :25:40
   wire [5:0]   shamt =
     io_info_op[4] ? {1'h0, io_src_info_src2_data[4:0]} : io_src_info_src2_data[5:0];	// playground/src/defines/isa/Instructions.scala:60:34, playground/src/pipeline/execute/fu/Alu.scala:18:22, :29:{18,47,75}
-  wire [126:0] _res_T_1 = {63'h0, shsrc1} << shamt;	// playground/src/defines/Util.scala:41:44, playground/src/pipeline/execute/fu/Alu.scala:23:48, :29:18, :32:34
+  wire [126:0] _res_T_1 = {63'h0, shsrc1} << shamt;	// playground/src/defines/Util.scala:17:44, playground/src/pipeline/execute/fu/Alu.scala:23:48, :29:18, :32:34
   wire [63:0]  _GEN = {58'h0, shamt};	// playground/src/pipeline/execute/fu/Alu.scala:29:18, :36:33
   wire [63:0]  res =
     io_info_op[3:0] == 4'hD
@@ -1000,8 +1000,8 @@ module Alu(	// playground/src/pipeline/execute/fu/Alu.scala:8:7
                           ? {63'h0, ~(_sum_T_3[64])}
                           : io_info_op[3:0] == 4'h2
                               ? {63'h0, xor_0[63] ^ ~(_sum_T_3[64])}
-                              : io_info_op[3:0] == 4'h1 ? _res_T_1[63:0] : _sum_T_3[63:0];	// playground/src/defines/Util.scala:41:44, playground/src/pipeline/execute/fu/Alu.scala:18:54, :19:21, :20:{16,20}, :21:{19,30}, :23:48, :30:{25,37}, :32:{34,43}, :36:33, :37:31, :38:31, :39:41
-  assign io_result = io_info_op[4] ? {{32{res[31]}}, res[31:0]} : res;	// playground/src/defines/Util.scala:33:20, :34:49, playground/src/defines/isa/Instructions.scala:60:34, playground/src/pipeline/execute/fu/Alu.scala:8:7, :30:37, :42:{19,60}
+                              : io_info_op[3:0] == 4'h1 ? _res_T_1[63:0] : _sum_T_3[63:0];	// playground/src/defines/Util.scala:17:44, playground/src/pipeline/execute/fu/Alu.scala:18:54, :19:21, :20:{16,20}, :21:{19,30}, :23:48, :30:{25,37}, :32:{34,43}, :36:33, :37:31, :38:31, :39:41
+  assign io_result = io_info_op[4] ? {{32{res[31]}}, res[31:0]} : res;	// playground/src/defines/Util.scala:9:20, :10:49, playground/src/defines/isa/Instructions.scala:60:34, playground/src/pipeline/execute/fu/Alu.scala:8:7, :30:37, :42:{19,60}
 endmodule
 
 module Bru(	// playground/src/pipeline/execute/fu/Bru.scala:8:7
@@ -1026,7 +1026,7 @@ module Bru(	// playground/src/pipeline/execute/fu/Bru.scala:8:7
     & (io_in_info_op[3]
        | (io_in_info_op[2:1] == 2'h0 & xor_0 == 64'h0 | io_in_info_op[2:1] == 2'h2
           & (xor_0[63] ^ ~(_adder_T_3[64])) | (&(io_in_info_op[2:1])) & ~(_adder_T_3[64]))
-       ^ io_in_info_op[0]);	// playground/src/defines/Util.scala:46:34, playground/src/defines/isa/Instructions.scala:74:41, :77:40, :78:40, playground/src/pipeline/execute/fu/Bru.scala:8:7, :21:22, :26:{37,54}, :27:21, :28:{16,22}, :29:{19,30}, :31:53, :37:67, :41:{26,37}, src/main/scala/chisel3/util/Mux.scala:30:73
+       ^ io_in_info_op[0]);	// playground/src/defines/Util.scala:22:34, playground/src/defines/isa/Instructions.scala:74:41, :77:40, :78:40, playground/src/pipeline/execute/fu/Bru.scala:8:7, :21:22, :26:{37,54}, :27:21, :28:{16,22}, :29:{19,30}, :31:53, :37:67, :41:{26,37}, src/main/scala/chisel3/util/Mux.scala:30:73
   assign io_out_target =
     io_in_info_op == 7'hA
       ? io_in_src_info_src1_data + io_in_src_info_src2_data & 64'hFFFFFFFFFFFFFFFE
@@ -1072,39 +1072,39 @@ module Mdu(	// playground/src/pipeline/execute/fu/Mdu.scala:9:7
 
   wire [127:0] _Div_io_result;	// playground/src/pipeline/execute/fu/Mdu.scala:18:19
   wire [127:0] _Mul_io_result;	// playground/src/pipeline/execute/fu/Mdu.scala:17:19
-  wire [64:0]  _GEN = {1'h0, io_src_info_src1_data};	// playground/src/defines/Util.scala:41:44
-  wire [64:0]  _GEN_0 = {io_src_info_src1_data[63], io_src_info_src1_data};	// playground/src/defines/Util.scala:33:20, :34:44
-  wire         _GEN_1 = io_info_op[1:0] == 2'h1;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Mdu.scala:37:28
-  wire         _GEN_2 = io_info_op[1:0] == 2'h2;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Mdu.scala:37:28
-  wire [64:0]  _GEN_3 = {1'h0, io_src_info_src2_data};	// playground/src/defines/Util.scala:41:44
+  wire [64:0]  _GEN = {1'h0, io_src_info_src1_data};	// playground/src/defines/Util.scala:17:44
+  wire [64:0]  _GEN_0 = {io_src_info_src1_data[63], io_src_info_src1_data};	// playground/src/defines/Util.scala:9:20, :10:44
+  wire         _GEN_1 = io_info_op[1:0] == 2'h1;	// playground/src/defines/Util.scala:22:34, playground/src/pipeline/execute/fu/Mdu.scala:37:28
+  wire         _GEN_2 = io_info_op[1:0] == 2'h2;	// playground/src/defines/Util.scala:22:34, playground/src/pipeline/execute/fu/Mdu.scala:37:28
+  wire [64:0]  _GEN_3 = {1'h0, io_src_info_src2_data};	// playground/src/defines/Util.scala:17:44
   wire         _GEN_4 = io_info_op[2] & ~(io_info_op[0]);	// playground/src/defines/isa/Instructions.scala:140:31, :141:{39,42,45}
   wire [63:0]  result =
     io_info_op[2]
       ? (io_info_op[1] ? _Div_io_result[127:64] : _Div_io_result[63:0])
-      : (|(io_info_op[1:0])) ? _Mul_io_result[127:64] : _Mul_io_result[63:0];	// playground/src/defines/Util.scala:46:34, playground/src/defines/isa/Instructions.scala:140:31, playground/src/pipeline/execute/fu/Mdu.scala:17:19, :18:19, :37:28, :46:{23,62,87}, :47:{23,26,41,73}, :48:23
+      : (|(io_info_op[1:0])) ? _Mul_io_result[127:64] : _Mul_io_result[63:0];	// playground/src/defines/Util.scala:22:34, playground/src/defines/isa/Instructions.scala:140:31, playground/src/pipeline/execute/fu/Mdu.scala:17:19, :18:19, :37:28, :46:{23,62,87}, :47:{23,26,41,73}, :48:23
   Mul Mul (	// playground/src/pipeline/execute/fu/Mdu.scala:17:19
     .io_src1
       (((|(io_info_op[1:0])) ? 65'h0 : _GEN) | (_GEN_1 ? _GEN_0 : 65'h0)
-       | (_GEN_2 ? _GEN_0 : 65'h0) | ((&(io_info_op[1:0])) ? _GEN : 65'h0)),	// playground/src/defines/Util.scala:34:44, :41:44, :46:34, playground/src/pipeline/execute/fu/Mdu.scala:37:28, src/main/scala/chisel3/util/Mux.scala:30:73
+       | (_GEN_2 ? _GEN_0 : 65'h0) | ((&(io_info_op[1:0])) ? _GEN : 65'h0)),	// playground/src/defines/Util.scala:10:44, :17:44, :22:34, playground/src/pipeline/execute/fu/Mdu.scala:37:28, src/main/scala/chisel3/util/Mux.scala:30:73
     .io_src2
       (((|(io_info_op[1:0])) ? 65'h0 : _GEN_3)
        | (_GEN_1 ? {io_src_info_src2_data[63], io_src_info_src2_data} : 65'h0)
-       | (_GEN_2 ? _GEN_3 : 65'h0) | ((&(io_info_op[1:0])) ? _GEN_3 : 65'h0)),	// playground/src/defines/Util.scala:33:20, :34:44, :41:44, :46:34, playground/src/pipeline/execute/fu/Mdu.scala:37:28, src/main/scala/chisel3/util/Mux.scala:30:73
+       | (_GEN_2 ? _GEN_3 : 65'h0) | ((&(io_info_op[1:0])) ? _GEN_3 : 65'h0)),	// playground/src/defines/Util.scala:9:20, :10:44, :17:44, :22:34, playground/src/pipeline/execute/fu/Mdu.scala:37:28, src/main/scala/chisel3/util/Mux.scala:30:73
     .io_result (_Mul_io_result)
   );
   Div Div (	// playground/src/pipeline/execute/fu/Mdu.scala:18:19
     .io_src1
       (io_info_op[3]
          ? {{32{_GEN_4 & io_src_info_src1_data[31]}}, io_src_info_src1_data[31:0]}
-         : io_src_info_src1_data),	// playground/src/defines/Util.scala:33:20, :34:{44,49}, :41:44, playground/src/defines/isa/Instructions.scala:141:39, :142:31, playground/src/pipeline/execute/fu/Mdu.scala:41:{8,18,58}
+         : io_src_info_src1_data),	// playground/src/defines/Util.scala:9:20, :10:{44,49}, :17:44, playground/src/defines/isa/Instructions.scala:141:39, :142:31, playground/src/pipeline/execute/fu/Mdu.scala:41:{8,18,58}
     .io_src2
       (io_info_op[3]
          ? {{32{_GEN_4 & io_src_info_src2_data[31]}}, io_src_info_src2_data[31:0]}
-         : io_src_info_src2_data),	// playground/src/defines/Util.scala:33:20, :34:{44,49}, :41:44, playground/src/defines/isa/Instructions.scala:141:39, :142:31, playground/src/pipeline/execute/fu/Mdu.scala:41:{8,18,58}
+         : io_src_info_src2_data),	// playground/src/defines/Util.scala:9:20, :10:{44,49}, :17:44, playground/src/defines/isa/Instructions.scala:141:39, :142:31, playground/src/pipeline/execute/fu/Mdu.scala:41:{8,18,58}
     .io_signed (_GEN_4),	// playground/src/defines/isa/Instructions.scala:141:39
     .io_result (_Div_io_result)
   );
-  assign io_result = io_info_op[3] ? {{32{result[31]}}, result[31:0]} : result;	// playground/src/defines/Util.scala:33:20, :34:{44,49}, playground/src/defines/isa/Instructions.scala:142:31, playground/src/pipeline/execute/fu/Mdu.scala:9:7, :48:23, :50:{19,45}
+  assign io_result = io_info_op[3] ? {{32{result[31]}}, result[31:0]} : result;	// playground/src/defines/Util.scala:9:20, :10:{44,49}, playground/src/defines/isa/Instructions.scala:142:31, playground/src/pipeline/execute/fu/Mdu.scala:9:7, :48:23, :50:{19,45}
 endmodule
 
 module Lsu(	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
@@ -1121,35 +1121,35 @@ module Lsu(	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
   output [7:0]  io_dataSram_wen,	// playground/src/pipeline/execute/fu/Lsu.scala:11:14
   input  [63:0] io_dataSram_rdata,	// playground/src/pipeline/execute/fu/Lsu.scala:11:14
   input         allow_to_go__bore,
-  input  [6:0]  mem_op__bore,
   output [63:0] result__bore,
-  input  [63:0] mem_addr__bore
+  input  [63:0] mem_addr__bore,
+  input  [6:0]  mem_op__bore
 );
 
   wire        valid = io_info_valid & io_info_fusel == 3'h1 & allow_to_go__bore;	// playground/src/pipeline/execute/fu/Lsu.scala:64:{50,65}
   wire [63:0] _addr_T = io_src_info_src1_data + io_info_imm;	// playground/src/pipeline/execute/fu/Lsu.scala:68:41
-  wire        _req_wmask_T_1 = io_info_op[1:0] == 2'h1;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :70:21
-  wire        _req_wmask_T_2 = io_info_op[1:0] == 2'h2;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :70:21
+  wire        _req_wmask_T_1 = io_info_op[1:0] == 2'h1;	// playground/src/defines/Util.scala:22:34, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :70:21
+  wire        _req_wmask_T_2 = io_info_op[1:0] == 2'h2;	// playground/src/defines/Util.scala:22:34, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :70:21
   wire [14:0] req_wmask =
     {7'h0,
      {4'h0,
       {2'h0, {1'h0, ~(|(io_info_op[1:0]))} | {2{_req_wmask_T_1}}} | {4{_req_wmask_T_2}}}
-       | {8{&(io_info_op[1:0])}}} << _addr_T[2:0];	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :29:{7,14}, :68:41, :70:21, src/main/scala/chisel3/util/Mux.scala:30:73
-  wire [63:0] _rdata64_T_17 = mem_addr__bore[2:0] == 3'h0 ? io_dataSram_rdata : 64'h0;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:81:13, src/main/scala/chisel3/util/Mux.scala:30:73
+       | {8{&(io_info_op[1:0])}}} << _addr_T[2:0];	// playground/src/defines/Util.scala:22:34, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :29:{7,14}, :68:41, :70:21, src/main/scala/chisel3/util/Mux.scala:30:73
+  wire [63:0] _rdata64_T_17 = mem_addr__bore[2:0] == 3'h0 ? io_dataSram_rdata : 64'h0;	// playground/src/defines/Util.scala:22:34, playground/src/pipeline/execute/fu/Lsu.scala:81:13, src/main/scala/chisel3/util/Mux.scala:30:73
   wire [55:0] _GEN =
-    _rdata64_T_17[55:0] | (mem_addr__bore[2:0] == 3'h1 ? io_dataSram_rdata[63:8] : 56'h0);	// playground/src/defines/Util.scala:34:49, :46:34, playground/src/pipeline/execute/fu/Lsu.scala:64:50, :81:13, :84:24, src/main/scala/chisel3/util/Mux.scala:30:73
+    _rdata64_T_17[55:0] | (mem_addr__bore[2:0] == 3'h1 ? io_dataSram_rdata[63:8] : 56'h0);	// playground/src/defines/Util.scala:10:49, :22:34, playground/src/pipeline/execute/fu/Lsu.scala:64:50, :81:13, :84:24, src/main/scala/chisel3/util/Mux.scala:30:73
   wire [47:0] _GEN_0 =
-    _GEN[47:0] | (mem_addr__bore[2:0] == 3'h2 ? io_dataSram_rdata[63:16] : 48'h0);	// playground/src/defines/Util.scala:34:49, :46:34, playground/src/pipeline/execute/fu/Lsu.scala:81:13, :85:24, src/main/scala/chisel3/util/Mux.scala:30:73
+    _GEN[47:0] | (mem_addr__bore[2:0] == 3'h2 ? io_dataSram_rdata[63:16] : 48'h0);	// playground/src/defines/Util.scala:10:49, :22:34, playground/src/pipeline/execute/fu/Lsu.scala:81:13, :85:24, src/main/scala/chisel3/util/Mux.scala:30:73
   wire [39:0] _GEN_1 =
-    _GEN_0[39:0] | (mem_addr__bore[2:0] == 3'h3 ? io_dataSram_rdata[63:24] : 40'h0);	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:81:13, :86:24, src/main/scala/chisel3/util/Mux.scala:30:73
+    _GEN_0[39:0] | (mem_addr__bore[2:0] == 3'h3 ? io_dataSram_rdata[63:24] : 40'h0);	// playground/src/defines/Util.scala:22:34, playground/src/pipeline/execute/fu/Lsu.scala:81:13, :86:24, src/main/scala/chisel3/util/Mux.scala:30:73
   wire [31:0] _GEN_2 =
-    _GEN_1[31:0] | (mem_addr__bore[2:0] == 3'h4 ? io_dataSram_rdata[63:32] : 32'h0);	// playground/src/defines/Util.scala:34:49, :46:34, playground/src/pipeline/execute/fu/Lsu.scala:81:13, :87:24, src/main/scala/chisel3/util/Mux.scala:30:73
+    _GEN_1[31:0] | (mem_addr__bore[2:0] == 3'h4 ? io_dataSram_rdata[63:32] : 32'h0);	// playground/src/defines/Util.scala:10:49, :22:34, playground/src/pipeline/execute/fu/Lsu.scala:81:13, :87:24, src/main/scala/chisel3/util/Mux.scala:30:73
   wire [23:0] _GEN_3 =
-    _GEN_2[23:0] | (mem_addr__bore[2:0] == 3'h5 ? io_dataSram_rdata[63:40] : 24'h0);	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:81:13, :88:24, src/main/scala/chisel3/util/Mux.scala:30:73
+    _GEN_2[23:0] | (mem_addr__bore[2:0] == 3'h5 ? io_dataSram_rdata[63:40] : 24'h0);	// playground/src/defines/Util.scala:22:34, playground/src/pipeline/execute/fu/Lsu.scala:81:13, :88:24, src/main/scala/chisel3/util/Mux.scala:30:73
   wire [15:0] _GEN_4 =
-    _GEN_3[15:0] | (mem_addr__bore[2:0] == 3'h6 ? io_dataSram_rdata[63:48] : 16'h0);	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:81:13, :89:24, src/main/scala/chisel3/util/Mux.scala:30:73
+    _GEN_3[15:0] | (mem_addr__bore[2:0] == 3'h6 ? io_dataSram_rdata[63:48] : 16'h0);	// playground/src/defines/Util.scala:22:34, playground/src/pipeline/execute/fu/Lsu.scala:81:13, :89:24, src/main/scala/chisel3/util/Mux.scala:30:73
   wire [7:0]  _rdata_partial_result_T_9 =
-    _GEN_4[7:0] | ((&(mem_addr__bore[2:0])) ? io_dataSram_rdata[63:56] : 8'h0);	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:81:13, :90:24, :126:40, src/main/scala/chisel3/util/Mux.scala:30:73
+    _GEN_4[7:0] | ((&(mem_addr__bore[2:0])) ? io_dataSram_rdata[63:56] : 8'h0);	// playground/src/defines/Util.scala:22:34, playground/src/pipeline/execute/fu/Lsu.scala:81:13, :90:24, :126:40, src/main/scala/chisel3/util/Mux.scala:30:73
   reg  [63:0] addr_last;	// playground/src/pipeline/execute/fu/Lsu.scala:123:28
   wire [63:0] result =
     ~(mem_op__bore[3]) & mem_op__bore != 7'h3
@@ -1184,7 +1184,7 @@ module Lsu(	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
          _GEN_2[31:24],
          _GEN_3[23:16],
          _GEN_4[15:8],
-         _rdata_partial_result_T_9};	// playground/src/defines/Util.scala:33:20, :34:{44,49}, :41:44, :46:34, playground/src/defines/isa/Instructions.scala:109:39, playground/src/pipeline/execute/fu/Lsu.scala:29:7, :78:{26,53,64}, :106:49, :107:49, :108:49, :130:20, :131:16, src/main/scala/chisel3/util/Mux.scala:30:73
+         _rdata_partial_result_T_9};	// playground/src/defines/Util.scala:9:20, :10:{44,49}, :17:44, :22:34, playground/src/defines/isa/Instructions.scala:109:39, playground/src/pipeline/execute/fu/Lsu.scala:29:7, :78:{26,53,64}, :106:49, :107:49, :108:49, :130:20, :131:16, src/main/scala/chisel3/util/Mux.scala:30:73
   always @(posedge clock) begin	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
     if (allow_to_go__bore)
       addr_last <= _addr_T;	// playground/src/pipeline/execute/fu/Lsu.scala:68:41, :123:28
@@ -1213,13 +1213,13 @@ module Lsu(	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
     valid
     & (~(|(io_info_op[1:0])) | io_info_op[1:0] == 2'h1 & ~(_addr_T[0])
        | io_info_op[1:0] == 2'h2 & _addr_T[1:0] == 2'h0 | (&(io_info_op[1:0]))
-       & _addr_T[2:0] == 3'h0);	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :29:14, :64:65, :68:41, :70:21, :118:{23,27}, :119:{23,30}, :120:30, :125:30, src/main/scala/chisel3/util/Mux.scala:30:73
+       & _addr_T[2:0] == 3'h0);	// playground/src/defines/Util.scala:22:34, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :29:14, :64:65, :68:41, :70:21, :118:{23,27}, :119:{23,30}, :120:30, :125:30, src/main/scala/chisel3/util/Mux.scala:30:73
   assign io_dataSram_addr = allow_to_go__bore ? _addr_T[31:0] : addr_last[31:0];	// playground/src/pipeline/execute/fu/Lsu.scala:10:7, :68:41, :123:28, :127:27
   assign io_dataSram_wdata =
     ((|(io_info_op[1:0])) ? 64'h0 : {2{{2{{2{io_src_info_src2_data[7:0]}}}}}})
     | (_req_wmask_T_1 ? {2{{2{io_src_info_src2_data[15:0]}}}} : 64'h0)
     | (_req_wmask_T_2 ? {2{io_src_info_src2_data[31:0]}} : 64'h0)
-    | ((&(io_info_op[1:0])) ? io_src_info_src2_data : 64'h0);	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :35:{24,32}, :36:{24,32}, :37:{24,32}, :70:21, src/main/scala/chisel3/util/Mux.scala:30:73
+    | ((&(io_info_op[1:0])) ? io_src_info_src2_data : 64'h0);	// playground/src/defines/Util.scala:22:34, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :35:{24,32}, :36:{24,32}, :37:{24,32}, :70:21, src/main/scala/chisel3/util/Mux.scala:30:73
   assign io_dataSram_wen = req_wmask[7:0] & {8{valid & io_info_op[3]}};	// playground/src/defines/isa/Instructions.scala:109:39, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :29:7, :64:65, :67:25, :126:{34,40}
   assign result__bore = result;	// playground/src/pipeline/execute/fu/Lsu.scala:10:7, :130:20
 endmodule
@@ -1244,18 +1244,18 @@ module Fu(	// playground/src/pipeline/execute/Fu.scala:9:7
   output        io_ctrl_flush,	// playground/src/pipeline/execute/Fu.scala:10:14
   output [63:0] io_ctrl_target,	// playground/src/pipeline/execute/Fu.scala:10:14
   input         Lsu_allow_to_go__bore,
-  input  [6:0]  Lsu_mem_op__bore,
   output [63:0] Lsu_result__bore,
-  input  [63:0] Lsu_mem_addr__bore
+  input  [63:0] Lsu_mem_addr__bore,
+  input  [6:0]  Lsu_mem_op__bore
 );
 
-  Alu Alu (	// playground/src/pipeline/execute/Fu.scala:27:19
+  Alu Alu (	// playground/src/pipeline/execute/Fu.scala:25:19
     .io_info_op            (io_data_info_op),
     .io_src_info_src1_data (io_data_src_info_src1_data),
     .io_src_info_src2_data (io_data_src_info_src2_data),
     .io_result             (io_data_rd_info_wdata_0)
   );
-  Bru Bru (	// playground/src/pipeline/execute/Fu.scala:28:19
+  Bru Bru (	// playground/src/pipeline/execute/Fu.scala:26:19
     .io_in_pc                 (io_data_pc),
     .io_in_info_valid         (io_data_info_valid),
     .io_in_info_fusel         (io_data_info_fusel),
@@ -1266,13 +1266,13 @@ module Fu(	// playground/src/pipeline/execute/Fu.scala:9:7
     .io_out_branch            (io_ctrl_flush),
     .io_out_target            (io_ctrl_target)
   );
-  Mdu Mdu (	// playground/src/pipeline/execute/Fu.scala:29:19
+  Mdu Mdu (	// playground/src/pipeline/execute/Fu.scala:27:19
     .io_info_op            (io_data_info_op),
     .io_src_info_src1_data (io_data_src_info_src1_data),
     .io_src_info_src2_data (io_data_src_info_src2_data),
     .io_result             (io_data_rd_info_wdata_2)
   );
-  Lsu Lsu (	// playground/src/pipeline/execute/Fu.scala:30:19
+  Lsu Lsu (	// playground/src/pipeline/execute/Fu.scala:28:19
     .clock                 (clock),
     .io_info_valid         (io_data_info_valid),
     .io_info_fusel         (io_data_info_fusel),
@@ -1286,11 +1286,11 @@ module Fu(	// playground/src/pipeline/execute/Fu.scala:9:7
     .io_dataSram_wen       (io_dataSram_wen),
     .io_dataSram_rdata     (io_dataSram_rdata),
     .allow_to_go__bore     (Lsu_allow_to_go__bore),
-    .mem_op__bore          (Lsu_mem_op__bore),
     .result__bore          (Lsu_result__bore),
-    .mem_addr__bore        (Lsu_mem_addr__bore)
+    .mem_addr__bore        (Lsu_mem_addr__bore),
+    .mem_op__bore          (Lsu_mem_op__bore)
   );
-  assign io_data_rd_info_wdata_5 = io_data_pc + 64'h4;	// playground/src/pipeline/execute/Fu.scala:9:7, :48:51
+  assign io_data_rd_info_wdata_5 = io_data_pc + 64'h4;	// playground/src/pipeline/execute/Fu.scala:9:7, :46:51
 endmodule
 
 module ExecuteUnit(	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
@@ -1324,29 +1324,23 @@ module ExecuteUnit(	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
                 io_memoryStage_data_rd_info_wdata_2,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
                 io_memoryStage_data_rd_info_wdata_5,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
                 io_memoryStage_data_src_info_src1_data,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
-  output [31:0] io_memoryStage_sram_waddr,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
-  output [63:0] io_memoryStage_sram_wdata,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
-  output [7:0]  io_memoryStage_sram_wen,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
   output        io_dataSram_en,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
   output [31:0] io_dataSram_addr,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
   output [63:0] io_dataSram_wdata,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
   output [7:0]  io_dataSram_wen,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
   input  [63:0] io_dataSram_rdata,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
-  input  [6:0]  Fu_Lsu_mem_op__bore,
   output [63:0] Fu_Lsu_result__bore,
-  input  [63:0] Fu_Lsu_mem_addr__bore
+  input  [63:0] Fu_Lsu_mem_addr__bore,
+  input  [6:0]  Fu_Lsu_mem_op__bore
 );
 
   wire [63:0]      _Fu_io_data_rd_info_wdata_0;	// playground/src/pipeline/execute/ExecuteUnit.scala:32:18
   wire [63:0]      _Fu_io_data_rd_info_wdata_2;	// playground/src/pipeline/execute/ExecuteUnit.scala:32:18
   wire [63:0]      _Fu_io_data_rd_info_wdata_5;	// playground/src/pipeline/execute/ExecuteUnit.scala:32:18
-  wire [31:0]      _Fu_io_dataSram_addr;	// playground/src/pipeline/execute/ExecuteUnit.scala:32:18
-  wire [63:0]      _Fu_io_dataSram_wdata;	// playground/src/pipeline/execute/ExecuteUnit.scala:32:18
-  wire [7:0]       _Fu_io_dataSram_wen;	// playground/src/pipeline/execute/ExecuteUnit.scala:32:18
   wire             _Fu_io_ctrl_flush;	// playground/src/pipeline/execute/ExecuteUnit.scala:32:18
   wire             io_ctrl_data_is_load_0 =
     io_executeStage_data_info_fusel == 3'h1 & ~(io_executeStage_data_info_op[3])
-    & ~(io_executeStage_data_info_op[5]);	// playground/src/defines/isa/Instructions.scala:108:39, :109:39, :110:{35,52}, playground/src/pipeline/execute/ExecuteUnit.scala:40:{35,50}
+    & ~(io_executeStage_data_info_op[5]);	// playground/src/defines/isa/Instructions.scala:108:39, :109:39, :110:{35,52}, playground/src/pipeline/execute/ExecuteUnit.scala:39:{35,50}
   wire [7:0][63:0] _GEN =
     {{_Fu_io_data_rd_info_wdata_0},
      {_Fu_io_data_rd_info_wdata_0},
@@ -1355,7 +1349,7 @@ module ExecuteUnit(	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
      {64'h0},
      {_Fu_io_data_rd_info_wdata_2},
      {64'h0},
-     {_Fu_io_data_rd_info_wdata_0}};	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :11:14, :32:18, :54:35
+     {_Fu_io_data_rd_info_wdata_0}};	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :11:14, :32:18, :52:35
   Fu Fu (	// playground/src/pipeline/execute/ExecuteUnit.scala:32:18
     .clock                      (clock),
     .io_data_pc                 (io_executeStage_data_pc),
@@ -1369,25 +1363,25 @@ module ExecuteUnit(	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
     .io_data_rd_info_wdata_2    (_Fu_io_data_rd_info_wdata_2),
     .io_data_rd_info_wdata_5    (_Fu_io_data_rd_info_wdata_5),
     .io_dataSram_en             (io_dataSram_en),
-    .io_dataSram_addr           (_Fu_io_dataSram_addr),
-    .io_dataSram_wdata          (_Fu_io_dataSram_wdata),
-    .io_dataSram_wen            (_Fu_io_dataSram_wen),
+    .io_dataSram_addr           (io_dataSram_addr),
+    .io_dataSram_wdata          (io_dataSram_wdata),
+    .io_dataSram_wen            (io_dataSram_wen),
     .io_dataSram_rdata          (io_dataSram_rdata),
     .io_ctrl_flush              (_Fu_io_ctrl_flush),
     .io_ctrl_target             (io_ctrl_target),
     .Lsu_allow_to_go__bore      (io_ctrl_ctrlSignal_allow_to_go),
-    .Lsu_mem_op__bore           (Fu_Lsu_mem_op__bore),
     .Lsu_result__bore           (Fu_Lsu_result__bore),
-    .Lsu_mem_addr__bore         (Fu_Lsu_mem_addr__bore)
+    .Lsu_mem_addr__bore         (Fu_Lsu_mem_addr__bore),
+    .Lsu_mem_op__bore           (Fu_Lsu_mem_op__bore)
   );
-  assign io_ctrl_data_is_load = io_ctrl_data_is_load_0;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :40:50
+  assign io_ctrl_data_is_load = io_ctrl_data_is_load_0;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :39:50
   assign io_ctrl_data_reg_waddr = io_executeStage_data_info_reg_waddr;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
   assign io_ctrl_flush =
-    io_executeStage_data_info_valid & io_ctrl_ctrlSignal_allow_to_go & _Fu_io_ctrl_flush;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :32:18, :42:35
+    io_executeStage_data_info_valid & io_ctrl_ctrlSignal_allow_to_go & _Fu_io_ctrl_flush;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :32:18, :41:35
   assign io_decodeUnit_forward_exe_wen = io_executeStage_data_info_reg_wen;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
   assign io_decodeUnit_forward_exe_waddr = io_executeStage_data_info_reg_waddr;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
-  assign io_decodeUnit_forward_exe_wdata = _GEN[io_executeStage_data_info_fusel];	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :54:35
-  assign io_decodeUnit_forward_is_load = io_ctrl_data_is_load_0;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :40:50
+  assign io_decodeUnit_forward_exe_wdata = _GEN[io_executeStage_data_info_fusel];	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :52:35
+  assign io_decodeUnit_forward_is_load = io_ctrl_data_is_load_0;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :39:50
   assign io_memoryStage_data_pc = io_executeStage_data_pc;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
   assign io_memoryStage_data_info_valid = io_executeStage_data_info_valid;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
   assign io_memoryStage_data_info_fusel = io_executeStage_data_info_fusel;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
@@ -1399,150 +1393,117 @@ module ExecuteUnit(	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
   assign io_memoryStage_data_rd_info_wdata_2 = _Fu_io_data_rd_info_wdata_2;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :32:18
   assign io_memoryStage_data_rd_info_wdata_5 = _Fu_io_data_rd_info_wdata_5;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :32:18
   assign io_memoryStage_data_src_info_src1_data = io_executeStage_data_src_info_src1_data;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
-  assign io_memoryStage_sram_waddr = _Fu_io_dataSram_addr;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :32:18
-  assign io_memoryStage_sram_wdata = _Fu_io_dataSram_wdata;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :32:18
-  assign io_memoryStage_sram_wen = _Fu_io_dataSram_wen;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :32:18
-  assign io_dataSram_addr = _Fu_io_dataSram_addr;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :32:18
-  assign io_dataSram_wdata = _Fu_io_dataSram_wdata;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :32:18
-  assign io_dataSram_wen = _Fu_io_dataSram_wen;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :32:18
 endmodule
 
-module MemoryStage(	// playground/src/pipeline/memory/MemoryStage.scala:22:7
-  input         clock,	// playground/src/pipeline/memory/MemoryStage.scala:22:7
-                reset,	// playground/src/pipeline/memory/MemoryStage.scala:22:7
-  input  [63:0] io_executeUnit_data_pc,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-  input         io_executeUnit_data_info_valid,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-  input  [2:0]  io_executeUnit_data_info_fusel,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-  input  [6:0]  io_executeUnit_data_info_op,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-  input         io_executeUnit_data_info_reg_wen,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-  input  [4:0]  io_executeUnit_data_info_reg_waddr,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-  input  [63:0] io_executeUnit_data_info_imm,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-                io_executeUnit_data_rd_info_wdata_0,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-                io_executeUnit_data_rd_info_wdata_2,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-                io_executeUnit_data_rd_info_wdata_5,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-                io_executeUnit_data_src_info_src1_data,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-  input  [31:0] io_executeUnit_sram_waddr,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-  input  [63:0] io_executeUnit_sram_wdata,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-  input  [7:0]  io_executeUnit_sram_wen,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-  output [63:0] io_memoryUnit_data_pc,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-  output        io_memoryUnit_data_info_valid,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-  output [2:0]  io_memoryUnit_data_info_fusel,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-  output [6:0]  io_memoryUnit_data_info_op,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-  output        io_memoryUnit_data_info_reg_wen,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-  output [4:0]  io_memoryUnit_data_info_reg_waddr,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-  output [63:0] io_memoryUnit_data_info_imm,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-                io_memoryUnit_data_rd_info_wdata_0,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-                io_memoryUnit_data_rd_info_wdata_2,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-                io_memoryUnit_data_rd_info_wdata_5,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-                io_memoryUnit_data_src_info_src1_data,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-  output        io_memoryUnit_data_has_exception,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-  output [31:0] io_memoryUnit_sram_waddr,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-  output [63:0] io_memoryUnit_sram_wdata,	// playground/src/pipeline/memory/MemoryStage.scala:23:14
-  output [7:0]  io_memoryUnit_sram_wen	// playground/src/pipeline/memory/MemoryStage.scala:23:14
+module MemoryStage(	// playground/src/pipeline/memory/MemoryStage.scala:20:7
+  input         clock,	// playground/src/pipeline/memory/MemoryStage.scala:20:7
+                reset,	// playground/src/pipeline/memory/MemoryStage.scala:20:7
+  input  [63:0] io_executeUnit_data_pc,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
+  input         io_executeUnit_data_info_valid,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
+  input  [2:0]  io_executeUnit_data_info_fusel,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
+  input  [6:0]  io_executeUnit_data_info_op,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
+  input         io_executeUnit_data_info_reg_wen,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
+  input  [4:0]  io_executeUnit_data_info_reg_waddr,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
+  input  [63:0] io_executeUnit_data_info_imm,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
+                io_executeUnit_data_rd_info_wdata_0,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
+                io_executeUnit_data_rd_info_wdata_2,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
+                io_executeUnit_data_rd_info_wdata_5,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
+                io_executeUnit_data_src_info_src1_data,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
+  output [63:0] io_memoryUnit_data_pc,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
+  output        io_memoryUnit_data_info_valid,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
+  output [2:0]  io_memoryUnit_data_info_fusel,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
+  output [6:0]  io_memoryUnit_data_info_op,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
+  output        io_memoryUnit_data_info_reg_wen,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
+  output [4:0]  io_memoryUnit_data_info_reg_waddr,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
+  output [63:0] io_memoryUnit_data_info_imm,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
+                io_memoryUnit_data_rd_info_wdata_0,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
+                io_memoryUnit_data_rd_info_wdata_2,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
+                io_memoryUnit_data_rd_info_wdata_5,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
+                io_memoryUnit_data_src_info_src1_data	// playground/src/pipeline/memory/MemoryStage.scala:21:14
 );
 
-  reg [63:0] data_pc;	// playground/src/pipeline/memory/MemoryStage.scala:29:21
-  reg        data_info_valid;	// playground/src/pipeline/memory/MemoryStage.scala:29:21
-  reg [2:0]  data_info_fusel;	// playground/src/pipeline/memory/MemoryStage.scala:29:21
-  reg [6:0]  data_info_op;	// playground/src/pipeline/memory/MemoryStage.scala:29:21
-  reg        data_info_reg_wen;	// playground/src/pipeline/memory/MemoryStage.scala:29:21
-  reg [4:0]  data_info_reg_waddr;	// playground/src/pipeline/memory/MemoryStage.scala:29:21
-  reg [63:0] data_info_imm;	// playground/src/pipeline/memory/MemoryStage.scala:29:21
-  reg [63:0] data_rd_info_wdata_0;	// playground/src/pipeline/memory/MemoryStage.scala:29:21
-  reg [63:0] data_rd_info_wdata_2;	// playground/src/pipeline/memory/MemoryStage.scala:29:21
-  reg [63:0] data_rd_info_wdata_5;	// playground/src/pipeline/memory/MemoryStage.scala:29:21
-  reg [63:0] data_src_info_src1_data;	// playground/src/pipeline/memory/MemoryStage.scala:29:21
-  reg        data_has_exception;	// playground/src/pipeline/memory/MemoryStage.scala:29:21
-  reg [31:0] sram_waddr;	// playground/src/pipeline/memory/MemoryStage.scala:38:23
-  reg [63:0] sram_wdata;	// playground/src/pipeline/memory/MemoryStage.scala:38:23
-  reg [7:0]  sram_wen;	// playground/src/pipeline/memory/MemoryStage.scala:38:23
-  always @(posedge clock) begin	// playground/src/pipeline/memory/MemoryStage.scala:22:7
-    if (reset) begin	// playground/src/pipeline/memory/MemoryStage.scala:22:7
-      data_pc <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:23:14, :29:21, :30:26, :31:10, :32:35
-      data_info_valid <= 1'h0;	// playground/src/pipeline/memory/MemoryStage.scala:23:14, :29:21
-      data_info_fusel <= 3'h0;	// playground/src/pipeline/memory/MemoryStage.scala:29:{21,34}
-      data_info_op <= 7'h0;	// playground/src/pipeline/memory/MemoryStage.scala:29:{21,34}
-      data_info_reg_wen <= 1'h0;	// playground/src/pipeline/memory/MemoryStage.scala:23:14, :29:21
-      data_info_reg_waddr <= 5'h0;	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :29:21
-      data_info_imm <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:23:14, :29:21, :30:26, :31:10, :32:35
-      data_rd_info_wdata_0 <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:23:14, :29:21, :30:26, :31:10, :32:35
-      data_rd_info_wdata_2 <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:23:14, :29:21, :30:26, :31:10, :32:35
-      data_rd_info_wdata_5 <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:23:14, :29:21, :30:26, :31:10, :32:35
-      data_src_info_src1_data <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:23:14, :29:21, :30:26, :31:10, :32:35
-      data_has_exception <= 1'h0;	// playground/src/pipeline/memory/MemoryStage.scala:23:14, :29:21
-      sram_waddr <= 32'h0;	// playground/src/pipeline/memory/MemoryStage.scala:38:{23,36}
-      sram_wdata <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:23:14, :30:26, :31:10, :32:35, :38:23
-      sram_wen <= 8'h0;	// playground/src/pipeline/memory/MemoryStage.scala:38:{23,36}
+  reg [63:0] data_pc;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+  reg        data_info_valid;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+  reg [2:0]  data_info_fusel;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+  reg [6:0]  data_info_op;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+  reg        data_info_reg_wen;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+  reg [4:0]  data_info_reg_waddr;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+  reg [63:0] data_info_imm;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+  reg [63:0] data_rd_info_wdata_0;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+  reg [63:0] data_rd_info_wdata_2;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+  reg [63:0] data_rd_info_wdata_5;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+  reg [63:0] data_src_info_src1_data;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+  always @(posedge clock) begin	// playground/src/pipeline/memory/MemoryStage.scala:20:7
+    if (reset) begin	// playground/src/pipeline/memory/MemoryStage.scala:20:7
+      data_pc <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:21:14, :27:21, :28:26, :29:10, :30:35
+      data_info_valid <= 1'h0;	// playground/src/pipeline/memory/MemoryStage.scala:21:14, :27:21
+      data_info_fusel <= 3'h0;	// playground/src/pipeline/memory/MemoryStage.scala:27:{21,34}
+      data_info_op <= 7'h0;	// playground/src/pipeline/memory/MemoryStage.scala:27:{21,34}
+      data_info_reg_wen <= 1'h0;	// playground/src/pipeline/memory/MemoryStage.scala:21:14, :27:21
+      data_info_reg_waddr <= 5'h0;	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
+      data_info_imm <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:21:14, :27:21, :28:26, :29:10, :30:35
+      data_rd_info_wdata_0 <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:21:14, :27:21, :28:26, :29:10, :30:35
+      data_rd_info_wdata_2 <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:21:14, :27:21, :28:26, :29:10, :30:35
+      data_rd_info_wdata_5 <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:21:14, :27:21, :28:26, :29:10, :30:35
+      data_src_info_src1_data <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:21:14, :27:21, :28:26, :29:10, :30:35
     end
-    else begin	// playground/src/pipeline/memory/MemoryStage.scala:22:7
-      data_pc <= io_executeUnit_data_pc;	// playground/src/pipeline/memory/MemoryStage.scala:29:21
-      data_info_valid <= io_executeUnit_data_info_valid;	// playground/src/pipeline/memory/MemoryStage.scala:29:21
-      data_info_fusel <= io_executeUnit_data_info_fusel;	// playground/src/pipeline/memory/MemoryStage.scala:29:21
-      data_info_op <= io_executeUnit_data_info_op;	// playground/src/pipeline/memory/MemoryStage.scala:29:21
-      data_info_reg_wen <= io_executeUnit_data_info_reg_wen;	// playground/src/pipeline/memory/MemoryStage.scala:29:21
-      data_info_reg_waddr <= io_executeUnit_data_info_reg_waddr;	// playground/src/pipeline/memory/MemoryStage.scala:29:21
-      data_info_imm <= io_executeUnit_data_info_imm;	// playground/src/pipeline/memory/MemoryStage.scala:29:21
-      data_rd_info_wdata_0 <= io_executeUnit_data_rd_info_wdata_0;	// playground/src/pipeline/memory/MemoryStage.scala:29:21
-      data_rd_info_wdata_2 <= io_executeUnit_data_rd_info_wdata_2;	// playground/src/pipeline/memory/MemoryStage.scala:29:21
-      data_rd_info_wdata_5 <= io_executeUnit_data_rd_info_wdata_5;	// playground/src/pipeline/memory/MemoryStage.scala:29:21
-      data_src_info_src1_data <= io_executeUnit_data_src_info_src1_data;	// playground/src/pipeline/memory/MemoryStage.scala:29:21
-      data_has_exception <= 1'h0;	// playground/src/pipeline/memory/MemoryStage.scala:23:14, :29:21
-      sram_waddr <= io_executeUnit_sram_waddr;	// playground/src/pipeline/memory/MemoryStage.scala:38:23
-      sram_wdata <= io_executeUnit_sram_wdata;	// playground/src/pipeline/memory/MemoryStage.scala:38:23
-      sram_wen <= io_executeUnit_sram_wen;	// playground/src/pipeline/memory/MemoryStage.scala:38:23
+    else begin	// playground/src/pipeline/memory/MemoryStage.scala:20:7
+      data_pc <= io_executeUnit_data_pc;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+      data_info_valid <= io_executeUnit_data_info_valid;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+      data_info_fusel <= io_executeUnit_data_info_fusel;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+      data_info_op <= io_executeUnit_data_info_op;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+      data_info_reg_wen <= io_executeUnit_data_info_reg_wen;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+      data_info_reg_waddr <= io_executeUnit_data_info_reg_waddr;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+      data_info_imm <= io_executeUnit_data_info_imm;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+      data_rd_info_wdata_0 <= io_executeUnit_data_rd_info_wdata_0;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+      data_rd_info_wdata_2 <= io_executeUnit_data_rd_info_wdata_2;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+      data_rd_info_wdata_5 <= io_executeUnit_data_rd_info_wdata_5;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+      data_src_info_src1_data <= io_executeUnit_data_src_info_src1_data;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
     end
   end // always @(posedge)
-  `ifdef ENABLE_INITIAL_REG_	// playground/src/pipeline/memory/MemoryStage.scala:22:7
-    `ifdef FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/memory/MemoryStage.scala:22:7
-      `FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/memory/MemoryStage.scala:22:7
+  `ifdef ENABLE_INITIAL_REG_	// playground/src/pipeline/memory/MemoryStage.scala:20:7
+    `ifdef FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/memory/MemoryStage.scala:20:7
+      `FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/memory/MemoryStage.scala:20:7
     `endif // FIRRTL_BEFORE_INITIAL
-    initial begin	// playground/src/pipeline/memory/MemoryStage.scala:22:7
-      automatic logic [31:0] _RANDOM[0:26];	// playground/src/pipeline/memory/MemoryStage.scala:22:7
-      `ifdef INIT_RANDOM_PROLOG_	// playground/src/pipeline/memory/MemoryStage.scala:22:7
-        `INIT_RANDOM_PROLOG_	// playground/src/pipeline/memory/MemoryStage.scala:22:7
+    initial begin	// playground/src/pipeline/memory/MemoryStage.scala:20:7
+      automatic logic [31:0] _RANDOM[0:20];	// playground/src/pipeline/memory/MemoryStage.scala:20:7
+      `ifdef INIT_RANDOM_PROLOG_	// playground/src/pipeline/memory/MemoryStage.scala:20:7
+        `INIT_RANDOM_PROLOG_	// playground/src/pipeline/memory/MemoryStage.scala:20:7
       `endif // INIT_RANDOM_PROLOG_
-      `ifdef RANDOMIZE_REG_INIT	// playground/src/pipeline/memory/MemoryStage.scala:22:7
-        for (logic [4:0] i = 5'h0; i < 5'h1B; i += 5'h1) begin
-          _RANDOM[i] = `RANDOM;	// playground/src/pipeline/memory/MemoryStage.scala:22:7
-        end	// playground/src/pipeline/memory/MemoryStage.scala:22:7
-        data_pc = {_RANDOM[5'h0], _RANDOM[5'h1]};	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :29:21
-        data_info_valid = _RANDOM[5'h2][0];	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :29:21
-        data_info_fusel = _RANDOM[5'h2][16:14];	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :29:21
-        data_info_op = _RANDOM[5'h2][23:17];	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :29:21
-        data_info_reg_wen = _RANDOM[5'h2][24];	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :29:21
-        data_info_reg_waddr = _RANDOM[5'h2][29:25];	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :29:21
-        data_info_imm = {_RANDOM[5'h2][31:30], _RANDOM[5'h3], _RANDOM[5'h4][29:0]};	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :29:21
-        data_rd_info_wdata_0 = {_RANDOM[5'h6][31:30], _RANDOM[5'h7], _RANDOM[5'h8][29:0]};	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :29:21
-        data_rd_info_wdata_2 = {_RANDOM[5'hA][31:30], _RANDOM[5'hB], _RANDOM[5'hC][29:0]};	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :29:21
+      `ifdef RANDOMIZE_REG_INIT	// playground/src/pipeline/memory/MemoryStage.scala:20:7
+        for (logic [4:0] i = 5'h0; i < 5'h15; i += 5'h1) begin
+          _RANDOM[i] = `RANDOM;	// playground/src/pipeline/memory/MemoryStage.scala:20:7
+        end	// playground/src/pipeline/memory/MemoryStage.scala:20:7
+        data_pc = {_RANDOM[5'h0], _RANDOM[5'h1]};	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
+        data_info_valid = _RANDOM[5'h2][0];	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
+        data_info_fusel = _RANDOM[5'h2][16:14];	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
+        data_info_op = _RANDOM[5'h2][23:17];	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
+        data_info_reg_wen = _RANDOM[5'h2][24];	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
+        data_info_reg_waddr = _RANDOM[5'h2][29:25];	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
+        data_info_imm = {_RANDOM[5'h2][31:30], _RANDOM[5'h3], _RANDOM[5'h4][29:0]};	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
+        data_rd_info_wdata_0 = {_RANDOM[5'h6][31:30], _RANDOM[5'h7], _RANDOM[5'h8][29:0]};	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
+        data_rd_info_wdata_2 = {_RANDOM[5'hA][31:30], _RANDOM[5'hB], _RANDOM[5'hC][29:0]};	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
         data_rd_info_wdata_5 =
-          {_RANDOM[5'h10][31:30], _RANDOM[5'h11], _RANDOM[5'h12][29:0]};	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :29:21
+          {_RANDOM[5'h10][31:30], _RANDOM[5'h11], _RANDOM[5'h12][29:0]};	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
         data_src_info_src1_data =
-          {_RANDOM[5'h12][31:30], _RANDOM[5'h13], _RANDOM[5'h14][29:0]};	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :29:21
-        data_has_exception = _RANDOM[5'h16][30];	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :29:21
-        sram_waddr = {_RANDOM[5'h16][31], _RANDOM[5'h17][30:0]};	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :29:21, :38:23
-        sram_wdata = {_RANDOM[5'h17][31], _RANDOM[5'h18], _RANDOM[5'h19][30:0]};	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :38:23
-        sram_wen = {_RANDOM[5'h19][31], _RANDOM[5'h1A][6:0]};	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :38:23
+          {_RANDOM[5'h12][31:30], _RANDOM[5'h13], _RANDOM[5'h14][29:0]};	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
       `endif // RANDOMIZE_REG_INIT
     end // initial
-    `ifdef FIRRTL_AFTER_INITIAL	// playground/src/pipeline/memory/MemoryStage.scala:22:7
-      `FIRRTL_AFTER_INITIAL	// playground/src/pipeline/memory/MemoryStage.scala:22:7
+    `ifdef FIRRTL_AFTER_INITIAL	// playground/src/pipeline/memory/MemoryStage.scala:20:7
+      `FIRRTL_AFTER_INITIAL	// playground/src/pipeline/memory/MemoryStage.scala:20:7
     `endif // FIRRTL_AFTER_INITIAL
   `endif // ENABLE_INITIAL_REG_
-  assign io_memoryUnit_data_pc = data_pc;	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :29:21
-  assign io_memoryUnit_data_info_valid = data_info_valid;	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :29:21
-  assign io_memoryUnit_data_info_fusel = data_info_fusel;	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :29:21
-  assign io_memoryUnit_data_info_op = data_info_op;	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :29:21
-  assign io_memoryUnit_data_info_reg_wen = data_info_reg_wen;	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :29:21
-  assign io_memoryUnit_data_info_reg_waddr = data_info_reg_waddr;	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :29:21
-  assign io_memoryUnit_data_info_imm = data_info_imm;	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :29:21
-  assign io_memoryUnit_data_rd_info_wdata_0 = data_rd_info_wdata_0;	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :29:21
-  assign io_memoryUnit_data_rd_info_wdata_2 = data_rd_info_wdata_2;	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :29:21
-  assign io_memoryUnit_data_rd_info_wdata_5 = data_rd_info_wdata_5;	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :29:21
-  assign io_memoryUnit_data_src_info_src1_data = data_src_info_src1_data;	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :29:21
-  assign io_memoryUnit_data_has_exception = data_has_exception;	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :29:21
-  assign io_memoryUnit_sram_waddr = sram_waddr;	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :38:23
-  assign io_memoryUnit_sram_wdata = sram_wdata;	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :38:23
-  assign io_memoryUnit_sram_wen = sram_wen;	// playground/src/pipeline/memory/MemoryStage.scala:22:7, :38:23
+  assign io_memoryUnit_data_pc = data_pc;	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
+  assign io_memoryUnit_data_info_valid = data_info_valid;	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
+  assign io_memoryUnit_data_info_fusel = data_info_fusel;	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
+  assign io_memoryUnit_data_info_op = data_info_op;	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
+  assign io_memoryUnit_data_info_reg_wen = data_info_reg_wen;	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
+  assign io_memoryUnit_data_info_reg_waddr = data_info_reg_waddr;	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
+  assign io_memoryUnit_data_info_imm = data_info_imm;	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
+  assign io_memoryUnit_data_rd_info_wdata_0 = data_rd_info_wdata_0;	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
+  assign io_memoryUnit_data_rd_info_wdata_2 = data_rd_info_wdata_2;	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
+  assign io_memoryUnit_data_rd_info_wdata_5 = data_rd_info_wdata_5;	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
+  assign io_memoryUnit_data_src_info_src1_data = data_src_info_src1_data;	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
 endmodule
 
 module MemoryUnit(	// playground/src/pipeline/memory/MemoryUnit.scala:10:7
@@ -1557,10 +1518,6 @@ module MemoryUnit(	// playground/src/pipeline/memory/MemoryUnit.scala:10:7
                 io_memoryStage_data_rd_info_wdata_2,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
                 io_memoryStage_data_rd_info_wdata_5,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
                 io_memoryStage_data_src_info_src1_data,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
-  input         io_memoryStage_data_has_exception,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
-  input  [31:0] io_memoryStage_sram_waddr,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
-  input  [63:0] io_memoryStage_sram_wdata,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
-  input  [7:0]  io_memoryStage_sram_wen,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
   output        io_decodeUnit_wen,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
   output [4:0]  io_decodeUnit_waddr,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
   output [63:0] io_decodeUnit_wdata,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
@@ -1573,13 +1530,9 @@ module MemoryUnit(	// playground/src/pipeline/memory/MemoryUnit.scala:10:7
                 io_writeBackStage_data_rd_info_wdata_1,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
                 io_writeBackStage_data_rd_info_wdata_2,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
                 io_writeBackStage_data_rd_info_wdata_5,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
-  output        io_writeBackStage_data_has_exception,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
-  output [31:0] io_writeBackStage_sram_waddr,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
-  output [63:0] io_writeBackStage_sram_wdata,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
-  output [7:0]  io_writeBackStage_sram_wen,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
-  output [6:0]  op__bore,
   input  [63:0] rdata__bore,
-  output [63:0] addr__bore
+  output [63:0] addr__bore,
+  output [6:0]  op__bore
 );
 
   wire [6:0]       op = io_memoryStage_data_info_op;	// playground/src/pipeline/memory/MemoryUnit.scala:19:19
@@ -1606,149 +1559,117 @@ module MemoryUnit(	// playground/src/pipeline/memory/MemoryUnit.scala:10:7
   assign io_writeBackStage_data_rd_info_wdata_1 = rdata__bore;	// playground/src/pipeline/memory/MemoryUnit.scala:10:7
   assign io_writeBackStage_data_rd_info_wdata_2 = io_memoryStage_data_rd_info_wdata_2;	// playground/src/pipeline/memory/MemoryUnit.scala:10:7
   assign io_writeBackStage_data_rd_info_wdata_5 = io_memoryStage_data_rd_info_wdata_5;	// playground/src/pipeline/memory/MemoryUnit.scala:10:7
-  assign io_writeBackStage_data_has_exception = io_memoryStage_data_has_exception;	// playground/src/pipeline/memory/MemoryUnit.scala:10:7
-  assign io_writeBackStage_sram_waddr = io_memoryStage_sram_waddr;	// playground/src/pipeline/memory/MemoryUnit.scala:10:7
-  assign io_writeBackStage_sram_wdata = io_memoryStage_sram_wdata;	// playground/src/pipeline/memory/MemoryUnit.scala:10:7
-  assign io_writeBackStage_sram_wen = io_memoryStage_sram_wen;	// playground/src/pipeline/memory/MemoryUnit.scala:10:7
-  assign op__bore = op;	// playground/src/pipeline/memory/MemoryUnit.scala:10:7, :19:19
   assign addr__bore = addr;	// playground/src/pipeline/memory/MemoryUnit.scala:10:7, :20:19
+  assign op__bore = op;	// playground/src/pipeline/memory/MemoryUnit.scala:10:7, :19:19
 endmodule
 
-module WriteBackStage(	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7
-  input         clock,	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7
-                reset,	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7
-  input  [63:0] io_memoryUnit_data_pc,	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
-  input         io_memoryUnit_data_info_valid,	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
-  input  [2:0]  io_memoryUnit_data_info_fusel,	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
-  input         io_memoryUnit_data_info_reg_wen,	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
-  input  [4:0]  io_memoryUnit_data_info_reg_waddr,	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
-  input  [63:0] io_memoryUnit_data_rd_info_wdata_0,	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
-                io_memoryUnit_data_rd_info_wdata_1,	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
-                io_memoryUnit_data_rd_info_wdata_2,	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
-                io_memoryUnit_data_rd_info_wdata_5,	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
-  input         io_memoryUnit_data_has_exception,	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
-  input  [31:0] io_memoryUnit_sram_waddr,	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
-  input  [63:0] io_memoryUnit_sram_wdata,	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
-  input  [7:0]  io_memoryUnit_sram_wen,	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
-  output [63:0] io_writeBackUnit_data_pc,	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
-  output        io_writeBackUnit_data_info_valid,	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
-  output [2:0]  io_writeBackUnit_data_info_fusel,	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
-  output        io_writeBackUnit_data_info_reg_wen,	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
-  output [4:0]  io_writeBackUnit_data_info_reg_waddr,	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
-  output [63:0] io_writeBackUnit_data_rd_info_wdata_0,	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
-                io_writeBackUnit_data_rd_info_wdata_1,	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
-                io_writeBackUnit_data_rd_info_wdata_2,	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
-                io_writeBackUnit_data_rd_info_wdata_3,	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
-                io_writeBackUnit_data_rd_info_wdata_4,	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
-                io_writeBackUnit_data_rd_info_wdata_5,	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
-  output        io_writeBackUnit_data_has_exception,	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
-  output [31:0] io_writeBackUnit_sram_waddr,	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
-  output [63:0] io_writeBackUnit_sram_wdata,	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
-  output [7:0]  io_writeBackUnit_sram_wen	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14
+module WriteBackStage(	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
+  input         clock,	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
+                reset,	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
+  input  [63:0] io_memoryUnit_data_pc,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
+  input         io_memoryUnit_data_info_valid,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
+  input  [2:0]  io_memoryUnit_data_info_fusel,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
+  input         io_memoryUnit_data_info_reg_wen,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
+  input  [4:0]  io_memoryUnit_data_info_reg_waddr,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
+  input  [63:0] io_memoryUnit_data_rd_info_wdata_0,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
+                io_memoryUnit_data_rd_info_wdata_1,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
+                io_memoryUnit_data_rd_info_wdata_2,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
+                io_memoryUnit_data_rd_info_wdata_5,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
+  output [63:0] io_writeBackUnit_data_pc,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
+  output        io_writeBackUnit_data_info_valid,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
+  output [2:0]  io_writeBackUnit_data_info_fusel,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
+  output        io_writeBackUnit_data_info_reg_wen,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
+  output [4:0]  io_writeBackUnit_data_info_reg_waddr,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
+  output [63:0] io_writeBackUnit_data_rd_info_wdata_0,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
+                io_writeBackUnit_data_rd_info_wdata_1,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
+                io_writeBackUnit_data_rd_info_wdata_2,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
+                io_writeBackUnit_data_rd_info_wdata_3,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
+                io_writeBackUnit_data_rd_info_wdata_4,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
+                io_writeBackUnit_data_rd_info_wdata_5	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
 );
 
-  reg [63:0] data_pc;	// playground/src/pipeline/writeback/WriteBackStage.scala:27:21
-  reg        data_info_valid;	// playground/src/pipeline/writeback/WriteBackStage.scala:27:21
-  reg [2:0]  data_info_fusel;	// playground/src/pipeline/writeback/WriteBackStage.scala:27:21
-  reg        data_info_reg_wen;	// playground/src/pipeline/writeback/WriteBackStage.scala:27:21
-  reg [4:0]  data_info_reg_waddr;	// playground/src/pipeline/writeback/WriteBackStage.scala:27:21
-  reg [63:0] data_rd_info_wdata_0;	// playground/src/pipeline/writeback/WriteBackStage.scala:27:21
-  reg [63:0] data_rd_info_wdata_1;	// playground/src/pipeline/writeback/WriteBackStage.scala:27:21
-  reg [63:0] data_rd_info_wdata_2;	// playground/src/pipeline/writeback/WriteBackStage.scala:27:21
-  reg [63:0] data_rd_info_wdata_3;	// playground/src/pipeline/writeback/WriteBackStage.scala:27:21
-  reg [63:0] data_rd_info_wdata_4;	// playground/src/pipeline/writeback/WriteBackStage.scala:27:21
-  reg [63:0] data_rd_info_wdata_5;	// playground/src/pipeline/writeback/WriteBackStage.scala:27:21
-  reg        data_has_exception;	// playground/src/pipeline/writeback/WriteBackStage.scala:27:21
-  reg [31:0] sram_waddr;	// playground/src/pipeline/writeback/WriteBackStage.scala:36:23
-  reg [63:0] sram_wdata;	// playground/src/pipeline/writeback/WriteBackStage.scala:36:23
-  reg [7:0]  sram_wen;	// playground/src/pipeline/writeback/WriteBackStage.scala:36:23
-  always @(posedge clock) begin	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7
-    if (reset) begin	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7
-      data_pc <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14, :27:21
-      data_info_valid <= 1'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14, :27:21
-      data_info_fusel <= 3'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:27:{21,34}
-      data_info_reg_wen <= 1'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14, :27:21
-      data_info_reg_waddr <= 5'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :27:21
-      data_rd_info_wdata_0 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14, :27:21
-      data_rd_info_wdata_1 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14, :27:21
-      data_rd_info_wdata_2 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14, :27:21
-      data_rd_info_wdata_3 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14, :27:21
-      data_rd_info_wdata_4 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14, :27:21
-      data_rd_info_wdata_5 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14, :27:21
-      data_has_exception <= 1'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14, :27:21
-      sram_waddr <= 32'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:36:{23,36}
-      sram_wdata <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14, :36:23
-      sram_wen <= 8'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:36:{23,36}
+  reg [63:0] data_pc;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
+  reg        data_info_valid;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
+  reg [2:0]  data_info_fusel;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
+  reg        data_info_reg_wen;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
+  reg [4:0]  data_info_reg_waddr;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
+  reg [63:0] data_rd_info_wdata_0;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
+  reg [63:0] data_rd_info_wdata_1;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
+  reg [63:0] data_rd_info_wdata_2;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
+  reg [63:0] data_rd_info_wdata_3;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
+  reg [63:0] data_rd_info_wdata_4;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
+  reg [63:0] data_rd_info_wdata_5;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
+  always @(posedge clock) begin	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
+    if (reset) begin	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
+      data_pc <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14, :25:21
+      data_info_valid <= 1'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14, :25:21
+      data_info_fusel <= 3'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:{21,34}
+      data_info_reg_wen <= 1'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14, :25:21
+      data_info_reg_waddr <= 5'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
+      data_rd_info_wdata_0 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14, :25:21
+      data_rd_info_wdata_1 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14, :25:21
+      data_rd_info_wdata_2 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14, :25:21
+      data_rd_info_wdata_3 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14, :25:21
+      data_rd_info_wdata_4 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14, :25:21
+      data_rd_info_wdata_5 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14, :25:21
     end
-    else begin	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7
-      data_pc <= io_memoryUnit_data_pc;	// playground/src/pipeline/writeback/WriteBackStage.scala:27:21
-      data_info_valid <= io_memoryUnit_data_info_valid;	// playground/src/pipeline/writeback/WriteBackStage.scala:27:21
-      data_info_fusel <= io_memoryUnit_data_info_fusel;	// playground/src/pipeline/writeback/WriteBackStage.scala:27:21
-      data_info_reg_wen <= io_memoryUnit_data_info_reg_wen;	// playground/src/pipeline/writeback/WriteBackStage.scala:27:21
-      data_info_reg_waddr <= io_memoryUnit_data_info_reg_waddr;	// playground/src/pipeline/writeback/WriteBackStage.scala:27:21
-      data_rd_info_wdata_0 <= io_memoryUnit_data_rd_info_wdata_0;	// playground/src/pipeline/writeback/WriteBackStage.scala:27:21
-      data_rd_info_wdata_1 <= io_memoryUnit_data_rd_info_wdata_1;	// playground/src/pipeline/writeback/WriteBackStage.scala:27:21
-      data_rd_info_wdata_2 <= io_memoryUnit_data_rd_info_wdata_2;	// playground/src/pipeline/writeback/WriteBackStage.scala:27:21
-      data_rd_info_wdata_3 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14, :27:21
-      data_rd_info_wdata_4 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:21:14, :27:21
-      data_rd_info_wdata_5 <= io_memoryUnit_data_rd_info_wdata_5;	// playground/src/pipeline/writeback/WriteBackStage.scala:27:21
-      data_has_exception <= io_memoryUnit_data_has_exception;	// playground/src/pipeline/writeback/WriteBackStage.scala:27:21
-      sram_waddr <= io_memoryUnit_sram_waddr;	// playground/src/pipeline/writeback/WriteBackStage.scala:36:23
-      sram_wdata <= io_memoryUnit_sram_wdata;	// playground/src/pipeline/writeback/WriteBackStage.scala:36:23
-      sram_wen <= io_memoryUnit_sram_wen;	// playground/src/pipeline/writeback/WriteBackStage.scala:36:23
+    else begin	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
+      data_pc <= io_memoryUnit_data_pc;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
+      data_info_valid <= io_memoryUnit_data_info_valid;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
+      data_info_fusel <= io_memoryUnit_data_info_fusel;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
+      data_info_reg_wen <= io_memoryUnit_data_info_reg_wen;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
+      data_info_reg_waddr <= io_memoryUnit_data_info_reg_waddr;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
+      data_rd_info_wdata_0 <= io_memoryUnit_data_rd_info_wdata_0;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
+      data_rd_info_wdata_1 <= io_memoryUnit_data_rd_info_wdata_1;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
+      data_rd_info_wdata_2 <= io_memoryUnit_data_rd_info_wdata_2;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
+      data_rd_info_wdata_3 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14, :25:21
+      data_rd_info_wdata_4 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14, :25:21
+      data_rd_info_wdata_5 <= io_memoryUnit_data_rd_info_wdata_5;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
     end
   end // always @(posedge)
-  `ifdef ENABLE_INITIAL_REG_	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7
-    `ifdef FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7
-      `FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7
+  `ifdef ENABLE_INITIAL_REG_	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
+    `ifdef FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
+      `FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
     `endif // FIRRTL_BEFORE_INITIAL
-    initial begin	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7
-      automatic logic [31:0] _RANDOM[0:22];	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7
-      `ifdef INIT_RANDOM_PROLOG_	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7
-        `INIT_RANDOM_PROLOG_	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7
+    initial begin	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
+      automatic logic [31:0] _RANDOM[0:18];	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
+      `ifdef INIT_RANDOM_PROLOG_	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
+        `INIT_RANDOM_PROLOG_	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
       `endif // INIT_RANDOM_PROLOG_
-      `ifdef RANDOMIZE_REG_INIT	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7
-        for (logic [4:0] i = 5'h0; i < 5'h17; i += 5'h1) begin
-          _RANDOM[i] = `RANDOM;	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7
-        end	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7
-        data_pc = {_RANDOM[5'h0], _RANDOM[5'h1]};	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :27:21
-        data_info_valid = _RANDOM[5'h2][0];	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :27:21
-        data_info_fusel = _RANDOM[5'h2][16:14];	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :27:21
-        data_info_reg_wen = _RANDOM[5'h2][24];	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :27:21
-        data_info_reg_waddr = _RANDOM[5'h2][29:25];	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :27:21
-        data_rd_info_wdata_0 = {_RANDOM[5'h6][31:30], _RANDOM[5'h7], _RANDOM[5'h8][29:0]};	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :27:21
-        data_rd_info_wdata_1 = {_RANDOM[5'h8][31:30], _RANDOM[5'h9], _RANDOM[5'hA][29:0]};	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :27:21
-        data_rd_info_wdata_2 = {_RANDOM[5'hA][31:30], _RANDOM[5'hB], _RANDOM[5'hC][29:0]};	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :27:21
-        data_rd_info_wdata_3 = {_RANDOM[5'hC][31:30], _RANDOM[5'hD], _RANDOM[5'hE][29:0]};	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :27:21
+      `ifdef RANDOMIZE_REG_INIT	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
+        for (logic [4:0] i = 5'h0; i < 5'h13; i += 5'h1) begin
+          _RANDOM[i] = `RANDOM;	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
+        end	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
+        data_pc = {_RANDOM[5'h0], _RANDOM[5'h1]};	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
+        data_info_valid = _RANDOM[5'h2][0];	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
+        data_info_fusel = _RANDOM[5'h2][16:14];	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
+        data_info_reg_wen = _RANDOM[5'h2][24];	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
+        data_info_reg_waddr = _RANDOM[5'h2][29:25];	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
+        data_rd_info_wdata_0 = {_RANDOM[5'h6][31:30], _RANDOM[5'h7], _RANDOM[5'h8][29:0]};	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
+        data_rd_info_wdata_1 = {_RANDOM[5'h8][31:30], _RANDOM[5'h9], _RANDOM[5'hA][29:0]};	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
+        data_rd_info_wdata_2 = {_RANDOM[5'hA][31:30], _RANDOM[5'hB], _RANDOM[5'hC][29:0]};	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
+        data_rd_info_wdata_3 = {_RANDOM[5'hC][31:30], _RANDOM[5'hD], _RANDOM[5'hE][29:0]};	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
         data_rd_info_wdata_4 =
-          {_RANDOM[5'hE][31:30], _RANDOM[5'hF], _RANDOM[5'h10][29:0]};	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :27:21
+          {_RANDOM[5'hE][31:30], _RANDOM[5'hF], _RANDOM[5'h10][29:0]};	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
         data_rd_info_wdata_5 =
-          {_RANDOM[5'h10][31:30], _RANDOM[5'h11], _RANDOM[5'h12][29:0]};	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :27:21
-        data_has_exception = _RANDOM[5'h12][30];	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :27:21
-        sram_waddr = {_RANDOM[5'h12][31], _RANDOM[5'h13][30:0]};	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :27:21, :36:23
-        sram_wdata = {_RANDOM[5'h13][31], _RANDOM[5'h14], _RANDOM[5'h15][30:0]};	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :36:23
-        sram_wen = {_RANDOM[5'h15][31], _RANDOM[5'h16][6:0]};	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :36:23
+          {_RANDOM[5'h10][31:30], _RANDOM[5'h11], _RANDOM[5'h12][29:0]};	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
       `endif // RANDOMIZE_REG_INIT
     end // initial
-    `ifdef FIRRTL_AFTER_INITIAL	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7
-      `FIRRTL_AFTER_INITIAL	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7
+    `ifdef FIRRTL_AFTER_INITIAL	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
+      `FIRRTL_AFTER_INITIAL	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
     `endif // FIRRTL_AFTER_INITIAL
   `endif // ENABLE_INITIAL_REG_
-  assign io_writeBackUnit_data_pc = data_pc;	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :27:21
-  assign io_writeBackUnit_data_info_valid = data_info_valid;	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :27:21
-  assign io_writeBackUnit_data_info_fusel = data_info_fusel;	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :27:21
-  assign io_writeBackUnit_data_info_reg_wen = data_info_reg_wen;	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :27:21
-  assign io_writeBackUnit_data_info_reg_waddr = data_info_reg_waddr;	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :27:21
-  assign io_writeBackUnit_data_rd_info_wdata_0 = data_rd_info_wdata_0;	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :27:21
-  assign io_writeBackUnit_data_rd_info_wdata_1 = data_rd_info_wdata_1;	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :27:21
-  assign io_writeBackUnit_data_rd_info_wdata_2 = data_rd_info_wdata_2;	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :27:21
-  assign io_writeBackUnit_data_rd_info_wdata_3 = data_rd_info_wdata_3;	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :27:21
-  assign io_writeBackUnit_data_rd_info_wdata_4 = data_rd_info_wdata_4;	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :27:21
-  assign io_writeBackUnit_data_rd_info_wdata_5 = data_rd_info_wdata_5;	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :27:21
-  assign io_writeBackUnit_data_has_exception = data_has_exception;	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :27:21
-  assign io_writeBackUnit_sram_waddr = sram_waddr;	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :36:23
-  assign io_writeBackUnit_sram_wdata = sram_wdata;	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :36:23
-  assign io_writeBackUnit_sram_wen = sram_wen;	// playground/src/pipeline/writeback/WriteBackStage.scala:20:7, :36:23
+  assign io_writeBackUnit_data_pc = data_pc;	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
+  assign io_writeBackUnit_data_info_valid = data_info_valid;	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
+  assign io_writeBackUnit_data_info_fusel = data_info_fusel;	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
+  assign io_writeBackUnit_data_info_reg_wen = data_info_reg_wen;	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
+  assign io_writeBackUnit_data_info_reg_waddr = data_info_reg_waddr;	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
+  assign io_writeBackUnit_data_rd_info_wdata_0 = data_rd_info_wdata_0;	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
+  assign io_writeBackUnit_data_rd_info_wdata_1 = data_rd_info_wdata_1;	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
+  assign io_writeBackUnit_data_rd_info_wdata_2 = data_rd_info_wdata_2;	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
+  assign io_writeBackUnit_data_rd_info_wdata_3 = data_rd_info_wdata_3;	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
+  assign io_writeBackUnit_data_rd_info_wdata_4 = data_rd_info_wdata_4;	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
+  assign io_writeBackUnit_data_rd_info_wdata_5 = data_rd_info_wdata_5;	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
 endmodule
 
 module WriteBackUnit(	// playground/src/pipeline/writeback/WriteBackUnit.scala:9:7
@@ -1763,20 +1684,13 @@ module WriteBackUnit(	// playground/src/pipeline/writeback/WriteBackUnit.scala:9
                 io_writeBackStage_data_rd_info_wdata_3,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
                 io_writeBackStage_data_rd_info_wdata_4,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
                 io_writeBackStage_data_rd_info_wdata_5,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
-  input         io_writeBackStage_data_has_exception,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
-  input  [31:0] io_writeBackStage_sram_waddr,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
-  input  [63:0] io_writeBackStage_sram_wdata,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
-  input  [7:0]  io_writeBackStage_sram_wen,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
   output        io_regfile_wen,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
   output [4:0]  io_regfile_waddr,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
   output [63:0] io_regfile_wdata,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
                 io_debug_pc,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
   output        io_debug_commit,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
   output [4:0]  io_debug_rf_wnum,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
-  output [63:0] io_debug_rf_wdata,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
-  output [31:0] io_debug_sram_waddr,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
-  output [63:0] io_debug_sram_wdata,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
-  output [7:0]  io_debug_sram_wen	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
+  output [63:0] io_debug_rf_wdata	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
 );
 
   wire [7:0][63:0] _GEN =
@@ -1787,19 +1701,15 @@ module WriteBackUnit(	// playground/src/pipeline/writeback/WriteBackUnit.scala:9
      {io_writeBackStage_data_rd_info_wdata_3},
      {io_writeBackStage_data_rd_info_wdata_2},
      {io_writeBackStage_data_rd_info_wdata_1},
-     {io_writeBackStage_data_rd_info_wdata_0}};	// playground/src/pipeline/writeback/WriteBackUnit.scala:24:20
+     {io_writeBackStage_data_rd_info_wdata_0}};	// playground/src/pipeline/writeback/WriteBackUnit.scala:23:20
   assign io_regfile_wen =
-    io_writeBackStage_data_info_valid & io_writeBackStage_data_info_reg_wen
-    & ~io_writeBackStage_data_has_exception;	// playground/src/pipeline/writeback/WriteBackUnit.scala:9:7, :20:43, :21:7
+    io_writeBackStage_data_info_valid & io_writeBackStage_data_info_reg_wen;	// playground/src/pipeline/writeback/WriteBackUnit.scala:9:7, :19:38
   assign io_regfile_waddr = io_writeBackStage_data_info_reg_waddr;	// playground/src/pipeline/writeback/WriteBackUnit.scala:9:7
-  assign io_regfile_wdata = _GEN[io_writeBackStage_data_info_fusel];	// playground/src/pipeline/writeback/WriteBackUnit.scala:9:7, :24:20
+  assign io_regfile_wdata = _GEN[io_writeBackStage_data_info_fusel];	// playground/src/pipeline/writeback/WriteBackUnit.scala:9:7, :23:20
   assign io_debug_pc = io_writeBackStage_data_pc;	// playground/src/pipeline/writeback/WriteBackUnit.scala:9:7
   assign io_debug_commit = io_writeBackStage_data_info_valid;	// playground/src/pipeline/writeback/WriteBackUnit.scala:9:7
   assign io_debug_rf_wnum = io_writeBackStage_data_info_reg_waddr;	// playground/src/pipeline/writeback/WriteBackUnit.scala:9:7
-  assign io_debug_rf_wdata = _GEN[io_writeBackStage_data_info_fusel];	// playground/src/pipeline/writeback/WriteBackUnit.scala:9:7, :24:20
-  assign io_debug_sram_waddr = io_writeBackStage_sram_waddr;	// playground/src/pipeline/writeback/WriteBackUnit.scala:9:7
-  assign io_debug_sram_wdata = io_writeBackStage_sram_wdata;	// playground/src/pipeline/writeback/WriteBackUnit.scala:9:7
-  assign io_debug_sram_wen = io_writeBackStage_sram_wen;	// playground/src/pipeline/writeback/WriteBackUnit.scala:9:7
+  assign io_debug_rf_wdata = _GEN[io_writeBackStage_data_info_fusel];	// playground/src/pipeline/writeback/WriteBackUnit.scala:9:7, :23:20
 endmodule
 
 module Core(	// playground/src/Core.scala:10:7
@@ -1816,10 +1726,7 @@ module Core(	// playground/src/Core.scala:10:7
   output [63:0] io_debug_pc,	// playground/src/Core.scala:11:14
   output        io_debug_commit,	// playground/src/Core.scala:11:14
   output [4:0]  io_debug_rf_wnum,	// playground/src/Core.scala:11:14
-  output [63:0] io_debug_rf_wdata,	// playground/src/Core.scala:11:14
-  output [31:0] io_debug_sram_waddr,	// playground/src/Core.scala:11:14
-  output [63:0] io_debug_sram_wdata,	// playground/src/Core.scala:11:14
-  output [7:0]  io_debug_sram_wen	// playground/src/Core.scala:11:14
+  output [63:0] io_debug_rf_wdata	// playground/src/Core.scala:11:14
 );
 
   wire        _WriteBackUnit_io_regfile_wen;	// playground/src/Core.scala:28:30
@@ -1836,10 +1743,6 @@ module Core(	// playground/src/Core.scala:10:7
   wire [63:0] _WriteBackStage_io_writeBackUnit_data_rd_info_wdata_3;	// playground/src/Core.scala:27:30
   wire [63:0] _WriteBackStage_io_writeBackUnit_data_rd_info_wdata_4;	// playground/src/Core.scala:27:30
   wire [63:0] _WriteBackStage_io_writeBackUnit_data_rd_info_wdata_5;	// playground/src/Core.scala:27:30
-  wire        _WriteBackStage_io_writeBackUnit_data_has_exception;	// playground/src/Core.scala:27:30
-  wire [31:0] _WriteBackStage_io_writeBackUnit_sram_waddr;	// playground/src/Core.scala:27:30
-  wire [63:0] _WriteBackStage_io_writeBackUnit_sram_wdata;	// playground/src/Core.scala:27:30
-  wire [7:0]  _WriteBackStage_io_writeBackUnit_sram_wen;	// playground/src/Core.scala:27:30
   wire        _MemoryUnit_io_decodeUnit_wen;	// playground/src/Core.scala:26:30
   wire [4:0]  _MemoryUnit_io_decodeUnit_waddr;	// playground/src/Core.scala:26:30
   wire [63:0] _MemoryUnit_io_decodeUnit_wdata;	// playground/src/Core.scala:26:30
@@ -1852,12 +1755,8 @@ module Core(	// playground/src/Core.scala:10:7
   wire [63:0] _MemoryUnit_io_writeBackStage_data_rd_info_wdata_1;	// playground/src/Core.scala:26:30
   wire [63:0] _MemoryUnit_io_writeBackStage_data_rd_info_wdata_2;	// playground/src/Core.scala:26:30
   wire [63:0] _MemoryUnit_io_writeBackStage_data_rd_info_wdata_5;	// playground/src/Core.scala:26:30
-  wire        _MemoryUnit_io_writeBackStage_data_has_exception;	// playground/src/Core.scala:26:30
-  wire [31:0] _MemoryUnit_io_writeBackStage_sram_waddr;	// playground/src/Core.scala:26:30
-  wire [63:0] _MemoryUnit_io_writeBackStage_sram_wdata;	// playground/src/Core.scala:26:30
-  wire [7:0]  _MemoryUnit_io_writeBackStage_sram_wen;	// playground/src/Core.scala:26:30
-  wire [6:0]  _MemoryUnit_op__bore;	// playground/src/Core.scala:26:30
   wire [63:0] _MemoryUnit_addr__bore;	// playground/src/Core.scala:26:30
+  wire [6:0]  _MemoryUnit_op__bore;	// playground/src/Core.scala:26:30
   wire [63:0] _MemoryStage_io_memoryUnit_data_pc;	// playground/src/Core.scala:25:30
   wire        _MemoryStage_io_memoryUnit_data_info_valid;	// playground/src/Core.scala:25:30
   wire [2:0]  _MemoryStage_io_memoryUnit_data_info_fusel;	// playground/src/Core.scala:25:30
@@ -1869,10 +1768,6 @@ module Core(	// playground/src/Core.scala:10:7
   wire [63:0] _MemoryStage_io_memoryUnit_data_rd_info_wdata_2;	// playground/src/Core.scala:25:30
   wire [63:0] _MemoryStage_io_memoryUnit_data_rd_info_wdata_5;	// playground/src/Core.scala:25:30
   wire [63:0] _MemoryStage_io_memoryUnit_data_src_info_src1_data;	// playground/src/Core.scala:25:30
-  wire        _MemoryStage_io_memoryUnit_data_has_exception;	// playground/src/Core.scala:25:30
-  wire [31:0] _MemoryStage_io_memoryUnit_sram_waddr;	// playground/src/Core.scala:25:30
-  wire [63:0] _MemoryStage_io_memoryUnit_sram_wdata;	// playground/src/Core.scala:25:30
-  wire [7:0]  _MemoryStage_io_memoryUnit_sram_wen;	// playground/src/Core.scala:25:30
   wire        _ExecuteUnit_io_ctrl_data_is_load;	// playground/src/Core.scala:24:30
   wire [4:0]  _ExecuteUnit_io_ctrl_data_reg_waddr;	// playground/src/Core.scala:24:30
   wire        _ExecuteUnit_io_ctrl_flush;	// playground/src/Core.scala:24:30
@@ -1892,9 +1787,6 @@ module Core(	// playground/src/Core.scala:10:7
   wire [63:0] _ExecuteUnit_io_memoryStage_data_rd_info_wdata_2;	// playground/src/Core.scala:24:30
   wire [63:0] _ExecuteUnit_io_memoryStage_data_rd_info_wdata_5;	// playground/src/Core.scala:24:30
   wire [63:0] _ExecuteUnit_io_memoryStage_data_src_info_src1_data;	// playground/src/Core.scala:24:30
-  wire [31:0] _ExecuteUnit_io_memoryStage_sram_waddr;	// playground/src/Core.scala:24:30
-  wire [63:0] _ExecuteUnit_io_memoryStage_sram_wdata;	// playground/src/Core.scala:24:30
-  wire [7:0]  _ExecuteUnit_io_memoryStage_sram_wen;	// playground/src/Core.scala:24:30
   wire [63:0] _ExecuteUnit_Fu_Lsu_result__bore;	// playground/src/Core.scala:24:30
   wire [63:0] _ExecuteStage_io_executeUnit_data_pc;	// playground/src/Core.scala:23:30
   wire        _ExecuteStage_io_executeUnit_data_info_valid;	// playground/src/Core.scala:23:30
@@ -2102,17 +1994,14 @@ module Core(	// playground/src/Core.scala:10:7
       (_ExecuteUnit_io_memoryStage_data_rd_info_wdata_5),
     .io_memoryStage_data_src_info_src1_data
       (_ExecuteUnit_io_memoryStage_data_src_info_src1_data),
-    .io_memoryStage_sram_waddr               (_ExecuteUnit_io_memoryStage_sram_waddr),
-    .io_memoryStage_sram_wdata               (_ExecuteUnit_io_memoryStage_sram_wdata),
-    .io_memoryStage_sram_wen                 (_ExecuteUnit_io_memoryStage_sram_wen),
     .io_dataSram_en                          (io_dataSram_en),
     .io_dataSram_addr                        (io_dataSram_addr),
     .io_dataSram_wdata                       (io_dataSram_wdata),
     .io_dataSram_wen                         (io_dataSram_wen),
     .io_dataSram_rdata                       (io_dataSram_rdata),
-    .Fu_Lsu_mem_op__bore                     (_MemoryUnit_op__bore),	// playground/src/Core.scala:26:30
     .Fu_Lsu_result__bore                     (_ExecuteUnit_Fu_Lsu_result__bore),
-    .Fu_Lsu_mem_addr__bore                   (_MemoryUnit_addr__bore)	// playground/src/Core.scala:26:30
+    .Fu_Lsu_mem_addr__bore                   (_MemoryUnit_addr__bore),	// playground/src/Core.scala:26:30
+    .Fu_Lsu_mem_op__bore                     (_MemoryUnit_op__bore)	// playground/src/Core.scala:26:30
   );
   MemoryStage MemoryStage (	// playground/src/Core.scala:25:30
     .clock                                  (clock),
@@ -2134,9 +2023,6 @@ module Core(	// playground/src/Core.scala:10:7
       (_ExecuteUnit_io_memoryStage_data_rd_info_wdata_5),	// playground/src/Core.scala:24:30
     .io_executeUnit_data_src_info_src1_data
       (_ExecuteUnit_io_memoryStage_data_src_info_src1_data),	// playground/src/Core.scala:24:30
-    .io_executeUnit_sram_waddr              (_ExecuteUnit_io_memoryStage_sram_waddr),	// playground/src/Core.scala:24:30
-    .io_executeUnit_sram_wdata              (_ExecuteUnit_io_memoryStage_sram_wdata),	// playground/src/Core.scala:24:30
-    .io_executeUnit_sram_wen                (_ExecuteUnit_io_memoryStage_sram_wen),	// playground/src/Core.scala:24:30
     .io_memoryUnit_data_pc                  (_MemoryStage_io_memoryUnit_data_pc),
     .io_memoryUnit_data_info_valid          (_MemoryStage_io_memoryUnit_data_info_valid),
     .io_memoryUnit_data_info_fusel          (_MemoryStage_io_memoryUnit_data_info_fusel),
@@ -2153,12 +2039,7 @@ module Core(	// playground/src/Core.scala:10:7
     .io_memoryUnit_data_rd_info_wdata_5
       (_MemoryStage_io_memoryUnit_data_rd_info_wdata_5),
     .io_memoryUnit_data_src_info_src1_data
-      (_MemoryStage_io_memoryUnit_data_src_info_src1_data),
-    .io_memoryUnit_data_has_exception
-      (_MemoryStage_io_memoryUnit_data_has_exception),
-    .io_memoryUnit_sram_waddr               (_MemoryStage_io_memoryUnit_sram_waddr),
-    .io_memoryUnit_sram_wdata               (_MemoryStage_io_memoryUnit_sram_wdata),
-    .io_memoryUnit_sram_wen                 (_MemoryStage_io_memoryUnit_sram_wen)
+      (_MemoryStage_io_memoryUnit_data_src_info_src1_data)
   );
   MemoryUnit MemoryUnit (	// playground/src/Core.scala:26:30
     .io_memoryStage_data_pc                 (_MemoryStage_io_memoryUnit_data_pc),	// playground/src/Core.scala:25:30
@@ -2178,11 +2059,6 @@ module Core(	// playground/src/Core.scala:10:7
       (_MemoryStage_io_memoryUnit_data_rd_info_wdata_5),	// playground/src/Core.scala:25:30
     .io_memoryStage_data_src_info_src1_data
       (_MemoryStage_io_memoryUnit_data_src_info_src1_data),	// playground/src/Core.scala:25:30
-    .io_memoryStage_data_has_exception
-      (_MemoryStage_io_memoryUnit_data_has_exception),	// playground/src/Core.scala:25:30
-    .io_memoryStage_sram_waddr              (_MemoryStage_io_memoryUnit_sram_waddr),	// playground/src/Core.scala:25:30
-    .io_memoryStage_sram_wdata              (_MemoryStage_io_memoryUnit_sram_wdata),	// playground/src/Core.scala:25:30
-    .io_memoryStage_sram_wen                (_MemoryStage_io_memoryUnit_sram_wen),	// playground/src/Core.scala:25:30
     .io_decodeUnit_wen                      (_MemoryUnit_io_decodeUnit_wen),
     .io_decodeUnit_waddr                    (_MemoryUnit_io_decodeUnit_waddr),
     .io_decodeUnit_wdata                    (_MemoryUnit_io_decodeUnit_wdata),
@@ -2203,14 +2079,9 @@ module Core(	// playground/src/Core.scala:10:7
       (_MemoryUnit_io_writeBackStage_data_rd_info_wdata_2),
     .io_writeBackStage_data_rd_info_wdata_5
       (_MemoryUnit_io_writeBackStage_data_rd_info_wdata_5),
-    .io_writeBackStage_data_has_exception
-      (_MemoryUnit_io_writeBackStage_data_has_exception),
-    .io_writeBackStage_sram_waddr           (_MemoryUnit_io_writeBackStage_sram_waddr),
-    .io_writeBackStage_sram_wdata           (_MemoryUnit_io_writeBackStage_sram_wdata),
-    .io_writeBackStage_sram_wen             (_MemoryUnit_io_writeBackStage_sram_wen),
-    .op__bore                               (_MemoryUnit_op__bore),
     .rdata__bore                            (_ExecuteUnit_Fu_Lsu_result__bore),	// playground/src/Core.scala:24:30
-    .addr__bore                             (_MemoryUnit_addr__bore)
+    .addr__bore                             (_MemoryUnit_addr__bore),
+    .op__bore                               (_MemoryUnit_op__bore)
   );
   WriteBackStage WriteBackStage (	// playground/src/Core.scala:27:30
     .clock                                 (clock),
@@ -2232,11 +2103,6 @@ module Core(	// playground/src/Core.scala:10:7
       (_MemoryUnit_io_writeBackStage_data_rd_info_wdata_2),	// playground/src/Core.scala:26:30
     .io_memoryUnit_data_rd_info_wdata_5
       (_MemoryUnit_io_writeBackStage_data_rd_info_wdata_5),	// playground/src/Core.scala:26:30
-    .io_memoryUnit_data_has_exception
-      (_MemoryUnit_io_writeBackStage_data_has_exception),	// playground/src/Core.scala:26:30
-    .io_memoryUnit_sram_waddr              (_MemoryUnit_io_writeBackStage_sram_waddr),	// playground/src/Core.scala:26:30
-    .io_memoryUnit_sram_wdata              (_MemoryUnit_io_writeBackStage_sram_wdata),	// playground/src/Core.scala:26:30
-    .io_memoryUnit_sram_wen                (_MemoryUnit_io_writeBackStage_sram_wen),	// playground/src/Core.scala:26:30
     .io_writeBackUnit_data_pc              (_WriteBackStage_io_writeBackUnit_data_pc),
     .io_writeBackUnit_data_info_valid
       (_WriteBackStage_io_writeBackUnit_data_info_valid),
@@ -2257,12 +2123,7 @@ module Core(	// playground/src/Core.scala:10:7
     .io_writeBackUnit_data_rd_info_wdata_4
       (_WriteBackStage_io_writeBackUnit_data_rd_info_wdata_4),
     .io_writeBackUnit_data_rd_info_wdata_5
-      (_WriteBackStage_io_writeBackUnit_data_rd_info_wdata_5),
-    .io_writeBackUnit_data_has_exception
-      (_WriteBackStage_io_writeBackUnit_data_has_exception),
-    .io_writeBackUnit_sram_waddr           (_WriteBackStage_io_writeBackUnit_sram_waddr),
-    .io_writeBackUnit_sram_wdata           (_WriteBackStage_io_writeBackUnit_sram_wdata),
-    .io_writeBackUnit_sram_wen             (_WriteBackStage_io_writeBackUnit_sram_wen)
+      (_WriteBackStage_io_writeBackUnit_data_rd_info_wdata_5)
   );
   WriteBackUnit WriteBackUnit (	// playground/src/Core.scala:28:30
     .io_writeBackStage_data_pc              (_WriteBackStage_io_writeBackUnit_data_pc),	// playground/src/Core.scala:27:30
@@ -2286,21 +2147,13 @@ module Core(	// playground/src/Core.scala:10:7
       (_WriteBackStage_io_writeBackUnit_data_rd_info_wdata_4),	// playground/src/Core.scala:27:30
     .io_writeBackStage_data_rd_info_wdata_5
       (_WriteBackStage_io_writeBackUnit_data_rd_info_wdata_5),	// playground/src/Core.scala:27:30
-    .io_writeBackStage_data_has_exception
-      (_WriteBackStage_io_writeBackUnit_data_has_exception),	// playground/src/Core.scala:27:30
-    .io_writeBackStage_sram_waddr           (_WriteBackStage_io_writeBackUnit_sram_waddr),	// playground/src/Core.scala:27:30
-    .io_writeBackStage_sram_wdata           (_WriteBackStage_io_writeBackUnit_sram_wdata),	// playground/src/Core.scala:27:30
-    .io_writeBackStage_sram_wen             (_WriteBackStage_io_writeBackUnit_sram_wen),	// playground/src/Core.scala:27:30
     .io_regfile_wen                         (_WriteBackUnit_io_regfile_wen),
     .io_regfile_waddr                       (_WriteBackUnit_io_regfile_waddr),
     .io_regfile_wdata                       (_WriteBackUnit_io_regfile_wdata),
     .io_debug_pc                            (io_debug_pc),
     .io_debug_commit                        (io_debug_commit),
     .io_debug_rf_wnum                       (io_debug_rf_wnum),
-    .io_debug_rf_wdata                      (io_debug_rf_wdata),
-    .io_debug_sram_waddr                    (io_debug_sram_waddr),
-    .io_debug_sram_wdata                    (io_debug_sram_wdata),
-    .io_debug_sram_wen                      (io_debug_sram_wen)
+    .io_debug_rf_wdata                      (io_debug_rf_wdata)
   );
 endmodule
 
@@ -2323,30 +2176,24 @@ module PuaCpu(	// playground/src/PuaCpu.scala:6:7
   output [63:0] io_debug_pc,	// playground/src/PuaCpu.scala:7:14
   output        io_debug_commit,	// playground/src/PuaCpu.scala:7:14
   output [4:0]  io_debug_rf_wnum,	// playground/src/PuaCpu.scala:7:14
-  output [63:0] io_debug_rf_wdata,	// playground/src/PuaCpu.scala:7:14
-  output [31:0] io_debug_sram_waddr,	// playground/src/PuaCpu.scala:7:14
-  output [63:0] io_debug_sram_wdata,	// playground/src/PuaCpu.scala:7:14
-  output [7:0]  io_debug_sram_wen	// playground/src/PuaCpu.scala:7:14
+  output [63:0] io_debug_rf_wdata	// playground/src/PuaCpu.scala:7:14
 );
 
   Core core (	// playground/src/PuaCpu.scala:14:20
-    .clock               (clock),
-    .reset               (reset),
-    .io_instSram_en      (io_inst_sram_en),
-    .io_instSram_addr    (io_inst_sram_addr),
-    .io_instSram_rdata   (io_inst_sram_rdata),
-    .io_dataSram_en      (io_data_sram_en),
-    .io_dataSram_addr    (io_data_sram_addr),
-    .io_dataSram_wdata   (io_data_sram_wdata),
-    .io_dataSram_wen     (io_data_sram_wen),
-    .io_dataSram_rdata   (io_data_sram_rdata),
-    .io_debug_pc         (io_debug_pc),
-    .io_debug_commit     (io_debug_commit),
-    .io_debug_rf_wnum    (io_debug_rf_wnum),
-    .io_debug_rf_wdata   (io_debug_rf_wdata),
-    .io_debug_sram_waddr (io_debug_sram_waddr),
-    .io_debug_sram_wdata (io_debug_sram_wdata),
-    .io_debug_sram_wen   (io_debug_sram_wen)
+    .clock             (clock),
+    .reset             (reset),
+    .io_instSram_en    (io_inst_sram_en),
+    .io_instSram_addr  (io_inst_sram_addr),
+    .io_instSram_rdata (io_inst_sram_rdata),
+    .io_dataSram_en    (io_data_sram_en),
+    .io_dataSram_addr  (io_data_sram_addr),
+    .io_dataSram_wdata (io_data_sram_wdata),
+    .io_dataSram_wen   (io_data_sram_wen),
+    .io_dataSram_rdata (io_data_sram_rdata),
+    .io_debug_pc       (io_debug_pc),
+    .io_debug_commit   (io_debug_commit),
+    .io_debug_rf_wnum  (io_debug_rf_wnum),
+    .io_debug_rf_wdata (io_debug_rf_wdata)
   );
   assign io_inst_sram_wdata = 32'h0;	// playground/src/PuaCpu.scala:6:7, :14:20
   assign io_inst_sram_wen = 4'h0;	// playground/src/PuaCpu.scala:6:7, :14:20
