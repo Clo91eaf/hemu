@@ -17,12 +17,7 @@ module top(
     output        debug_commit,
     output [63:0] debug_pc,
     output [4:0 ] debug_rf_wnum,
-    output [63:0] debug_rf_wdata,
-    // sram
-    output [7:0]  debug_sram_wen,
-    output [31:0] debug_sram_waddr,
-    output [63:0] debug_sram_wdata
-
+    output [63:0] debug_rf_wdata
 );
 
 PuaCpu core(
@@ -49,11 +44,7 @@ PuaCpu core(
     .io_debug_pc              (debug_pc),
     .io_debug_commit          (debug_commit),
     .io_debug_rf_wnum         (debug_rf_wnum),
-    .io_debug_rf_wdata        (debug_rf_wdata),
-    // sram
-    .io_debug_sram_wen        (debug_sram_wen),
-    .io_debug_sram_waddr      (debug_sram_waddr),
-    .io_debug_sram_wdata      (debug_sram_wdata)
+    .io_debug_rf_wdata        (debug_rf_wdata)
 );
 
 endmodule

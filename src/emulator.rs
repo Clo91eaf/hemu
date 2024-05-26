@@ -262,7 +262,11 @@ impl Emulator {
 
         // The result of the read method can be `Exception::LoadAccessFault`. In fetch(), an error
         // should be `Exception::InstructionAccessFault`.
-        dut.inst = self.cpu.bus.read(p_pc, crate::cpu::WORD).unwrap() as u32;
+        if p_pc == 0 {
+          dut.inst = 0;
+        } else {
+          dut.inst = self.cpu.bus.read(p_pc, crate::cpu::WORD).unwrap() as u32;
+        }
 
         trace!(
           "[dut] ticks: {}, inst_sram: addr: {:#x}, inst: {:#018x}",
