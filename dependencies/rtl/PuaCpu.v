@@ -54,29 +54,32 @@ module Ctrl(	// playground/src/ctrl/Ctrl.scala:9:7
   output [63:0] io_fetchUnit_target,	// playground/src/ctrl/Ctrl.scala:10:14
   output        io_fetchUnit_ctrlSignal_allow_to_go,	// playground/src/ctrl/Ctrl.scala:10:14
                 io_fetchUnit_ctrlSignal_do_flush,	// playground/src/ctrl/Ctrl.scala:10:14
-  input         io_decodeUnit_src_info_src1_ren,	// playground/src/ctrl/Ctrl.scala:10:14
-  input  [4:0]  io_decodeUnit_src_info_src1_raddr,	// playground/src/ctrl/Ctrl.scala:10:14
-  input         io_decodeUnit_src_info_src2_ren,	// playground/src/ctrl/Ctrl.scala:10:14
-  input  [4:0]  io_decodeUnit_src_info_src2_raddr,	// playground/src/ctrl/Ctrl.scala:10:14
+  input         io_decodeUnit_info_src1_ren,	// playground/src/ctrl/Ctrl.scala:10:14
+  input  [4:0]  io_decodeUnit_info_src1_raddr,	// playground/src/ctrl/Ctrl.scala:10:14
+  input         io_decodeUnit_info_src2_ren,	// playground/src/ctrl/Ctrl.scala:10:14
+  input  [4:0]  io_decodeUnit_info_src2_raddr,	// playground/src/ctrl/Ctrl.scala:10:14
   output        io_decodeUnit_ctrlSignal_allow_to_go,	// playground/src/ctrl/Ctrl.scala:10:14
                 io_decodeUnit_ctrlSignal_do_flush,	// playground/src/ctrl/Ctrl.scala:10:14
-  input         io_executeUnit_data_is_load,	// playground/src/ctrl/Ctrl.scala:10:14
-  input  [4:0]  io_executeUnit_data_reg_waddr,	// playground/src/ctrl/Ctrl.scala:10:14
+  input         io_executeUnit_info_valid,	// playground/src/ctrl/Ctrl.scala:10:14
+  input  [2:0]  io_executeUnit_info_fusel,	// playground/src/ctrl/Ctrl.scala:10:14
+  input  [5:0]  io_executeUnit_info_op,	// playground/src/ctrl/Ctrl.scala:10:14
+  input  [4:0]  io_executeUnit_info_reg_waddr,	// playground/src/ctrl/Ctrl.scala:10:14
   input         io_executeUnit_flush,	// playground/src/ctrl/Ctrl.scala:10:14
   input  [63:0] io_executeUnit_target	// playground/src/ctrl/Ctrl.scala:10:14
 );
 
-  wire lw_stall =
-    io_executeUnit_data_is_load & (|io_executeUnit_data_reg_waddr)
-    & (io_decodeUnit_src_info_src1_ren
-       & io_decodeUnit_src_info_src1_raddr == io_executeUnit_data_reg_waddr
-       | io_decodeUnit_src_info_src2_ren
-       & io_decodeUnit_src_info_src2_raddr == io_executeUnit_data_reg_waddr);	// playground/src/ctrl/Ctrl.scala:18:{81,85}, :19:{38,75,109}, :20:{39,76}
+  wire exe_conflict =
+    io_executeUnit_info_valid & io_executeUnit_info_fusel == 3'h2
+    & ~(io_executeUnit_info_op[3])
+    & (io_decodeUnit_info_src1_ren
+       & io_decodeUnit_info_src1_raddr == io_executeUnit_info_reg_waddr
+       | io_decodeUnit_info_src2_ren
+       & io_decodeUnit_info_src2_raddr == io_executeUnit_info_reg_waddr);	// playground/src/ctrl/Ctrl.scala:23:60, :25:{17,49,82,116}, :26:{35,68}, playground/src/defines/isa/Instructions.scala:93:39, :94:35
   assign io_fetchUnit_target = io_executeUnit_target;	// playground/src/ctrl/Ctrl.scala:9:7
-  assign io_fetchUnit_ctrlSignal_allow_to_go = ~lw_stall;	// playground/src/ctrl/Ctrl.scala:9:7, :18:85, :22:46
+  assign io_fetchUnit_ctrlSignal_allow_to_go = ~exe_conflict;	// playground/src/ctrl/Ctrl.scala:9:7, :25:17, :28:46
   assign io_fetchUnit_ctrlSignal_do_flush = io_executeUnit_flush;	// playground/src/ctrl/Ctrl.scala:9:7
-  assign io_decodeUnit_ctrlSignal_allow_to_go = ~lw_stall;	// playground/src/ctrl/Ctrl.scala:9:7, :18:85, :22:46
-  assign io_decodeUnit_ctrlSignal_do_flush = io_executeUnit_flush | lw_stall;	// playground/src/ctrl/Ctrl.scala:9:7, :18:85, :29:61
+  assign io_decodeUnit_ctrlSignal_allow_to_go = ~exe_conflict;	// playground/src/ctrl/Ctrl.scala:9:7, :25:17, :28:46
+  assign io_decodeUnit_ctrlSignal_do_flush = io_executeUnit_flush | exe_conflict;	// playground/src/ctrl/Ctrl.scala:9:7, :25:17, :35:61
 endmodule
 
 module FetchUnit(	// playground/src/pipeline/fetch/FetchUnit.scala:9:7
@@ -88,7 +91,8 @@ module FetchUnit(	// playground/src/pipeline/fetch/FetchUnit.scala:9:7
   output [63:0] io_decodeStage_data_inst,	// playground/src/pipeline/fetch/FetchUnit.scala:10:14
   output        io_decodeStage_data_valid,	// playground/src/pipeline/fetch/FetchUnit.scala:10:14
   output [63:0] io_decodeStage_data_pc,	// playground/src/pipeline/fetch/FetchUnit.scala:10:14
-  output        io_instSram_en,	// playground/src/pipeline/fetch/FetchUnit.scala:10:14
+  output        io_decodeStage_data_addr_misaligned,	// playground/src/pipeline/fetch/FetchUnit.scala:10:14
+                io_instSram_en,	// playground/src/pipeline/fetch/FetchUnit.scala:10:14
   output [31:0] io_instSram_addr,	// playground/src/pipeline/fetch/FetchUnit.scala:10:14
   input  [31:0] io_instSram_rdata	// playground/src/pipeline/fetch/FetchUnit.scala:10:14
 );
@@ -137,80 +141,93 @@ module FetchUnit(	// playground/src/pipeline/fetch/FetchUnit.scala:9:7
   assign io_decodeStage_data_inst = {32'h0, io_instSram_rdata};	// playground/src/pipeline/fetch/FetchUnit.scala:9:7, :29:21, :41:39
   assign io_decodeStage_data_valid = state == 2'h2;	// playground/src/pipeline/fetch/FetchUnit.scala:9:7, :17:47, :39:48
   assign io_decodeStage_data_pc = pc;	// playground/src/pipeline/fetch/FetchUnit.scala:9:7, :29:21
-  assign io_instSram_en = ~reset;	// playground/src/pipeline/fetch/FetchUnit.scala:9:7, :43:24
+  assign io_decodeStage_data_addr_misaligned = |(pc[1:0]);	// playground/src/pipeline/fetch/FetchUnit.scala:9:7, :29:21, :42:{44,51}
+  assign io_instSram_en = ~reset & ~(|(pc[1:0]));	// playground/src/pipeline/fetch/FetchUnit.scala:9:7, :29:21, :42:{44,51}, :44:{24,38,40}
   assign io_instSram_addr = _io_instSram_addr_T_4;	// playground/src/pipeline/fetch/FetchUnit.scala:9:7, src/main/scala/chisel3/util/Mux.scala:126:16
 endmodule
 
-module DecodeStage(	// playground/src/pipeline/decode/DecodeStage.scala:19:7
-  input         clock,	// playground/src/pipeline/decode/DecodeStage.scala:19:7
-                reset,	// playground/src/pipeline/decode/DecodeStage.scala:19:7
-                io_ctrl_allow_to_go,	// playground/src/pipeline/decode/DecodeStage.scala:20:14
-                io_ctrl_do_flush,	// playground/src/pipeline/decode/DecodeStage.scala:20:14
-  input  [63:0] io_fetchUnit_data_inst,	// playground/src/pipeline/decode/DecodeStage.scala:20:14
-  input         io_fetchUnit_data_valid,	// playground/src/pipeline/decode/DecodeStage.scala:20:14
-  input  [63:0] io_fetchUnit_data_pc,	// playground/src/pipeline/decode/DecodeStage.scala:20:14
-  output [63:0] io_decodeUnit_data_inst,	// playground/src/pipeline/decode/DecodeStage.scala:20:14
-  output        io_decodeUnit_data_valid,	// playground/src/pipeline/decode/DecodeStage.scala:20:14
-  output [63:0] io_decodeUnit_data_pc	// playground/src/pipeline/decode/DecodeStage.scala:20:14
+module DecodeStage(	// playground/src/pipeline/decode/DecodeStage.scala:20:7
+  input         clock,	// playground/src/pipeline/decode/DecodeStage.scala:20:7
+                reset,	// playground/src/pipeline/decode/DecodeStage.scala:20:7
+                io_ctrl_allow_to_go,	// playground/src/pipeline/decode/DecodeStage.scala:21:14
+                io_ctrl_do_flush,	// playground/src/pipeline/decode/DecodeStage.scala:21:14
+  input  [63:0] io_fetchUnit_data_inst,	// playground/src/pipeline/decode/DecodeStage.scala:21:14
+  input         io_fetchUnit_data_valid,	// playground/src/pipeline/decode/DecodeStage.scala:21:14
+  input  [63:0] io_fetchUnit_data_pc,	// playground/src/pipeline/decode/DecodeStage.scala:21:14
+  input         io_fetchUnit_data_addr_misaligned,	// playground/src/pipeline/decode/DecodeStage.scala:21:14
+  output [63:0] io_decodeUnit_data_inst,	// playground/src/pipeline/decode/DecodeStage.scala:21:14
+  output        io_decodeUnit_data_valid,	// playground/src/pipeline/decode/DecodeStage.scala:21:14
+  output [63:0] io_decodeUnit_data_pc,	// playground/src/pipeline/decode/DecodeStage.scala:21:14
+  output        io_decodeUnit_data_addr_misaligned	// playground/src/pipeline/decode/DecodeStage.scala:21:14
 );
 
-  reg [63:0] data_inst;	// playground/src/pipeline/decode/DecodeStage.scala:26:21
-  reg        data_valid;	// playground/src/pipeline/decode/DecodeStage.scala:26:21
-  reg [63:0] data_pc;	// playground/src/pipeline/decode/DecodeStage.scala:26:21
-  always @(posedge clock) begin	// playground/src/pipeline/decode/DecodeStage.scala:19:7
-    if (reset) begin	// playground/src/pipeline/decode/DecodeStage.scala:19:7
-      data_inst <= 64'h0;	// playground/src/pipeline/decode/DecodeStage.scala:26:{21,34}
-      data_valid <= 1'h0;	// playground/src/pipeline/decode/DecodeStage.scala:26:{21,34}
-      data_pc <= 64'h0;	// playground/src/pipeline/decode/DecodeStage.scala:26:{21,34}
+  reg [63:0] data_inst;	// playground/src/pipeline/decode/DecodeStage.scala:27:21
+  reg        data_valid;	// playground/src/pipeline/decode/DecodeStage.scala:27:21
+  reg [63:0] data_pc;	// playground/src/pipeline/decode/DecodeStage.scala:27:21
+  reg        data_addr_misaligned;	// playground/src/pipeline/decode/DecodeStage.scala:27:21
+  always @(posedge clock) begin	// playground/src/pipeline/decode/DecodeStage.scala:20:7
+    if (reset) begin	// playground/src/pipeline/decode/DecodeStage.scala:20:7
+      data_inst <= 64'h0;	// playground/src/pipeline/decode/DecodeStage.scala:27:{21,34}
+      data_valid <= 1'h0;	// playground/src/pipeline/decode/DecodeStage.scala:27:{21,34}
+      data_pc <= 64'h0;	// playground/src/pipeline/decode/DecodeStage.scala:27:{21,34}
+      data_addr_misaligned <= 1'h0;	// playground/src/pipeline/decode/DecodeStage.scala:27:{21,34}
     end
-    else begin	// playground/src/pipeline/decode/DecodeStage.scala:19:7
-      if (io_ctrl_do_flush) begin	// playground/src/pipeline/decode/DecodeStage.scala:20:14
-        data_inst <= 64'h0;	// playground/src/pipeline/decode/DecodeStage.scala:26:{21,34}
-        data_pc <= 64'h0;	// playground/src/pipeline/decode/DecodeStage.scala:26:{21,34}
+    else begin	// playground/src/pipeline/decode/DecodeStage.scala:20:7
+      if (io_ctrl_do_flush) begin	// playground/src/pipeline/decode/DecodeStage.scala:21:14
+        data_inst <= 64'h0;	// playground/src/pipeline/decode/DecodeStage.scala:27:{21,34}
+        data_pc <= 64'h0;	// playground/src/pipeline/decode/DecodeStage.scala:27:{21,34}
       end
-      else if (io_ctrl_allow_to_go) begin	// playground/src/pipeline/decode/DecodeStage.scala:20:14
-        data_inst <= io_fetchUnit_data_inst;	// playground/src/pipeline/decode/DecodeStage.scala:26:21
-        data_pc <= io_fetchUnit_data_pc;	// playground/src/pipeline/decode/DecodeStage.scala:26:21
+      else if (io_ctrl_allow_to_go) begin	// playground/src/pipeline/decode/DecodeStage.scala:21:14
+        data_inst <= io_fetchUnit_data_inst;	// playground/src/pipeline/decode/DecodeStage.scala:27:21
+        data_pc <= io_fetchUnit_data_pc;	// playground/src/pipeline/decode/DecodeStage.scala:27:21
       end
       data_valid <=
-        ~io_ctrl_do_flush & (io_ctrl_allow_to_go ? io_fetchUnit_data_valid : data_valid);	// playground/src/pipeline/decode/DecodeStage.scala:26:21, :28:26, :29:10, :30:35, :31:10
+        ~io_ctrl_do_flush & (io_ctrl_allow_to_go ? io_fetchUnit_data_valid : data_valid);	// playground/src/pipeline/decode/DecodeStage.scala:27:21, :29:26, :30:10, :31:35, :32:10
+      data_addr_misaligned <=
+        ~io_ctrl_do_flush
+        & (io_ctrl_allow_to_go
+             ? io_fetchUnit_data_addr_misaligned
+             : data_addr_misaligned);	// playground/src/pipeline/decode/DecodeStage.scala:27:21, :29:26, :30:10, :31:35, :32:10
     end
   end // always @(posedge)
-  `ifdef ENABLE_INITIAL_REG_	// playground/src/pipeline/decode/DecodeStage.scala:19:7
-    `ifdef FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/decode/DecodeStage.scala:19:7
-      `FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/decode/DecodeStage.scala:19:7
+  `ifdef ENABLE_INITIAL_REG_	// playground/src/pipeline/decode/DecodeStage.scala:20:7
+    `ifdef FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/decode/DecodeStage.scala:20:7
+      `FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/decode/DecodeStage.scala:20:7
     `endif // FIRRTL_BEFORE_INITIAL
-    initial begin	// playground/src/pipeline/decode/DecodeStage.scala:19:7
-      automatic logic [31:0] _RANDOM[0:4];	// playground/src/pipeline/decode/DecodeStage.scala:19:7
-      `ifdef INIT_RANDOM_PROLOG_	// playground/src/pipeline/decode/DecodeStage.scala:19:7
-        `INIT_RANDOM_PROLOG_	// playground/src/pipeline/decode/DecodeStage.scala:19:7
+    initial begin	// playground/src/pipeline/decode/DecodeStage.scala:20:7
+      automatic logic [31:0] _RANDOM[0:4];	// playground/src/pipeline/decode/DecodeStage.scala:20:7
+      `ifdef INIT_RANDOM_PROLOG_	// playground/src/pipeline/decode/DecodeStage.scala:20:7
+        `INIT_RANDOM_PROLOG_	// playground/src/pipeline/decode/DecodeStage.scala:20:7
       `endif // INIT_RANDOM_PROLOG_
-      `ifdef RANDOMIZE_REG_INIT	// playground/src/pipeline/decode/DecodeStage.scala:19:7
+      `ifdef RANDOMIZE_REG_INIT	// playground/src/pipeline/decode/DecodeStage.scala:20:7
         for (logic [2:0] i = 3'h0; i < 3'h5; i += 3'h1) begin
-          _RANDOM[i] = `RANDOM;	// playground/src/pipeline/decode/DecodeStage.scala:19:7
-        end	// playground/src/pipeline/decode/DecodeStage.scala:19:7
-        data_inst = {_RANDOM[3'h0], _RANDOM[3'h1]};	// playground/src/pipeline/decode/DecodeStage.scala:19:7, :26:21
-        data_valid = _RANDOM[3'h2][0];	// playground/src/pipeline/decode/DecodeStage.scala:19:7, :26:21
-        data_pc = {_RANDOM[3'h2][31:1], _RANDOM[3'h3], _RANDOM[3'h4][0]};	// playground/src/pipeline/decode/DecodeStage.scala:19:7, :26:21
+          _RANDOM[i] = `RANDOM;	// playground/src/pipeline/decode/DecodeStage.scala:20:7
+        end	// playground/src/pipeline/decode/DecodeStage.scala:20:7
+        data_inst = {_RANDOM[3'h0], _RANDOM[3'h1]};	// playground/src/pipeline/decode/DecodeStage.scala:20:7, :27:21
+        data_valid = _RANDOM[3'h2][0];	// playground/src/pipeline/decode/DecodeStage.scala:20:7, :27:21
+        data_pc = {_RANDOM[3'h2][31:1], _RANDOM[3'h3], _RANDOM[3'h4][0]};	// playground/src/pipeline/decode/DecodeStage.scala:20:7, :27:21
+        data_addr_misaligned = _RANDOM[3'h4][1];	// playground/src/pipeline/decode/DecodeStage.scala:20:7, :27:21
       `endif // RANDOMIZE_REG_INIT
     end // initial
-    `ifdef FIRRTL_AFTER_INITIAL	// playground/src/pipeline/decode/DecodeStage.scala:19:7
-      `FIRRTL_AFTER_INITIAL	// playground/src/pipeline/decode/DecodeStage.scala:19:7
+    `ifdef FIRRTL_AFTER_INITIAL	// playground/src/pipeline/decode/DecodeStage.scala:20:7
+      `FIRRTL_AFTER_INITIAL	// playground/src/pipeline/decode/DecodeStage.scala:20:7
     `endif // FIRRTL_AFTER_INITIAL
   `endif // ENABLE_INITIAL_REG_
-  assign io_decodeUnit_data_inst = data_inst;	// playground/src/pipeline/decode/DecodeStage.scala:19:7, :26:21
-  assign io_decodeUnit_data_valid = data_valid;	// playground/src/pipeline/decode/DecodeStage.scala:19:7, :26:21
-  assign io_decodeUnit_data_pc = data_pc;	// playground/src/pipeline/decode/DecodeStage.scala:19:7, :26:21
+  assign io_decodeUnit_data_inst = data_inst;	// playground/src/pipeline/decode/DecodeStage.scala:20:7, :27:21
+  assign io_decodeUnit_data_valid = data_valid;	// playground/src/pipeline/decode/DecodeStage.scala:20:7, :27:21
+  assign io_decodeUnit_data_pc = data_pc;	// playground/src/pipeline/decode/DecodeStage.scala:20:7, :27:21
+  assign io_decodeUnit_data_addr_misaligned = data_addr_misaligned;	// playground/src/pipeline/decode/DecodeStage.scala:20:7, :27:21
 endmodule
 
 module Decoder(	// playground/src/pipeline/decode/Decoder.scala:8:7
   input  [63:0] io_in_inst,	// playground/src/pipeline/decode/Decoder.scala:9:14
-  output        io_out_info_src1_ren,	// playground/src/pipeline/decode/Decoder.scala:9:14
+  output        io_out_info_inst_legal,	// playground/src/pipeline/decode/Decoder.scala:9:14
+                io_out_info_src1_ren,	// playground/src/pipeline/decode/Decoder.scala:9:14
   output [4:0]  io_out_info_src1_raddr,	// playground/src/pipeline/decode/Decoder.scala:9:14
   output        io_out_info_src2_ren,	// playground/src/pipeline/decode/Decoder.scala:9:14
   output [4:0]  io_out_info_src2_raddr,	// playground/src/pipeline/decode/Decoder.scala:9:14
   output [2:0]  io_out_info_fusel,	// playground/src/pipeline/decode/Decoder.scala:9:14
-  output [6:0]  io_out_info_op,	// playground/src/pipeline/decode/Decoder.scala:9:14
+  output [5:0]  io_out_info_op,	// playground/src/pipeline/decode/Decoder.scala:9:14
   output        io_out_info_reg_wen,	// playground/src/pipeline/decode/Decoder.scala:9:14
   output [4:0]  io_out_info_reg_waddr,	// playground/src/pipeline/decode/Decoder.scala:9:14
   output [63:0] io_out_info_imm,	// playground/src/pipeline/decode/Decoder.scala:9:14
@@ -280,190 +297,235 @@ module Decoder(	// playground/src/pipeline/decode/Decoder.scala:8:7
   wire        _GEN_59 = _GEN_10 == 17'h6BB;	// src/main/scala/chisel3/util/Lookup.scala:31:38
   wire        _GEN_60 = _GEN_10 == 17'h73B;	// src/main/scala/chisel3/util/Lookup.scala:31:38
   wire        _GEN_61 = _GEN_10 == 17'h7BB;	// src/main/scala/chisel3/util/Lookup.scala:31:38
-  wire        _GEN_62 =
+  wire        _GEN_62 = io_in_inst[31:0] == 32'h73;	// src/main/scala/chisel3/util/Lookup.scala:31:38
+  wire        _GEN_63 = io_in_inst[31:0] == 32'h100073;	// src/main/scala/chisel3/util/Lookup.scala:31:38
+  wire        _GEN_64 = io_in_inst[31:0] == 32'h30200073;	// src/main/scala/chisel3/util/Lookup.scala:31:38
+  wire        _GEN_65 = _GEN == 10'hF;	// src/main/scala/chisel3/util/Lookup.scala:31:38
+  wire        _GEN_66 = io_in_inst[31:0] == 32'h10500073;	// src/main/scala/chisel3/util/Lookup.scala:31:38
+  wire        _GEN_67 = _GEN == 10'hF3;	// src/main/scala/chisel3/util/Lookup.scala:31:38
+  wire        _GEN_68 = _GEN == 10'h173;	// src/main/scala/chisel3/util/Lookup.scala:31:38
+  wire        _GEN_69 = _GEN == 10'h1F3;	// src/main/scala/chisel3/util/Lookup.scala:31:38
+  wire        _GEN_70 = _GEN == 10'h2F3;	// src/main/scala/chisel3/util/Lookup.scala:31:38
+  wire        _GEN_71 = _GEN == 10'h373;	// src/main/scala/chisel3/util/Lookup.scala:31:38
+  wire        _GEN_72 = _GEN == 10'h3F3;	// src/main/scala/chisel3/util/Lookup.scala:31:38
+  wire        _GEN_73 = _GEN_67 | _GEN_68 | _GEN_69 | _GEN_70 | _GEN_71 | _GEN_72;	// src/main/scala/chisel3/util/Lookup.scala:31:38, :34:39
+  wire        _GEN_74 = _GEN_62 | _GEN_63 | _GEN_64;	// src/main/scala/chisel3/util/Lookup.scala:31:38, :34:39
+  wire        _GEN_75 =
     _GEN_49 | _GEN_50 | _GEN_51 | _GEN_52 | _GEN_53 | _GEN_54 | _GEN_55 | _GEN_56
     | _GEN_57 | _GEN_58 | _GEN_59 | _GEN_60 | _GEN_61;	// src/main/scala/chisel3/util/Lookup.scala:31:38, :34:39
-  wire        _GEN_63 = _GEN_41 | _GEN_42 | _GEN_43 | _GEN_44 | _GEN_45;	// src/main/scala/chisel3/util/Lookup.scala:31:38, :34:39
-  wire        _GEN_64 = _GEN_34 | _GEN_35 | _GEN_36;	// src/main/scala/chisel3/util/Lookup.scala:31:38, :34:39
-  wire        _GEN_65 = _GEN_23 | _GEN_24 | _GEN_25 | _GEN_26 | _GEN_27 | _GEN_28;	// src/main/scala/chisel3/util/Lookup.scala:31:38, :34:39
-  wire        _GEN_66 = io_in_inst[6:0] == 7'h17 | io_in_inst[6:0] == 7'h37;	// src/main/scala/chisel3/util/Lookup.scala:31:38, :34:39
+  wire        _GEN_76 = _GEN_41 | _GEN_42 | _GEN_43 | _GEN_44 | _GEN_45;	// src/main/scala/chisel3/util/Lookup.scala:31:38, :34:39
+  wire        _GEN_77 = _GEN_34 | _GEN_35 | _GEN_36;	// src/main/scala/chisel3/util/Lookup.scala:31:38, :34:39
+  wire        _GEN_78 = _GEN_23 | _GEN_24 | _GEN_25 | _GEN_26 | _GEN_27 | _GEN_28;	// src/main/scala/chisel3/util/Lookup.scala:31:38, :34:39
+  wire        _GEN_79 = io_in_inst[6:0] == 7'h17 | io_in_inst[6:0] == 7'h37;	// src/main/scala/chisel3/util/Lookup.scala:31:38, :34:39
   wire [2:0]  instrType =
     _GEN_0 | _GEN_2 | _GEN_3 | _GEN_4 | _GEN_5 | _GEN_6 | _GEN_7 | _GEN_8 | _GEN_9
       ? 3'h4
       : _GEN_11 | _GEN_12 | _GEN_13 | _GEN_14 | _GEN_15 | _GEN_16 | _GEN_17 | _GEN_18
         | _GEN_19 | _GEN_20
           ? 3'h5
-          : _GEN_66
+          : _GEN_79
               ? 3'h6
               : _GEN_21
                   ? 3'h7
                   : _GEN_22
                       ? 3'h4
-                      : _GEN_65
+                      : _GEN_78
                           ? 3'h1
                           : _GEN_29 | _GEN_30 | _GEN_31 | _GEN_32 | _GEN_33
                               ? 3'h4
-                              : _GEN_64
+                              : _GEN_77
                                   ? 3'h2
                                   : _GEN_37 | _GEN_38 | _GEN_39 | _GEN_40
                                       ? 3'h4
-                                      : _GEN_63
+                                      : _GEN_76
                                           ? 3'h5
                                           : _GEN_46 | _GEN_47
                                               ? 3'h4
-                                              : _GEN_48 ? 3'h2 : _GEN_62 ? 3'h5 : 3'h0;	// src/main/scala/chisel3/util/Lookup.scala:31:38, :34:39
-  wire        _io_out_info_imm_T_31 = instrType == 3'h4;	// playground/src/defines/Util.scala:22:34, src/main/scala/chisel3/util/Lookup.scala:34:39
-  wire        _io_out_info_imm_T_35 = instrType == 3'h6;	// playground/src/defines/Util.scala:22:34, src/main/scala/chisel3/util/Lookup.scala:34:39
-  wire        _src2Type_T_15 = instrType == 3'h0;	// playground/src/defines/Util.scala:22:34, src/main/scala/chisel3/util/Lookup.scala:34:39
-  wire        src1Type = _io_out_info_imm_T_35 | (&instrType) | _src2Type_T_15;	// playground/src/defines/Util.scala:22:34, src/main/scala/chisel3/util/Lookup.scala:34:39, src/main/scala/chisel3/util/Mux.scala:30:73
+                                              : _GEN_48
+                                                  ? 3'h2
+                                                  : _GEN_75
+                                                      ? 3'h5
+                                                      : _GEN_74
+                                                          ? 3'h4
+                                                          : _GEN_65
+                                                              ? 3'h2
+                                                              : {_GEN_66 | _GEN_73, 2'h0};	// src/main/scala/chisel3/util/Lookup.scala:31:38, :34:39
+  wire        _GEN_80 = _GEN_65 | _GEN_66;	// src/main/scala/chisel3/util/Lookup.scala:31:38, :34:39
+  wire        _io_out_info_imm_T_26 = instrType == 3'h4;	// playground/src/defines/Util.scala:46:34, src/main/scala/chisel3/util/Lookup.scala:34:39
+  wire        _io_out_info_imm_T_29 = instrType == 3'h6;	// playground/src/defines/Util.scala:46:34, src/main/scala/chisel3/util/Lookup.scala:34:39
+  wire        _src2Type_T_13 = instrType == 3'h0;	// playground/src/defines/Util.scala:46:34, src/main/scala/chisel3/util/Lookup.scala:34:39
+  wire        src1Type = _io_out_info_imm_T_29 | (&instrType) | _src2Type_T_13;	// playground/src/defines/Util.scala:46:34, src/main/scala/chisel3/util/Lookup.scala:34:39, src/main/scala/chisel3/util/Mux.scala:30:73
   wire        src2Type =
-    _io_out_info_imm_T_31 | _io_out_info_imm_T_35 | (&instrType) | _src2Type_T_15;	// playground/src/defines/Util.scala:22:34, src/main/scala/chisel3/util/Lookup.scala:34:39, src/main/scala/chisel3/util/Mux.scala:30:73
-  assign io_out_info_src1_ren = ~src1Type;	// playground/src/pipeline/decode/Decoder.scala:8:7, :42:38, src/main/scala/chisel3/util/Mux.scala:30:73
-  assign io_out_info_src1_raddr = src1Type ? 5'h0 : io_in_inst[19:15];	// playground/src/pipeline/decode/Decoder.scala:8:7, :37:27, :43:32, src/main/scala/chisel3/util/Mux.scala:30:73
-  assign io_out_info_src2_ren = ~src2Type;	// playground/src/pipeline/decode/Decoder.scala:8:7, :44:38, src/main/scala/chisel3/util/Mux.scala:30:73
-  assign io_out_info_src2_raddr = src2Type ? 5'h0 : io_in_inst[24:20];	// playground/src/pipeline/decode/Decoder.scala:8:7, :37:41, :43:32, :45:32, src/main/scala/chisel3/util/Mux.scala:30:73
+    _io_out_info_imm_T_26 | _io_out_info_imm_T_29 | (&instrType) | _src2Type_T_13;	// playground/src/defines/Util.scala:46:34, src/main/scala/chisel3/util/Lookup.scala:34:39, src/main/scala/chisel3/util/Mux.scala:30:73
+  assign io_out_info_inst_legal = |instrType;	// playground/src/pipeline/decode/Decoder.scala:8:7, :40:39, src/main/scala/chisel3/util/Lookup.scala:34:39
+  assign io_out_info_src1_ren = ~src1Type;	// playground/src/pipeline/decode/Decoder.scala:8:7, :41:38, src/main/scala/chisel3/util/Mux.scala:30:73
+  assign io_out_info_src1_raddr = src1Type ? 5'h0 : io_in_inst[19:15];	// playground/src/pipeline/decode/Decoder.scala:8:7, :36:27, :42:32, src/main/scala/chisel3/util/Mux.scala:30:73
+  assign io_out_info_src2_ren = ~src2Type;	// playground/src/pipeline/decode/Decoder.scala:8:7, :43:38, src/main/scala/chisel3/util/Mux.scala:30:73
+  assign io_out_info_src2_raddr = src2Type ? 5'h0 : io_in_inst[24:20];	// playground/src/pipeline/decode/Decoder.scala:8:7, :36:41, :42:32, :44:32, src/main/scala/chisel3/util/Mux.scala:30:73
   assign io_out_info_fusel =
     _GEN_0 | _GEN_2 | _GEN_3 | _GEN_4 | _GEN_5 | _GEN_6 | _GEN_7 | _GEN_8 | _GEN_9
     | _GEN_11 | _GEN_12 | _GEN_13 | _GEN_14 | _GEN_15 | _GEN_16 | _GEN_17 | _GEN_18
-    | _GEN_19 | _GEN_20 | _GEN_66
+    | _GEN_19 | _GEN_20 | _GEN_79
       ? 3'h0
-      : _GEN_21 | _GEN_22 | _GEN_65
-          ? 3'h5
-          : {1'h0,
-             _GEN_29 | _GEN_30 | _GEN_31 | _GEN_32 | _GEN_33 | _GEN_64
-               ? 2'h1
-               : _GEN_37 | _GEN_38 | _GEN_39 | _GEN_40 | _GEN_63
-                   ? 2'h0
-                   : _GEN_46 | _GEN_47 | _GEN_48 ? 2'h1 : {_GEN_62, 1'h0}};	// playground/src/pipeline/decode/Decoder.scala:8:7, src/main/scala/chisel3/util/Lookup.scala:31:38, :34:39
+      : _GEN_21 | _GEN_22 | _GEN_78
+          ? 3'h3
+          : _GEN_29 | _GEN_30 | _GEN_31 | _GEN_32 | _GEN_33 | _GEN_77
+              ? 3'h2
+              : _GEN_37 | _GEN_38 | _GEN_39 | _GEN_40 | _GEN_76
+                  ? 3'h0
+                  : _GEN_46 | _GEN_47 | _GEN_48
+                      ? 3'h2
+                      : _GEN_75
+                          ? 3'h1
+                          : _GEN_74 ? 3'h4 : _GEN_80 ? 3'h0 : {_GEN_73, 2'h0};	// playground/src/pipeline/decode/Decoder.scala:8:7, src/main/scala/chisel3/util/Lookup.scala:31:38, :34:39
   assign io_out_info_op =
-    {1'h0,
-     _GEN_0
-       ? 6'h20
-       : _GEN_2
-           ? 6'h1
-           : _GEN_3
-               ? 6'h2
-               : _GEN_4
-                   ? 6'h3
-                   : _GEN_5
-                       ? 6'h4
-                       : _GEN_6
-                           ? 6'h5
-                           : _GEN_7
-                               ? 6'h6
-                               : _GEN_8
-                                   ? 6'h7
-                                   : _GEN_9
-                                       ? 6'hD
-                                       : _GEN_11
-                                           ? 6'h20
-                                           : _GEN_12
-                                               ? 6'h1
-                                               : _GEN_13
-                                                   ? 6'h2
-                                                   : _GEN_14
-                                                       ? 6'h3
-                                                       : _GEN_15
-                                                           ? 6'h4
-                                                           : _GEN_16
-                                                               ? 6'h5
-                                                               : _GEN_17
-                                                                   ? 6'h6
-                                                                   : _GEN_18
-                                                                       ? 6'h7
-                                                                       : _GEN_19
-                                                                           ? 6'h8
-                                                                           : _GEN_20
-                                                                               ? 6'hD
-                                                                               : _GEN_66
-                                                                                   ? 6'h20
-                                                                                   : _GEN_21
-                                                                                       ? 6'h8
-                                                                                       : _GEN_22
-                                                                                           ? 6'hA
-                                                                                           : _GEN_23
-                                                                                               ? 6'h0
-                                                                                               : _GEN_24
-                                                                                                   ? 6'h1
-                                                                                                   : _GEN_25
-                                                                                                       ? 6'h4
-                                                                                                       : _GEN_26
-                                                                                                           ? 6'h5
-                                                                                                           : _GEN_27
-                                                                                                               ? 6'h6
-                                                                                                               : _GEN_28
-                                                                                                                   ? 6'h7
-                                                                                                                   : _GEN_29
-                                                                                                                       ? 6'h0
-                                                                                                                       : _GEN_30
-                                                                                                                           ? 6'h1
-                                                                                                                           : _GEN_31
-                                                                                                                               ? 6'h2
-                                                                                                                               : _GEN_32
-                                                                                                                                   ? 6'h4
-                                                                                                                                   : _GEN_33
-                                                                                                                                       ? 6'h5
-                                                                                                                                       : _GEN_34
-                                                                                                                                           ? 6'h8
-                                                                                                                                           : _GEN_35
-                                                                                                                                               ? 6'h9
-                                                                                                                                               : _GEN_36
-                                                                                                                                                   ? 6'hA
-                                                                                                                                                   : _GEN_37
-                                                                                                                                                       ? 6'h30
-                                                                                                                                                       : _GEN_38
-                                                                                                                                                           ? 6'h11
-                                                                                                                                                           : _GEN_39
-                                                                                                                                                               ? 6'h15
-                                                                                                                                                               : _GEN_40
-                                                                                                                                                                   ? 6'h1D
-                                                                                                                                                                   : _GEN_41
-                                                                                                                                                                       ? 6'h11
-                                                                                                                                                                       : _GEN_42
-                                                                                                                                                                           ? 6'h15
-                                                                                                                                                                           : _GEN_43
-                                                                                                                                                                               ? 6'h1D
-                                                                                                                                                                               : _GEN_44
-                                                                                                                                                                                   ? 6'h30
-                                                                                                                                                                                   : _GEN_45
-                                                                                                                                                                                       ? 6'h18
-                                                                                                                                                                                       : _GEN_46
-                                                                                                                                                                                           ? 6'h6
-                                                                                                                                                                                           : _GEN_47
-                                                                                                                                                                                               ? 6'h3
-                                                                                                                                                                                               : _GEN_48
-                                                                                                                                                                                                   ? 6'hB
-                                                                                                                                                                                                   : _GEN_49
-                                                                                                                                                                                                       ? 6'h0
-                                                                                                                                                                                                       : _GEN_50
-                                                                                                                                                                                                           ? 6'h1
-                                                                                                                                                                                                           : _GEN_51
-                                                                                                                                                                                                               ? 6'h2
-                                                                                                                                                                                                               : _GEN_52
-                                                                                                                                                                                                                   ? 6'h3
-                                                                                                                                                                                                                   : _GEN_53
-                                                                                                                                                                                                                       ? 6'h4
-                                                                                                                                                                                                                       : _GEN_54
-                                                                                                                                                                                                                           ? 6'h5
-                                                                                                                                                                                                                           : _GEN_55
-                                                                                                                                                                                                                               ? 6'h6
-                                                                                                                                                                                                                               : _GEN_56
-                                                                                                                                                                                                                                   ? 6'h7
-                                                                                                                                                                                                                                   : _GEN_57
-                                                                                                                                                                                                                                       ? 6'h8
-                                                                                                                                                                                                                                       : _GEN_58
-                                                                                                                                                                                                                                           ? 6'hC
-                                                                                                                                                                                                                                           : _GEN_59
-                                                                                                                                                                                                                                               ? 6'hD
-                                                                                                                                                                                                                                               : _GEN_60
-                                                                                                                                                                                                                                                   ? 6'hE
-                                                                                                                                                                                                                                                   : _GEN_61
-                                                                                                                                                                                                                                                       ? 6'hF
-                                                                                                                                                                                                                                                       : 6'h20};	// playground/src/pipeline/decode/Decoder.scala:8:7, :47:26, src/main/scala/chisel3/util/Lookup.scala:31:38, :34:39
-  assign io_out_info_reg_wen = instrType[2];	// playground/src/defines/isa/Instructions.scala:16:50, playground/src/pipeline/decode/Decoder.scala:8:7, src/main/scala/chisel3/util/Lookup.scala:34:39
-  assign io_out_info_reg_waddr = instrType[2] ? io_in_inst[11:7] : 5'h0;	// playground/src/defines/isa/Instructions.scala:16:50, playground/src/pipeline/decode/Decoder.scala:8:7, :37:55, :43:32, :49:32, src/main/scala/chisel3/util/Lookup.scala:34:39
+    _GEN_0
+      ? 6'h20
+      : _GEN_2
+          ? 6'h1
+          : _GEN_3
+              ? 6'h2
+              : _GEN_4
+                  ? 6'h3
+                  : _GEN_5
+                      ? 6'h4
+                      : _GEN_6
+                          ? 6'h5
+                          : _GEN_7
+                              ? 6'h6
+                              : _GEN_8
+                                  ? 6'h7
+                                  : _GEN_9
+                                      ? 6'hD
+                                      : _GEN_11
+                                          ? 6'h20
+                                          : _GEN_12
+                                              ? 6'h1
+                                              : _GEN_13
+                                                  ? 6'h2
+                                                  : _GEN_14
+                                                      ? 6'h3
+                                                      : _GEN_15
+                                                          ? 6'h4
+                                                          : _GEN_16
+                                                              ? 6'h5
+                                                              : _GEN_17
+                                                                  ? 6'h6
+                                                                  : _GEN_18
+                                                                      ? 6'h7
+                                                                      : _GEN_19
+                                                                          ? 6'h8
+                                                                          : _GEN_20
+                                                                              ? 6'hD
+                                                                              : _GEN_79
+                                                                                  ? 6'h20
+                                                                                  : _GEN_21
+                                                                                      ? 6'h8
+                                                                                      : _GEN_22
+                                                                                          ? 6'hA
+                                                                                          : _GEN_23
+                                                                                              ? 6'h0
+                                                                                              : _GEN_24
+                                                                                                  ? 6'h1
+                                                                                                  : _GEN_25
+                                                                                                      ? 6'h4
+                                                                                                      : _GEN_26
+                                                                                                          ? 6'h5
+                                                                                                          : _GEN_27
+                                                                                                              ? 6'h6
+                                                                                                              : _GEN_28
+                                                                                                                  ? 6'h7
+                                                                                                                  : _GEN_29
+                                                                                                                      ? 6'h0
+                                                                                                                      : _GEN_30
+                                                                                                                          ? 6'h1
+                                                                                                                          : _GEN_31
+                                                                                                                              ? 6'h2
+                                                                                                                              : _GEN_32
+                                                                                                                                  ? 6'h4
+                                                                                                                                  : _GEN_33
+                                                                                                                                      ? 6'h5
+                                                                                                                                      : _GEN_34
+                                                                                                                                          ? 6'h8
+                                                                                                                                          : _GEN_35
+                                                                                                                                              ? 6'h9
+                                                                                                                                              : _GEN_36
+                                                                                                                                                  ? 6'hA
+                                                                                                                                                  : _GEN_37
+                                                                                                                                                      ? 6'h30
+                                                                                                                                                      : _GEN_38
+                                                                                                                                                          ? 6'h11
+                                                                                                                                                          : _GEN_39
+                                                                                                                                                              ? 6'h15
+                                                                                                                                                              : _GEN_40
+                                                                                                                                                                  ? 6'h1D
+                                                                                                                                                                  : _GEN_41
+                                                                                                                                                                      ? 6'h11
+                                                                                                                                                                      : _GEN_42
+                                                                                                                                                                          ? 6'h15
+                                                                                                                                                                          : _GEN_43
+                                                                                                                                                                              ? 6'h1D
+                                                                                                                                                                              : _GEN_44
+                                                                                                                                                                                  ? 6'h30
+                                                                                                                                                                                  : _GEN_45
+                                                                                                                                                                                      ? 6'h18
+                                                                                                                                                                                      : _GEN_46
+                                                                                                                                                                                          ? 6'h6
+                                                                                                                                                                                          : _GEN_47
+                                                                                                                                                                                              ? 6'h3
+                                                                                                                                                                                              : _GEN_48
+                                                                                                                                                                                                  ? 6'hB
+                                                                                                                                                                                                  : _GEN_49
+                                                                                                                                                                                                      ? 6'h0
+                                                                                                                                                                                                      : _GEN_50
+                                                                                                                                                                                                          ? 6'h1
+                                                                                                                                                                                                          : _GEN_51
+                                                                                                                                                                                                              ? 6'h2
+                                                                                                                                                                                                              : _GEN_52
+                                                                                                                                                                                                                  ? 6'h3
+                                                                                                                                                                                                                  : _GEN_53
+                                                                                                                                                                                                                      ? 6'h4
+                                                                                                                                                                                                                      : _GEN_54
+                                                                                                                                                                                                                          ? 6'h5
+                                                                                                                                                                                                                          : _GEN_55
+                                                                                                                                                                                                                              ? 6'h6
+                                                                                                                                                                                                                              : _GEN_56
+                                                                                                                                                                                                                                  ? 6'h7
+                                                                                                                                                                                                                                  : _GEN_57
+                                                                                                                                                                                                                                      ? 6'h8
+                                                                                                                                                                                                                                      : _GEN_58
+                                                                                                                                                                                                                                          ? 6'hC
+                                                                                                                                                                                                                                          : _GEN_59
+                                                                                                                                                                                                                                              ? 6'hD
+                                                                                                                                                                                                                                              : _GEN_60
+                                                                                                                                                                                                                                                  ? 6'hE
+                                                                                                                                                                                                                                                  : _GEN_61
+                                                                                                                                                                                                                                                      ? 6'hF
+                                                                                                                                                                                                                                                      : _GEN_62
+                                                                                                                                                                                                                                                          ? 6'h8
+                                                                                                                                                                                                                                                          : _GEN_63
+                                                                                                                                                                                                                                                              ? 6'h9
+                                                                                                                                                                                                                                                              : _GEN_64
+                                                                                                                                                                                                                                                                  ? 6'hA
+                                                                                                                                                                                                                                                                  : _GEN_80
+                                                                                                                                                                                                                                                                      ? 6'h20
+                                                                                                                                                                                                                                                                      : _GEN_67
+                                                                                                                                                                                                                                                                          ? 6'h1
+                                                                                                                                                                                                                                                                          : _GEN_68
+                                                                                                                                                                                                                                                                              ? 6'h2
+                                                                                                                                                                                                                                                                              : _GEN_69
+                                                                                                                                                                                                                                                                                  ? 6'h3
+                                                                                                                                                                                                                                                                                  : _GEN_70
+                                                                                                                                                                                                                                                                                      ? 6'h5
+                                                                                                                                                                                                                                                                                      : _GEN_71
+                                                                                                                                                                                                                                                                                          ? 6'h6
+                                                                                                                                                                                                                                                                                          : _GEN_72
+                                                                                                                                                                                                                                                                                              ? 6'h7
+                                                                                                                                                                                                                                                                                              : 6'h20;	// playground/src/pipeline/decode/Decoder.scala:8:7, src/main/scala/chisel3/util/Lookup.scala:31:38, :34:39
+  assign io_out_info_reg_wen = instrType[2];	// playground/src/defines/isa/Instructions.scala:15:50, playground/src/pipeline/decode/Decoder.scala:8:7, src/main/scala/chisel3/util/Lookup.scala:34:39
+  assign io_out_info_reg_waddr = instrType[2] ? io_in_inst[11:7] : 5'h0;	// playground/src/defines/isa/Instructions.scala:15:50, playground/src/pipeline/decode/Decoder.scala:8:7, :36:55, :42:32, :48:32, src/main/scala/chisel3/util/Lookup.scala:34:39
   assign io_out_info_imm =
-    (_io_out_info_imm_T_31 ? {{52{io_in_inst[31]}}, io_in_inst[31:20]} : 64'h0)
+    (_io_out_info_imm_T_26 ? {{52{io_in_inst[31]}}, io_in_inst[31:20]} : 64'h0)
     | (instrType == 3'h2
          ? {{52{io_in_inst[31]}}, io_in_inst[31:25], io_in_inst[11:7]}
          : 64'h0)
@@ -474,14 +536,14 @@ module Decoder(	// playground/src/pipeline/decode/Decoder.scala:8:7
             io_in_inst[11:8],
             1'h0}
          : 64'h0)
-    | (_io_out_info_imm_T_35 ? {{32{io_in_inst[31]}}, io_in_inst[31:12], 12'h0} : 64'h0)
+    | (_io_out_info_imm_T_29 ? {{32{io_in_inst[31]}}, io_in_inst[31:12], 12'h0} : 64'h0)
     | ((&instrType)
          ? {{44{io_in_inst[31]}},
             io_in_inst[19:12],
             io_in_inst[20],
             io_in_inst[30:21],
             1'h0}
-         : 64'h0);	// playground/src/defines/Util.scala:9:20, :10:{44,49}, :22:34, playground/src/pipeline/decode/Decoder.scala:8:7, :37:55, :53:35, :54:39, :56:{39,49,58,72}, :57:{34,39}, :58:{49,63,73}, src/main/scala/chisel3/util/Lookup.scala:34:39, src/main/scala/chisel3/util/Mux.scala:30:73
+         : 64'h0);	// playground/src/defines/Util.scala:33:20, :34:{44,49}, :46:34, playground/src/pipeline/decode/Decoder.scala:8:7, :36:55, :52:35, :53:39, :54:{39,49,58,72}, :55:{34,39}, :56:{49,63,73}, src/main/scala/chisel3/util/Lookup.scala:34:39, src/main/scala/chisel3/util/Mux.scala:30:73
   assign io_out_info_inst = io_in_inst;	// playground/src/pipeline/decode/Decoder.scala:8:7
 endmodule
 
@@ -489,8 +551,7 @@ module ForwardCtrl(	// playground/src/pipeline/decode/ForwardCtrl.scala:10:7
   input         io_in_forward_exe_wen,	// playground/src/pipeline/decode/ForwardCtrl.scala:11:14
   input  [4:0]  io_in_forward_exe_waddr,	// playground/src/pipeline/decode/ForwardCtrl.scala:11:14
   input  [63:0] io_in_forward_exe_wdata,	// playground/src/pipeline/decode/ForwardCtrl.scala:11:14
-  input         io_in_forward_is_load,	// playground/src/pipeline/decode/ForwardCtrl.scala:11:14
-                io_in_forward_mem_wen,	// playground/src/pipeline/decode/ForwardCtrl.scala:11:14
+  input         io_in_forward_mem_wen,	// playground/src/pipeline/decode/ForwardCtrl.scala:11:14
   input  [4:0]  io_in_forward_mem_waddr,	// playground/src/pipeline/decode/ForwardCtrl.scala:11:14
   input  [63:0] io_in_forward_mem_wdata,	// playground/src/pipeline/decode/ForwardCtrl.scala:11:14
   input  [4:0]  io_in_regfile_src1_raddr,	// playground/src/pipeline/decode/ForwardCtrl.scala:11:14
@@ -501,33 +562,33 @@ module ForwardCtrl(	// playground/src/pipeline/decode/ForwardCtrl.scala:10:7
                 io_out_data_src2_rdata	// playground/src/pipeline/decode/ForwardCtrl.scala:11:14
 );
 
-  wire _GEN = io_in_forward_exe_wen & ~io_in_forward_is_load;	// playground/src/pipeline/decode/ForwardCtrl.scala:43:{27,30}
   assign io_out_data_src1_rdata =
     io_in_regfile_src1_raddr == 5'h0
       ? 64'h0
-      : _GEN & io_in_forward_exe_waddr == io_in_regfile_src1_raddr
+      : io_in_forward_exe_wen & io_in_forward_exe_waddr == io_in_regfile_src1_raddr
           ? io_in_forward_exe_wdata
           : io_in_forward_mem_wen & io_in_forward_mem_waddr == io_in_regfile_src1_raddr
               ? io_in_forward_mem_wdata
-              : io_in_regfile_src1_rdata;	// playground/src/pipeline/decode/ForwardCtrl.scala:10:7, :24:26, :29:27, :30:31, :31:5, :32:28, :43:{27,53}, :44:31, :45:5, :46:28, :56:{33,42}, :57:28
+              : io_in_regfile_src1_rdata;	// playground/src/pipeline/decode/ForwardCtrl.scala:10:7, :24:26, :29:27, :30:31, :31:5, :32:28, :43:27, :44:31, :45:5, :46:28, :56:{33,42}, :57:28
   assign io_out_data_src2_rdata =
     io_in_regfile_src2_raddr == 5'h0
       ? 64'h0
-      : _GEN & io_in_forward_exe_waddr == io_in_regfile_src2_raddr
+      : io_in_forward_exe_wen & io_in_forward_exe_waddr == io_in_regfile_src2_raddr
           ? io_in_forward_exe_wdata
           : io_in_forward_mem_wen & io_in_forward_mem_waddr == io_in_regfile_src2_raddr
               ? io_in_forward_mem_wdata
-              : io_in_regfile_src2_rdata;	// playground/src/pipeline/decode/ForwardCtrl.scala:10:7, :25:26, :35:27, :36:31, :37:5, :38:28, :43:27, :49:53, :50:31, :51:5, :52:28, :56:33, :57:28, :59:{33,42}, :60:28
+              : io_in_regfile_src2_rdata;	// playground/src/pipeline/decode/ForwardCtrl.scala:10:7, :25:26, :35:27, :36:31, :37:5, :38:28, :49:27, :50:31, :51:5, :52:28, :56:33, :57:28, :59:{33,42}, :60:28
 endmodule
 
 module DecodeUnit(	// playground/src/pipeline/decode/DecodeUnit.scala:14:7
-  output        io_ctrl_src_info_src1_ren,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
-  output [4:0]  io_ctrl_src_info_src1_raddr,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
-  output        io_ctrl_src_info_src2_ren,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
-  output [4:0]  io_ctrl_src_info_src2_raddr,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+  output        io_ctrl_info_src1_ren,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+  output [4:0]  io_ctrl_info_src1_raddr,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+  output        io_ctrl_info_src2_ren,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+  output [4:0]  io_ctrl_info_src2_raddr,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
   input  [63:0] io_decodeStage_data_inst,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
   input         io_decodeStage_data_valid,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
   input  [63:0] io_decodeStage_data_pc,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+  input         io_decodeStage_data_addr_misaligned,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
   output [4:0]  io_regfile_src1_raddr,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
   input  [63:0] io_regfile_src1_rdata,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
   output [4:0]  io_regfile_src2_raddr,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
@@ -535,37 +596,65 @@ module DecodeUnit(	// playground/src/pipeline/decode/DecodeUnit.scala:14:7
   input         io_forward_exe_wen,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
   input  [4:0]  io_forward_exe_waddr,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
   input  [63:0] io_forward_exe_wdata,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
-  input         io_forward_is_load,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
-                io_forward_mem_wen,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+  input         io_forward_mem_wen,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
   input  [4:0]  io_forward_mem_waddr,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
   input  [63:0] io_forward_mem_wdata,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
   output [63:0] io_executeStage_data_pc,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
   output        io_executeStage_data_info_valid,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
   output [2:0]  io_executeStage_data_info_fusel,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
-  output [6:0]  io_executeStage_data_info_op,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+  output [5:0]  io_executeStage_data_info_op,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
   output        io_executeStage_data_info_reg_wen,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
   output [4:0]  io_executeStage_data_info_reg_waddr,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
   output [63:0] io_executeStage_data_info_imm,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+                io_executeStage_data_info_inst,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
                 io_executeStage_data_src_info_src1_data,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
-                io_executeStage_data_src_info_src2_data	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+                io_executeStage_data_src_info_src2_data,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+  output        io_executeStage_data_ex_exception_0,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+                io_executeStage_data_ex_exception_2,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+                io_executeStage_data_ex_exception_3,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+                io_executeStage_data_ex_exception_8,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+                io_executeStage_data_ex_exception_9,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+                io_executeStage_data_ex_exception_11,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+                io_executeStage_data_ex_interrupt_0,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+                io_executeStage_data_ex_interrupt_1,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+                io_executeStage_data_ex_interrupt_2,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+                io_executeStage_data_ex_interrupt_3,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+                io_executeStage_data_ex_interrupt_4,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+                io_executeStage_data_ex_interrupt_5,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+                io_executeStage_data_ex_interrupt_6,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+                io_executeStage_data_ex_interrupt_7,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+                io_executeStage_data_ex_interrupt_8,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+                io_executeStage_data_ex_interrupt_9,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+                io_executeStage_data_ex_interrupt_10,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+                io_executeStage_data_ex_interrupt_11,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+  output [63:0] io_executeStage_data_ex_tval_0,	// playground/src/pipeline/decode/DecodeUnit.scala:15:14
+  input  [11:0] interrupt__bore,
+  input  [1:0]  mode__bore
 );
 
   wire [63:0] _ForwardCtrl_io_out_data_src1_rdata;	// playground/src/pipeline/decode/DecodeUnit.scala:28:27
   wire [63:0] _ForwardCtrl_io_out_data_src2_rdata;	// playground/src/pipeline/decode/DecodeUnit.scala:28:27
+  wire        _Decoder_io_out_info_inst_legal;	// playground/src/pipeline/decode/DecodeUnit.scala:25:23
   wire        _Decoder_io_out_info_src1_ren;	// playground/src/pipeline/decode/DecodeUnit.scala:25:23
   wire [4:0]  _Decoder_io_out_info_src1_raddr;	// playground/src/pipeline/decode/DecodeUnit.scala:25:23
   wire        _Decoder_io_out_info_src2_ren;	// playground/src/pipeline/decode/DecodeUnit.scala:25:23
   wire [4:0]  _Decoder_io_out_info_src2_raddr;	// playground/src/pipeline/decode/DecodeUnit.scala:25:23
+  wire [2:0]  _Decoder_io_out_info_fusel;	// playground/src/pipeline/decode/DecodeUnit.scala:25:23
+  wire [5:0]  _Decoder_io_out_info_op;	// playground/src/pipeline/decode/DecodeUnit.scala:25:23
   wire [63:0] _Decoder_io_out_info_imm;	// playground/src/pipeline/decode/DecodeUnit.scala:25:23
   wire [63:0] _Decoder_io_out_info_inst;	// playground/src/pipeline/decode/DecodeUnit.scala:25:23
+  wire        _io_executeStage_data_ex_exception_8_T_3 =
+    _Decoder_io_out_info_fusel == 3'h4;	// playground/src/pipeline/decode/DecodeUnit.scala:25:23, :69:48
+  wire        _io_executeStage_data_ex_exception_8_T = _Decoder_io_out_info_op == 6'h8;	// playground/src/pipeline/decode/DecodeUnit.scala:25:23, :71:13
   Decoder Decoder (	// playground/src/pipeline/decode/DecodeUnit.scala:25:23
     .io_in_inst             (io_decodeStage_data_inst),
+    .io_out_info_inst_legal (_Decoder_io_out_info_inst_legal),
     .io_out_info_src1_ren   (_Decoder_io_out_info_src1_ren),
     .io_out_info_src1_raddr (_Decoder_io_out_info_src1_raddr),
     .io_out_info_src2_ren   (_Decoder_io_out_info_src2_ren),
     .io_out_info_src2_raddr (_Decoder_io_out_info_src2_raddr),
-    .io_out_info_fusel      (io_executeStage_data_info_fusel),
-    .io_out_info_op         (io_executeStage_data_info_op),
+    .io_out_info_fusel      (_Decoder_io_out_info_fusel),
+    .io_out_info_op         (_Decoder_io_out_info_op),
     .io_out_info_reg_wen    (io_executeStage_data_info_reg_wen),
     .io_out_info_reg_waddr  (io_executeStage_data_info_reg_waddr),
     .io_out_info_imm        (_Decoder_io_out_info_imm),
@@ -575,7 +664,6 @@ module DecodeUnit(	// playground/src/pipeline/decode/DecodeUnit.scala:14:7
     .io_in_forward_exe_wen    (io_forward_exe_wen),
     .io_in_forward_exe_waddr  (io_forward_exe_waddr),
     .io_in_forward_exe_wdata  (io_forward_exe_wdata),
-    .io_in_forward_is_load    (io_forward_is_load),
     .io_in_forward_mem_wen    (io_forward_mem_wen),
     .io_in_forward_mem_waddr  (io_forward_mem_waddr),
     .io_in_forward_mem_wdata  (io_forward_mem_wdata),
@@ -586,23 +674,52 @@ module DecodeUnit(	// playground/src/pipeline/decode/DecodeUnit.scala:14:7
     .io_out_data_src1_rdata   (_ForwardCtrl_io_out_data_src1_rdata),
     .io_out_data_src2_rdata   (_ForwardCtrl_io_out_data_src2_rdata)
   );
-  assign io_ctrl_src_info_src1_ren = _Decoder_io_out_info_src1_ren;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :25:23
-  assign io_ctrl_src_info_src1_raddr = _Decoder_io_out_info_src1_raddr;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :25:23
-  assign io_ctrl_src_info_src2_ren = _Decoder_io_out_info_src2_ren;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :25:23
-  assign io_ctrl_src_info_src2_raddr = _Decoder_io_out_info_src2_raddr;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :25:23
+  assign io_ctrl_info_src1_ren = _Decoder_io_out_info_src1_ren;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :25:23
+  assign io_ctrl_info_src1_raddr = _Decoder_io_out_info_src1_raddr;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :25:23
+  assign io_ctrl_info_src2_ren = _Decoder_io_out_info_src2_ren;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :25:23
+  assign io_ctrl_info_src2_raddr = _Decoder_io_out_info_src2_raddr;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :25:23
   assign io_regfile_src1_raddr = _Decoder_io_out_info_src1_raddr;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :25:23
   assign io_regfile_src2_raddr = _Decoder_io_out_info_src2_raddr;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :25:23
   assign io_executeStage_data_pc = io_decodeStage_data_pc;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7
   assign io_executeStage_data_info_valid = io_decodeStage_data_valid;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7
+  assign io_executeStage_data_info_fusel = _Decoder_io_out_info_fusel;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :25:23
+  assign io_executeStage_data_info_op = _Decoder_io_out_info_op;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :25:23
   assign io_executeStage_data_info_imm = _Decoder_io_out_info_imm;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :25:23
+  assign io_executeStage_data_info_inst = _Decoder_io_out_info_inst;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :25:23
   assign io_executeStage_data_src_info_src1_data =
     _Decoder_io_out_info_src1_ren
       ? _ForwardCtrl_io_out_data_src1_rdata
-      : _Decoder_io_out_info_inst[6:0] == 7'h37 ? 64'h0 : io_decodeStage_data_pc;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :25:23, :28:27, :53:{17,24}, src/main/scala/chisel3/util/Mux.scala:126:16
+      : _Decoder_io_out_info_inst[6:0] == 7'h37 ? 64'h0 : io_decodeStage_data_pc;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :25:23, :28:27, :55:{17,24}, :76:52, src/main/scala/chisel3/util/Mux.scala:126:16
   assign io_executeStage_data_src_info_src2_data =
     _Decoder_io_out_info_src2_ren
       ? _ForwardCtrl_io_out_data_src2_rdata
-      : _Decoder_io_out_info_imm;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :25:23, :28:27, :56:49
+      : _Decoder_io_out_info_imm;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :25:23, :28:27, :58:49
+  assign io_executeStage_data_ex_exception_0 = io_decodeStage_data_addr_misaligned;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7
+  assign io_executeStage_data_ex_exception_2 = ~_Decoder_io_out_info_inst_legal;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :25:23, :66:60
+  assign io_executeStage_data_ex_exception_3 =
+    _Decoder_io_out_info_op == 6'h9 & _io_executeStage_data_ex_exception_8_T_3;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :25:23, :69:{13,34,48}
+  assign io_executeStage_data_ex_exception_8 =
+    _io_executeStage_data_ex_exception_8_T & mode__bore == 2'h0
+    & _io_executeStage_data_ex_exception_8_T_3;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :69:{13,48}, :71:13, :75:{41,51}
+  assign io_executeStage_data_ex_exception_9 =
+    _io_executeStage_data_ex_exception_8_T & mode__bore == 2'h1
+    & _io_executeStage_data_ex_exception_8_T_3;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :69:48, :71:13, :73:{41,51}
+  assign io_executeStage_data_ex_exception_11 =
+    _io_executeStage_data_ex_exception_8_T & (&mode__bore)
+    & _io_executeStage_data_ex_exception_8_T_3;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :69:48, :71:{13,41,51}
+  assign io_executeStage_data_ex_interrupt_0 = interrupt__bore[0];	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :64:85
+  assign io_executeStage_data_ex_interrupt_1 = interrupt__bore[1];	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :64:85
+  assign io_executeStage_data_ex_interrupt_2 = interrupt__bore[2];	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :64:85
+  assign io_executeStage_data_ex_interrupt_3 = interrupt__bore[3];	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :64:85
+  assign io_executeStage_data_ex_interrupt_4 = interrupt__bore[4];	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :64:85
+  assign io_executeStage_data_ex_interrupt_5 = interrupt__bore[5];	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :64:85
+  assign io_executeStage_data_ex_interrupt_6 = interrupt__bore[6];	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :64:85
+  assign io_executeStage_data_ex_interrupt_7 = interrupt__bore[7];	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :64:85
+  assign io_executeStage_data_ex_interrupt_8 = interrupt__bore[8];	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :64:85
+  assign io_executeStage_data_ex_interrupt_9 = interrupt__bore[9];	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :64:85
+  assign io_executeStage_data_ex_interrupt_10 = interrupt__bore[10];	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :64:85
+  assign io_executeStage_data_ex_interrupt_11 = interrupt__bore[11];	// playground/src/pipeline/decode/DecodeUnit.scala:14:7, :64:85
+  assign io_executeStage_data_ex_tval_0 = io_decodeStage_data_pc;	// playground/src/pipeline/decode/DecodeUnit.scala:14:7
 endmodule
 
 module ARegFile(	// playground/src/pipeline/decode/ARegfile.scala:25:7
@@ -850,122 +967,306 @@ module ARegFile(	// playground/src/pipeline/decode/ARegfile.scala:25:7
           : _GEN[io_read_src2_raddr];	// playground/src/pipeline/decode/ARegfile.scala:25:7, :32:29, :35:39, :44:24, :50:{27,36}, :51:24, :53:24, :54:{23,45,65}, :55:26
 endmodule
 
-module ExecuteStage(	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
-  input         clock,	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
-                reset,	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
-                io_ctrl_allow_to_go,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
-                io_ctrl_do_flush,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
-  input  [63:0] io_decodeUnit_data_pc,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
-  input         io_decodeUnit_data_info_valid,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
-  input  [2:0]  io_decodeUnit_data_info_fusel,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
-  input  [6:0]  io_decodeUnit_data_info_op,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
-  input         io_decodeUnit_data_info_reg_wen,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
-  input  [4:0]  io_decodeUnit_data_info_reg_waddr,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
-  input  [63:0] io_decodeUnit_data_info_imm,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
-                io_decodeUnit_data_src_info_src1_data,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
-                io_decodeUnit_data_src_info_src2_data,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
-  output [63:0] io_executeUnit_data_pc,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
-  output        io_executeUnit_data_info_valid,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
-  output [2:0]  io_executeUnit_data_info_fusel,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
-  output [6:0]  io_executeUnit_data_info_op,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
-  output        io_executeUnit_data_info_reg_wen,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
-  output [4:0]  io_executeUnit_data_info_reg_waddr,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
-  output [63:0] io_executeUnit_data_info_imm,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
-                io_executeUnit_data_src_info_src1_data,	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
-                io_executeUnit_data_src_info_src2_data	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
+module ExecuteStage(	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
+  input         clock,	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
+                reset,	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
+                io_ctrl_allow_to_go,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_ctrl_do_flush,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+  input  [63:0] io_decodeUnit_data_pc,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+  input         io_decodeUnit_data_info_valid,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+  input  [2:0]  io_decodeUnit_data_info_fusel,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+  input  [5:0]  io_decodeUnit_data_info_op,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+  input         io_decodeUnit_data_info_reg_wen,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+  input  [4:0]  io_decodeUnit_data_info_reg_waddr,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+  input  [63:0] io_decodeUnit_data_info_imm,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_decodeUnit_data_info_inst,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_decodeUnit_data_src_info_src1_data,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_decodeUnit_data_src_info_src2_data,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+  input         io_decodeUnit_data_ex_exception_0,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_decodeUnit_data_ex_exception_2,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_decodeUnit_data_ex_exception_3,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_decodeUnit_data_ex_exception_8,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_decodeUnit_data_ex_exception_9,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_decodeUnit_data_ex_exception_11,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_decodeUnit_data_ex_interrupt_0,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_decodeUnit_data_ex_interrupt_1,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_decodeUnit_data_ex_interrupt_2,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_decodeUnit_data_ex_interrupt_3,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_decodeUnit_data_ex_interrupt_4,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_decodeUnit_data_ex_interrupt_5,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_decodeUnit_data_ex_interrupt_6,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_decodeUnit_data_ex_interrupt_7,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_decodeUnit_data_ex_interrupt_8,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_decodeUnit_data_ex_interrupt_9,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_decodeUnit_data_ex_interrupt_10,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_decodeUnit_data_ex_interrupt_11,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+  input  [63:0] io_decodeUnit_data_ex_tval_0,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+  output [63:0] io_executeUnit_data_pc,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+  output        io_executeUnit_data_info_valid,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+  output [2:0]  io_executeUnit_data_info_fusel,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+  output [5:0]  io_executeUnit_data_info_op,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+  output        io_executeUnit_data_info_reg_wen,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+  output [4:0]  io_executeUnit_data_info_reg_waddr,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+  output [63:0] io_executeUnit_data_info_imm,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_executeUnit_data_info_inst,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_executeUnit_data_src_info_src1_data,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_executeUnit_data_src_info_src2_data,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+  output        io_executeUnit_data_ex_exception_0,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_executeUnit_data_ex_exception_2,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_executeUnit_data_ex_exception_3,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_executeUnit_data_ex_exception_8,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_executeUnit_data_ex_exception_9,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_executeUnit_data_ex_exception_11,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_executeUnit_data_ex_interrupt_0,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_executeUnit_data_ex_interrupt_1,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_executeUnit_data_ex_interrupt_2,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_executeUnit_data_ex_interrupt_3,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_executeUnit_data_ex_interrupt_4,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_executeUnit_data_ex_interrupt_5,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_executeUnit_data_ex_interrupt_6,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_executeUnit_data_ex_interrupt_7,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_executeUnit_data_ex_interrupt_8,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_executeUnit_data_ex_interrupt_9,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_executeUnit_data_ex_interrupt_10,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+                io_executeUnit_data_ex_interrupt_11,	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+  output [63:0] io_executeUnit_data_ex_tval_0	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
 );
 
-  reg [63:0] data_pc;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
-  reg        data_info_valid;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
-  reg [2:0]  data_info_fusel;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
-  reg [6:0]  data_info_op;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
-  reg        data_info_reg_wen;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
-  reg [4:0]  data_info_reg_waddr;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
-  reg [63:0] data_info_imm;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
-  reg [63:0] data_src_info_src1_data;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
-  reg [63:0] data_src_info_src2_data;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
-  always @(posedge clock) begin	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
-    if (reset) begin	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
-      data_pc <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
-      data_info_valid <= 1'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
-      data_info_fusel <= 3'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
-      data_info_op <= 7'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
-      data_info_reg_wen <= 1'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
-      data_info_reg_waddr <= 5'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
-      data_info_imm <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
-      data_src_info_src1_data <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
-      data_src_info_src2_data <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
+  reg [63:0] data_pc;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg        data_info_valid;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg [2:0]  data_info_fusel;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg [5:0]  data_info_op;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg        data_info_reg_wen;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg [4:0]  data_info_reg_waddr;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg [63:0] data_info_imm;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg [63:0] data_info_inst;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg [63:0] data_src_info_src1_data;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg [63:0] data_src_info_src2_data;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg        data_ex_exception_0;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg        data_ex_exception_2;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg        data_ex_exception_3;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg        data_ex_exception_8;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg        data_ex_exception_9;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg        data_ex_exception_11;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg        data_ex_interrupt_0;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg        data_ex_interrupt_1;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg        data_ex_interrupt_2;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg        data_ex_interrupt_3;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg        data_ex_interrupt_4;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg        data_ex_interrupt_5;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg        data_ex_interrupt_6;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg        data_ex_interrupt_7;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg        data_ex_interrupt_8;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg        data_ex_interrupt_9;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg        data_ex_interrupt_10;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg        data_ex_interrupt_11;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  reg [63:0] data_ex_tval_0;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+  always @(posedge clock) begin	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
+    if (reset) begin	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
+      data_pc <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+      data_info_valid <= 1'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+      data_info_fusel <= 3'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:27:{21,34}
+      data_info_op <= 6'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:27:{21,34}
+      data_info_reg_wen <= 1'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+      data_info_reg_waddr <= 5'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:27:{21,34}
+      data_info_imm <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+      data_info_inst <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+      data_src_info_src1_data <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+      data_src_info_src2_data <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+      data_ex_exception_0 <= 1'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+      data_ex_exception_2 <= 1'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+      data_ex_exception_3 <= 1'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+      data_ex_exception_8 <= 1'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+      data_ex_exception_9 <= 1'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+      data_ex_exception_11 <= 1'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+      data_ex_interrupt_0 <= 1'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+      data_ex_interrupt_1 <= 1'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+      data_ex_interrupt_2 <= 1'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+      data_ex_interrupt_3 <= 1'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+      data_ex_interrupt_4 <= 1'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+      data_ex_interrupt_5 <= 1'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+      data_ex_interrupt_6 <= 1'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+      data_ex_interrupt_7 <= 1'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+      data_ex_interrupt_8 <= 1'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+      data_ex_interrupt_9 <= 1'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+      data_ex_interrupt_10 <= 1'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+      data_ex_interrupt_11 <= 1'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+      data_ex_tval_0 <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
     end
-    else begin	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
-      if (io_ctrl_do_flush) begin	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
-        data_pc <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
-        data_info_fusel <= 3'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
-        data_info_op <= 7'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
-        data_info_reg_waddr <= 5'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
-        data_info_imm <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
-        data_src_info_src1_data <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
-        data_src_info_src2_data <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:26:{21,34}
+    else begin	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
+      if (io_ctrl_do_flush) begin	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+        data_pc <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+        data_info_fusel <= 3'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:27:{21,34}
+        data_info_op <= 6'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:27:{21,34}
+        data_info_reg_waddr <= 5'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:27:{21,34}
+        data_info_imm <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+        data_info_inst <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+        data_src_info_src1_data <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+        data_src_info_src2_data <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
+        data_ex_tval_0 <= 64'h0;	// playground/src/pipeline/execute/ExecuteStage.scala:21:14, :27:21
       end
-      else if (io_ctrl_allow_to_go) begin	// playground/src/pipeline/execute/ExecuteStage.scala:20:14
-        data_pc <= io_decodeUnit_data_pc;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
-        data_info_fusel <= io_decodeUnit_data_info_fusel;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
-        data_info_op <= io_decodeUnit_data_info_op;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
-        data_info_reg_waddr <= io_decodeUnit_data_info_reg_waddr;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
-        data_info_imm <= io_decodeUnit_data_info_imm;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
-        data_src_info_src1_data <= io_decodeUnit_data_src_info_src1_data;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
-        data_src_info_src2_data <= io_decodeUnit_data_src_info_src2_data;	// playground/src/pipeline/execute/ExecuteStage.scala:26:21
+      else if (io_ctrl_allow_to_go) begin	// playground/src/pipeline/execute/ExecuteStage.scala:21:14
+        data_pc <= io_decodeUnit_data_pc;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+        data_info_fusel <= io_decodeUnit_data_info_fusel;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+        data_info_op <= io_decodeUnit_data_info_op;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+        data_info_reg_waddr <= io_decodeUnit_data_info_reg_waddr;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+        data_info_imm <= io_decodeUnit_data_info_imm;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+        data_info_inst <= io_decodeUnit_data_info_inst;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+        data_src_info_src1_data <= io_decodeUnit_data_src_info_src1_data;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+        data_src_info_src2_data <= io_decodeUnit_data_src_info_src2_data;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
+        data_ex_tval_0 <= io_decodeUnit_data_ex_tval_0;	// playground/src/pipeline/execute/ExecuteStage.scala:27:21
       end
       data_info_valid <=
         ~io_ctrl_do_flush
-        & (io_ctrl_allow_to_go ? io_decodeUnit_data_info_valid : data_info_valid);	// playground/src/pipeline/execute/ExecuteStage.scala:26:21, :28:26, :29:10, :30:35, :31:10
+        & (io_ctrl_allow_to_go ? io_decodeUnit_data_info_valid : data_info_valid);	// playground/src/pipeline/execute/ExecuteStage.scala:27:21, :29:26, :30:10, :31:35, :32:10
       data_info_reg_wen <=
         ~io_ctrl_do_flush
-        & (io_ctrl_allow_to_go ? io_decodeUnit_data_info_reg_wen : data_info_reg_wen);	// playground/src/pipeline/execute/ExecuteStage.scala:26:21, :28:26, :29:10, :30:35, :31:10
+        & (io_ctrl_allow_to_go ? io_decodeUnit_data_info_reg_wen : data_info_reg_wen);	// playground/src/pipeline/execute/ExecuteStage.scala:27:21, :29:26, :30:10, :31:35, :32:10
+      data_ex_exception_0 <=
+        ~io_ctrl_do_flush
+        & (io_ctrl_allow_to_go ? io_decodeUnit_data_ex_exception_0 : data_ex_exception_0);	// playground/src/pipeline/execute/ExecuteStage.scala:27:21, :29:26, :30:10, :31:35, :32:10
+      data_ex_exception_2 <=
+        ~io_ctrl_do_flush
+        & (io_ctrl_allow_to_go ? io_decodeUnit_data_ex_exception_2 : data_ex_exception_2);	// playground/src/pipeline/execute/ExecuteStage.scala:27:21, :29:26, :30:10, :31:35, :32:10
+      data_ex_exception_3 <=
+        ~io_ctrl_do_flush
+        & (io_ctrl_allow_to_go ? io_decodeUnit_data_ex_exception_3 : data_ex_exception_3);	// playground/src/pipeline/execute/ExecuteStage.scala:27:21, :29:26, :30:10, :31:35, :32:10
+      data_ex_exception_8 <=
+        ~io_ctrl_do_flush
+        & (io_ctrl_allow_to_go ? io_decodeUnit_data_ex_exception_8 : data_ex_exception_8);	// playground/src/pipeline/execute/ExecuteStage.scala:27:21, :29:26, :30:10, :31:35, :32:10
+      data_ex_exception_9 <=
+        ~io_ctrl_do_flush
+        & (io_ctrl_allow_to_go ? io_decodeUnit_data_ex_exception_9 : data_ex_exception_9);	// playground/src/pipeline/execute/ExecuteStage.scala:27:21, :29:26, :30:10, :31:35, :32:10
+      data_ex_exception_11 <=
+        ~io_ctrl_do_flush
+        & (io_ctrl_allow_to_go
+             ? io_decodeUnit_data_ex_exception_11
+             : data_ex_exception_11);	// playground/src/pipeline/execute/ExecuteStage.scala:27:21, :29:26, :30:10, :31:35, :32:10
+      data_ex_interrupt_0 <=
+        ~io_ctrl_do_flush
+        & (io_ctrl_allow_to_go ? io_decodeUnit_data_ex_interrupt_0 : data_ex_interrupt_0);	// playground/src/pipeline/execute/ExecuteStage.scala:27:21, :29:26, :30:10, :31:35, :32:10
+      data_ex_interrupt_1 <=
+        ~io_ctrl_do_flush
+        & (io_ctrl_allow_to_go ? io_decodeUnit_data_ex_interrupt_1 : data_ex_interrupt_1);	// playground/src/pipeline/execute/ExecuteStage.scala:27:21, :29:26, :30:10, :31:35, :32:10
+      data_ex_interrupt_2 <=
+        ~io_ctrl_do_flush
+        & (io_ctrl_allow_to_go ? io_decodeUnit_data_ex_interrupt_2 : data_ex_interrupt_2);	// playground/src/pipeline/execute/ExecuteStage.scala:27:21, :29:26, :30:10, :31:35, :32:10
+      data_ex_interrupt_3 <=
+        ~io_ctrl_do_flush
+        & (io_ctrl_allow_to_go ? io_decodeUnit_data_ex_interrupt_3 : data_ex_interrupt_3);	// playground/src/pipeline/execute/ExecuteStage.scala:27:21, :29:26, :30:10, :31:35, :32:10
+      data_ex_interrupt_4 <=
+        ~io_ctrl_do_flush
+        & (io_ctrl_allow_to_go ? io_decodeUnit_data_ex_interrupt_4 : data_ex_interrupt_4);	// playground/src/pipeline/execute/ExecuteStage.scala:27:21, :29:26, :30:10, :31:35, :32:10
+      data_ex_interrupt_5 <=
+        ~io_ctrl_do_flush
+        & (io_ctrl_allow_to_go ? io_decodeUnit_data_ex_interrupt_5 : data_ex_interrupt_5);	// playground/src/pipeline/execute/ExecuteStage.scala:27:21, :29:26, :30:10, :31:35, :32:10
+      data_ex_interrupt_6 <=
+        ~io_ctrl_do_flush
+        & (io_ctrl_allow_to_go ? io_decodeUnit_data_ex_interrupt_6 : data_ex_interrupt_6);	// playground/src/pipeline/execute/ExecuteStage.scala:27:21, :29:26, :30:10, :31:35, :32:10
+      data_ex_interrupt_7 <=
+        ~io_ctrl_do_flush
+        & (io_ctrl_allow_to_go ? io_decodeUnit_data_ex_interrupt_7 : data_ex_interrupt_7);	// playground/src/pipeline/execute/ExecuteStage.scala:27:21, :29:26, :30:10, :31:35, :32:10
+      data_ex_interrupt_8 <=
+        ~io_ctrl_do_flush
+        & (io_ctrl_allow_to_go ? io_decodeUnit_data_ex_interrupt_8 : data_ex_interrupt_8);	// playground/src/pipeline/execute/ExecuteStage.scala:27:21, :29:26, :30:10, :31:35, :32:10
+      data_ex_interrupt_9 <=
+        ~io_ctrl_do_flush
+        & (io_ctrl_allow_to_go ? io_decodeUnit_data_ex_interrupt_9 : data_ex_interrupt_9);	// playground/src/pipeline/execute/ExecuteStage.scala:27:21, :29:26, :30:10, :31:35, :32:10
+      data_ex_interrupt_10 <=
+        ~io_ctrl_do_flush
+        & (io_ctrl_allow_to_go
+             ? io_decodeUnit_data_ex_interrupt_10
+             : data_ex_interrupt_10);	// playground/src/pipeline/execute/ExecuteStage.scala:27:21, :29:26, :30:10, :31:35, :32:10
+      data_ex_interrupt_11 <=
+        ~io_ctrl_do_flush
+        & (io_ctrl_allow_to_go
+             ? io_decodeUnit_data_ex_interrupt_11
+             : data_ex_interrupt_11);	// playground/src/pipeline/execute/ExecuteStage.scala:27:21, :29:26, :30:10, :31:35, :32:10
     end
   end // always @(posedge)
-  `ifdef ENABLE_INITIAL_REG_	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
-    `ifdef FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
-      `FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
+  `ifdef ENABLE_INITIAL_REG_	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
+    `ifdef FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
+      `FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
     `endif // FIRRTL_BEFORE_INITIAL
-    initial begin	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
-      automatic logic [31:0] _RANDOM[0:10];	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
-      `ifdef INIT_RANDOM_PROLOG_	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
-        `INIT_RANDOM_PROLOG_	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
+    initial begin	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
+      automatic logic [31:0] _RANDOM[0:13];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
+      `ifdef INIT_RANDOM_PROLOG_	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
+        `INIT_RANDOM_PROLOG_	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
       `endif // INIT_RANDOM_PROLOG_
-      `ifdef RANDOMIZE_REG_INIT	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
-        for (logic [3:0] i = 4'h0; i < 4'hB; i += 4'h1) begin
-          _RANDOM[i] = `RANDOM;	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
-        end	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
-        data_pc = {_RANDOM[4'h0], _RANDOM[4'h1]};	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
-        data_info_valid = _RANDOM[4'h2][0];	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
-        data_info_fusel = _RANDOM[4'h2][16:14];	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
-        data_info_op = _RANDOM[4'h2][23:17];	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
-        data_info_reg_wen = _RANDOM[4'h2][24];	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
-        data_info_reg_waddr = _RANDOM[4'h2][29:25];	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
-        data_info_imm = {_RANDOM[4'h2][31:30], _RANDOM[4'h3], _RANDOM[4'h4][29:0]};	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
+      `ifdef RANDOMIZE_REG_INIT	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
+        for (logic [3:0] i = 4'h0; i < 4'hE; i += 4'h1) begin
+          _RANDOM[i] = `RANDOM;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
+        end	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
+        data_pc = {_RANDOM[4'h0], _RANDOM[4'h1]};	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+        data_info_valid = _RANDOM[4'h2][0];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+        data_info_fusel = _RANDOM[4'h2][16:14];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+        data_info_op = _RANDOM[4'h2][22:17];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+        data_info_reg_wen = _RANDOM[4'h2][23];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+        data_info_reg_waddr = _RANDOM[4'h2][28:24];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+        data_info_imm = {_RANDOM[4'h2][31:29], _RANDOM[4'h3], _RANDOM[4'h4][28:0]};	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+        data_info_inst = {_RANDOM[4'h4][31:29], _RANDOM[4'h5], _RANDOM[4'h6][28:0]};	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
         data_src_info_src1_data =
-          {_RANDOM[4'h6][31:30], _RANDOM[4'h7], _RANDOM[4'h8][29:0]};	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
+          {_RANDOM[4'h6][31:29], _RANDOM[4'h7], _RANDOM[4'h8][28:0]};	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
         data_src_info_src2_data =
-          {_RANDOM[4'h8][31:30], _RANDOM[4'h9], _RANDOM[4'hA][29:0]};	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
+          {_RANDOM[4'h8][31:29], _RANDOM[4'h9], _RANDOM[4'hA][28:0]};	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+        data_ex_exception_0 = _RANDOM[4'hA][29];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+        data_ex_exception_2 = _RANDOM[4'hA][31];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+        data_ex_exception_3 = _RANDOM[4'hB][0];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+        data_ex_exception_8 = _RANDOM[4'hB][5];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+        data_ex_exception_9 = _RANDOM[4'hB][6];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+        data_ex_exception_11 = _RANDOM[4'hB][8];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+        data_ex_interrupt_0 = _RANDOM[4'hB][13];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+        data_ex_interrupt_1 = _RANDOM[4'hB][14];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+        data_ex_interrupt_2 = _RANDOM[4'hB][15];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+        data_ex_interrupt_3 = _RANDOM[4'hB][16];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+        data_ex_interrupt_4 = _RANDOM[4'hB][17];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+        data_ex_interrupt_5 = _RANDOM[4'hB][18];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+        data_ex_interrupt_6 = _RANDOM[4'hB][19];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+        data_ex_interrupt_7 = _RANDOM[4'hB][20];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+        data_ex_interrupt_8 = _RANDOM[4'hB][21];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+        data_ex_interrupt_9 = _RANDOM[4'hB][22];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+        data_ex_interrupt_10 = _RANDOM[4'hB][23];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+        data_ex_interrupt_11 = _RANDOM[4'hB][24];	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+        data_ex_tval_0 = {_RANDOM[4'hB][31:25], _RANDOM[4'hC], _RANDOM[4'hD][24:0]};	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
       `endif // RANDOMIZE_REG_INIT
     end // initial
-    `ifdef FIRRTL_AFTER_INITIAL	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
-      `FIRRTL_AFTER_INITIAL	// playground/src/pipeline/execute/ExecuteStage.scala:19:7
+    `ifdef FIRRTL_AFTER_INITIAL	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
+      `FIRRTL_AFTER_INITIAL	// playground/src/pipeline/execute/ExecuteStage.scala:20:7
     `endif // FIRRTL_AFTER_INITIAL
   `endif // ENABLE_INITIAL_REG_
-  assign io_executeUnit_data_pc = data_pc;	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
-  assign io_executeUnit_data_info_valid = data_info_valid;	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
-  assign io_executeUnit_data_info_fusel = data_info_fusel;	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
-  assign io_executeUnit_data_info_op = data_info_op;	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
-  assign io_executeUnit_data_info_reg_wen = data_info_reg_wen;	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
-  assign io_executeUnit_data_info_reg_waddr = data_info_reg_waddr;	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
-  assign io_executeUnit_data_info_imm = data_info_imm;	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
-  assign io_executeUnit_data_src_info_src1_data = data_src_info_src1_data;	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
-  assign io_executeUnit_data_src_info_src2_data = data_src_info_src2_data;	// playground/src/pipeline/execute/ExecuteStage.scala:19:7, :26:21
+  assign io_executeUnit_data_pc = data_pc;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_info_valid = data_info_valid;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_info_fusel = data_info_fusel;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_info_op = data_info_op;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_info_reg_wen = data_info_reg_wen;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_info_reg_waddr = data_info_reg_waddr;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_info_imm = data_info_imm;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_info_inst = data_info_inst;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_src_info_src1_data = data_src_info_src1_data;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_src_info_src2_data = data_src_info_src2_data;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_ex_exception_0 = data_ex_exception_0;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_ex_exception_2 = data_ex_exception_2;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_ex_exception_3 = data_ex_exception_3;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_ex_exception_8 = data_ex_exception_8;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_ex_exception_9 = data_ex_exception_9;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_ex_exception_11 = data_ex_exception_11;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_ex_interrupt_0 = data_ex_interrupt_0;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_ex_interrupt_1 = data_ex_interrupt_1;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_ex_interrupt_2 = data_ex_interrupt_2;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_ex_interrupt_3 = data_ex_interrupt_3;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_ex_interrupt_4 = data_ex_interrupt_4;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_ex_interrupt_5 = data_ex_interrupt_5;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_ex_interrupt_6 = data_ex_interrupt_6;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_ex_interrupt_7 = data_ex_interrupt_7;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_ex_interrupt_8 = data_ex_interrupt_8;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_ex_interrupt_9 = data_ex_interrupt_9;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_ex_interrupt_10 = data_ex_interrupt_10;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_ex_interrupt_11 = data_ex_interrupt_11;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
+  assign io_executeUnit_data_ex_tval_0 = data_ex_tval_0;	// playground/src/pipeline/execute/ExecuteStage.scala:20:7, :27:21
 endmodule
 
 module Alu(	// playground/src/pipeline/execute/fu/Alu.scala:8:7
-  input  [6:0]  io_info_op,	// playground/src/pipeline/execute/fu/Alu.scala:9:14
+  input  [5:0]  io_info_op,	// playground/src/pipeline/execute/fu/Alu.scala:9:14
   input  [63:0] io_src_info_src1_data,	// playground/src/pipeline/execute/fu/Alu.scala:9:14
                 io_src_info_src2_data,	// playground/src/pipeline/execute/fu/Alu.scala:9:14
   output [63:0] io_result	// playground/src/pipeline/execute/fu/Alu.scala:9:14
@@ -973,17 +1274,17 @@ module Alu(	// playground/src/pipeline/execute/fu/Alu.scala:8:7
 
   wire [64:0]  _sum_T_3 =
     {1'h0, io_src_info_src1_data} + {1'h0, io_src_info_src2_data ^ {64{~(io_info_op[5])}}}
-    + {64'h0, ~(io_info_op[5])};	// playground/src/defines/isa/Instructions.scala:61:34, playground/src/pipeline/execute/fu/Alu.scala:17:16, :18:{22,31,37,54}
+    + {64'h0, ~(io_info_op[5])};	// playground/src/defines/isa/Instructions.scala:59:34, playground/src/pipeline/execute/fu/Alu.scala:17:16, :18:{22,31,37,54}
   wire [63:0]  xor_0 = io_src_info_src1_data ^ io_src_info_src2_data;	// playground/src/pipeline/execute/fu/Alu.scala:19:21
   wire [63:0]  shsrc1 =
-    io_info_op == 7'h1D
+    io_info_op == 6'h1D
       ? {{32{io_src_info_src1_data[31]}}, io_src_info_src1_data[31:0]}
-      : io_info_op == 7'h15
+      : io_info_op == 6'h15
           ? {32'h0, io_src_info_src1_data[31:0]}
-          : io_src_info_src1_data;	// playground/src/defines/Util.scala:9:20, :10:{44,49}, :17:44, playground/src/pipeline/execute/fu/Alu.scala:23:48, :25:40
+          : io_src_info_src1_data;	// playground/src/defines/Util.scala:33:20, :34:{44,49}, :41:44, playground/src/pipeline/execute/fu/Alu.scala:23:48, :25:40
   wire [5:0]   shamt =
-    io_info_op[4] ? {1'h0, io_src_info_src2_data[4:0]} : io_src_info_src2_data[5:0];	// playground/src/defines/isa/Instructions.scala:60:34, playground/src/pipeline/execute/fu/Alu.scala:18:22, :29:{18,47,75}
-  wire [126:0] _res_T_1 = {63'h0, shsrc1} << shamt;	// playground/src/defines/Util.scala:17:44, playground/src/pipeline/execute/fu/Alu.scala:23:48, :29:18, :32:34
+    io_info_op[4] ? {1'h0, io_src_info_src2_data[4:0]} : io_src_info_src2_data[5:0];	// playground/src/defines/isa/Instructions.scala:58:34, playground/src/pipeline/execute/fu/Alu.scala:18:22, :29:{18,47,75}
+  wire [126:0] _res_T_1 = {63'h0, shsrc1} << shamt;	// playground/src/defines/Util.scala:41:44, playground/src/pipeline/execute/fu/Alu.scala:23:48, :29:18, :32:34
   wire [63:0]  _GEN = {58'h0, shamt};	// playground/src/pipeline/execute/fu/Alu.scala:29:18, :36:33
   wire [63:0]  res =
     io_info_op[3:0] == 4'hD
@@ -1000,37 +1301,45 @@ module Alu(	// playground/src/pipeline/execute/fu/Alu.scala:8:7
                           ? {63'h0, ~(_sum_T_3[64])}
                           : io_info_op[3:0] == 4'h2
                               ? {63'h0, xor_0[63] ^ ~(_sum_T_3[64])}
-                              : io_info_op[3:0] == 4'h1 ? _res_T_1[63:0] : _sum_T_3[63:0];	// playground/src/defines/Util.scala:17:44, playground/src/pipeline/execute/fu/Alu.scala:18:54, :19:21, :20:{16,20}, :21:{19,30}, :23:48, :30:{25,37}, :32:{34,43}, :36:33, :37:31, :38:31, :39:41
-  assign io_result = io_info_op[4] ? {{32{res[31]}}, res[31:0]} : res;	// playground/src/defines/Util.scala:9:20, :10:49, playground/src/defines/isa/Instructions.scala:60:34, playground/src/pipeline/execute/fu/Alu.scala:8:7, :30:37, :42:{19,60}
+                              : io_info_op[3:0] == 4'h1 ? _res_T_1[63:0] : _sum_T_3[63:0];	// playground/src/defines/Util.scala:41:44, playground/src/pipeline/execute/fu/Alu.scala:18:54, :19:21, :20:{16,20}, :21:{19,30}, :23:48, :30:{25,37}, :32:{34,43}, :36:33, :37:31, :38:31, :39:41
+  assign io_result = io_info_op[4] ? {{32{res[31]}}, res[31:0]} : res;	// playground/src/defines/Util.scala:33:20, :34:49, playground/src/defines/isa/Instructions.scala:58:34, playground/src/pipeline/execute/fu/Alu.scala:8:7, :30:37, :42:{19,60}
 endmodule
 
 module Bru(	// playground/src/pipeline/execute/fu/Bru.scala:8:7
   input  [63:0] io_in_pc,	// playground/src/pipeline/execute/fu/Bru.scala:9:14
   input         io_in_info_valid,	// playground/src/pipeline/execute/fu/Bru.scala:9:14
   input  [2:0]  io_in_info_fusel,	// playground/src/pipeline/execute/fu/Bru.scala:9:14
-  input  [6:0]  io_in_info_op,	// playground/src/pipeline/execute/fu/Bru.scala:9:14
+  input  [5:0]  io_in_info_op,	// playground/src/pipeline/execute/fu/Bru.scala:9:14
   input  [63:0] io_in_info_imm,	// playground/src/pipeline/execute/fu/Bru.scala:9:14
                 io_in_src_info_src1_data,	// playground/src/pipeline/execute/fu/Bru.scala:9:14
                 io_in_src_info_src2_data,	// playground/src/pipeline/execute/fu/Bru.scala:9:14
   output        io_out_branch,	// playground/src/pipeline/execute/fu/Bru.scala:9:14
-  output [63:0] io_out_target	// playground/src/pipeline/execute/fu/Bru.scala:9:14
+  output [63:0] io_out_target,	// playground/src/pipeline/execute/fu/Bru.scala:9:14
+  output        io_out_ex_exception_0,	// playground/src/pipeline/execute/fu/Bru.scala:9:14
+  output [63:0] io_out_ex_tval_0	// playground/src/pipeline/execute/fu/Bru.scala:9:14
 );
 
+  wire [63:0] io_out_target_0;	// playground/src/pipeline/execute/fu/Bru.scala:44:23
+  wire        valid = io_in_info_fusel == 3'h3 & io_in_info_valid;	// playground/src/pipeline/execute/fu/Bru.scala:22:{22,37}
   wire [64:0] _adder_T_3 =
     {1'h0, io_in_src_info_src1_data}
     + {1'h0, io_in_src_info_src2_data ^ {64{~(io_in_info_op[3])}}}
-    + {64'h0, ~(io_in_info_op[3])};	// playground/src/defines/isa/Instructions.scala:74:{36,41}, playground/src/pipeline/execute/fu/Bru.scala:25:16, :26:{22,31,37,54}
-  wire [63:0] xor_0 = io_in_src_info_src1_data ^ io_in_src_info_src2_data;	// playground/src/pipeline/execute/fu/Bru.scala:27:21
-  assign io_out_branch =
-    io_in_info_fusel == 3'h5 & io_in_info_valid
-    & (io_in_info_op[3]
-       | (io_in_info_op[2:1] == 2'h0 & xor_0 == 64'h0 | io_in_info_op[2:1] == 2'h2
-          & (xor_0[63] ^ ~(_adder_T_3[64])) | (&(io_in_info_op[2:1])) & ~(_adder_T_3[64]))
-       ^ io_in_info_op[0]);	// playground/src/defines/Util.scala:22:34, playground/src/defines/isa/Instructions.scala:74:41, :77:40, :78:40, playground/src/pipeline/execute/fu/Bru.scala:8:7, :21:22, :26:{37,54}, :27:21, :28:{16,22}, :29:{19,30}, :31:53, :37:67, :41:{26,37}, src/main/scala/chisel3/util/Mux.scala:30:73
-  assign io_out_target =
-    io_in_info_op == 7'hA
+    + {64'h0, ~(io_in_info_op[3])};	// playground/src/defines/isa/Instructions.scala:72:{36,41}, playground/src/pipeline/execute/fu/Bru.scala:26:16, :27:{22,31,37,54}
+  wire [63:0] xor_0 = io_in_src_info_src1_data ^ io_in_src_info_src2_data;	// playground/src/pipeline/execute/fu/Bru.scala:28:21
+  wire        _io_out_ex_exception_0_T =
+    io_in_info_op[3]
+    | (io_in_info_op[2:1] == 2'h0 & xor_0 == 64'h0 | io_in_info_op[2:1] == 2'h2
+       & (xor_0[63] ^ ~(_adder_T_3[64])) | (&(io_in_info_op[2:1])) & ~(_adder_T_3[64]))
+    ^ io_in_info_op[0];	// playground/src/defines/Util.scala:46:34, playground/src/defines/isa/Instructions.scala:72:41, :75:40, :76:40, playground/src/pipeline/execute/fu/Bru.scala:27:{37,54}, :28:21, :29:{16,22}, :30:{19,30}, :32:53, :38:67, :43:37, src/main/scala/chisel3/util/Mux.scala:30:73
+  assign io_out_target_0 =
+    io_in_info_op == 6'hA
       ? io_in_src_info_src1_data + io_in_src_info_src2_data & 64'hFFFFFFFFFFFFFFFE
-      : io_in_pc + io_in_info_imm;	// playground/src/pipeline/execute/fu/Bru.scala:8:7, :39:20, :42:{23,40,48,50,75}
+      : io_in_pc + io_in_info_imm;	// playground/src/pipeline/execute/fu/Bru.scala:40:25, :44:{23,40,48,50,75}
+  assign io_out_branch = valid & _io_out_ex_exception_0_T & ~(|(io_out_target_0[1:0]));	// playground/src/pipeline/execute/fu/Bru.scala:8:7, :22:37, :41:{35,42}, :43:{37,50}, :44:23
+  assign io_out_target = io_out_target_0;	// playground/src/pipeline/execute/fu/Bru.scala:8:7, :44:23
+  assign io_out_ex_exception_0 =
+    valid & _io_out_ex_exception_0_T & (|(io_out_target_0[1:0]));	// playground/src/pipeline/execute/fu/Bru.scala:8:7, :22:37, :41:{35,42}, :43:37, :44:23, :47:76
+  assign io_out_ex_tval_0 = io_out_target_0;	// playground/src/pipeline/execute/fu/Bru.scala:8:7, :44:23
 endmodule
 
 module Mul(	// playground/src/pipeline/execute/fu/Mul.scala:9:7
@@ -1064,7 +1373,7 @@ module Div(	// playground/src/pipeline/execute/fu/Div.scala:9:7
 endmodule
 
 module Mdu(	// playground/src/pipeline/execute/fu/Mdu.scala:9:7
-  input  [6:0]  io_info_op,	// playground/src/pipeline/execute/fu/Mdu.scala:10:14
+  input  [5:0]  io_info_op,	// playground/src/pipeline/execute/fu/Mdu.scala:10:14
   input  [63:0] io_src_info_src1_data,	// playground/src/pipeline/execute/fu/Mdu.scala:10:14
                 io_src_info_src2_data,	// playground/src/pipeline/execute/fu/Mdu.scala:10:14
   output [63:0] io_result	// playground/src/pipeline/execute/fu/Mdu.scala:10:14
@@ -1072,105 +1381,114 @@ module Mdu(	// playground/src/pipeline/execute/fu/Mdu.scala:9:7
 
   wire [127:0] _Div_io_result;	// playground/src/pipeline/execute/fu/Mdu.scala:18:19
   wire [127:0] _Mul_io_result;	// playground/src/pipeline/execute/fu/Mdu.scala:17:19
-  wire [64:0]  _GEN = {1'h0, io_src_info_src1_data};	// playground/src/defines/Util.scala:17:44
-  wire [64:0]  _GEN_0 = {io_src_info_src1_data[63], io_src_info_src1_data};	// playground/src/defines/Util.scala:9:20, :10:44
-  wire         _GEN_1 = io_info_op[1:0] == 2'h1;	// playground/src/defines/Util.scala:22:34, playground/src/pipeline/execute/fu/Mdu.scala:37:28
-  wire         _GEN_2 = io_info_op[1:0] == 2'h2;	// playground/src/defines/Util.scala:22:34, playground/src/pipeline/execute/fu/Mdu.scala:37:28
-  wire [64:0]  _GEN_3 = {1'h0, io_src_info_src2_data};	// playground/src/defines/Util.scala:17:44
-  wire         _GEN_4 = io_info_op[2] & ~(io_info_op[0]);	// playground/src/defines/isa/Instructions.scala:140:31, :141:{39,42,45}
+  wire [64:0]  _GEN = {1'h0, io_src_info_src1_data};	// playground/src/defines/Util.scala:41:44
+  wire [64:0]  _GEN_0 = {io_src_info_src1_data[63], io_src_info_src1_data};	// playground/src/defines/Util.scala:33:20, :34:44
+  wire         _GEN_1 = io_info_op[1:0] == 2'h1;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Mdu.scala:37:28
+  wire         _GEN_2 = io_info_op[1:0] == 2'h2;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Mdu.scala:37:28
+  wire [64:0]  _GEN_3 = {1'h0, io_src_info_src2_data};	// playground/src/defines/Util.scala:41:44
+  wire         _GEN_4 = io_info_op[2] & ~(io_info_op[0]);	// playground/src/defines/isa/Instructions.scala:114:31, :115:{39,42,45}
   wire [63:0]  result =
     io_info_op[2]
       ? (io_info_op[1] ? _Div_io_result[127:64] : _Div_io_result[63:0])
-      : (|(io_info_op[1:0])) ? _Mul_io_result[127:64] : _Mul_io_result[63:0];	// playground/src/defines/Util.scala:22:34, playground/src/defines/isa/Instructions.scala:140:31, playground/src/pipeline/execute/fu/Mdu.scala:17:19, :18:19, :37:28, :46:{23,62,87}, :47:{23,26,41,73}, :48:23
+      : (|(io_info_op[1:0])) ? _Mul_io_result[127:64] : _Mul_io_result[63:0];	// playground/src/defines/Util.scala:46:34, playground/src/defines/isa/Instructions.scala:114:31, playground/src/pipeline/execute/fu/Mdu.scala:17:19, :18:19, :37:28, :46:{23,62,87}, :47:{23,26,41,73}, :48:23
   Mul Mul (	// playground/src/pipeline/execute/fu/Mdu.scala:17:19
     .io_src1
       (((|(io_info_op[1:0])) ? 65'h0 : _GEN) | (_GEN_1 ? _GEN_0 : 65'h0)
-       | (_GEN_2 ? _GEN_0 : 65'h0) | ((&(io_info_op[1:0])) ? _GEN : 65'h0)),	// playground/src/defines/Util.scala:10:44, :17:44, :22:34, playground/src/pipeline/execute/fu/Mdu.scala:37:28, src/main/scala/chisel3/util/Mux.scala:30:73
+       | (_GEN_2 ? _GEN_0 : 65'h0) | ((&(io_info_op[1:0])) ? _GEN : 65'h0)),	// playground/src/defines/Util.scala:34:44, :41:44, :46:34, playground/src/pipeline/execute/fu/Mdu.scala:37:28, src/main/scala/chisel3/util/Mux.scala:30:73
     .io_src2
       (((|(io_info_op[1:0])) ? 65'h0 : _GEN_3)
        | (_GEN_1 ? {io_src_info_src2_data[63], io_src_info_src2_data} : 65'h0)
-       | (_GEN_2 ? _GEN_3 : 65'h0) | ((&(io_info_op[1:0])) ? _GEN_3 : 65'h0)),	// playground/src/defines/Util.scala:9:20, :10:44, :17:44, :22:34, playground/src/pipeline/execute/fu/Mdu.scala:37:28, src/main/scala/chisel3/util/Mux.scala:30:73
+       | (_GEN_2 ? _GEN_3 : 65'h0) | ((&(io_info_op[1:0])) ? _GEN_3 : 65'h0)),	// playground/src/defines/Util.scala:33:20, :34:44, :41:44, :46:34, playground/src/pipeline/execute/fu/Mdu.scala:37:28, src/main/scala/chisel3/util/Mux.scala:30:73
     .io_result (_Mul_io_result)
   );
   Div Div (	// playground/src/pipeline/execute/fu/Mdu.scala:18:19
     .io_src1
       (io_info_op[3]
          ? {{32{_GEN_4 & io_src_info_src1_data[31]}}, io_src_info_src1_data[31:0]}
-         : io_src_info_src1_data),	// playground/src/defines/Util.scala:9:20, :10:{44,49}, :17:44, playground/src/defines/isa/Instructions.scala:141:39, :142:31, playground/src/pipeline/execute/fu/Mdu.scala:41:{8,18,58}
+         : io_src_info_src1_data),	// playground/src/defines/Util.scala:33:20, :34:{44,49}, :41:44, playground/src/defines/isa/Instructions.scala:115:39, :116:31, playground/src/pipeline/execute/fu/Mdu.scala:41:{8,18,58}
     .io_src2
       (io_info_op[3]
          ? {{32{_GEN_4 & io_src_info_src2_data[31]}}, io_src_info_src2_data[31:0]}
-         : io_src_info_src2_data),	// playground/src/defines/Util.scala:9:20, :10:{44,49}, :17:44, playground/src/defines/isa/Instructions.scala:141:39, :142:31, playground/src/pipeline/execute/fu/Mdu.scala:41:{8,18,58}
-    .io_signed (_GEN_4),	// playground/src/defines/isa/Instructions.scala:141:39
+         : io_src_info_src2_data),	// playground/src/defines/Util.scala:33:20, :34:{44,49}, :41:44, playground/src/defines/isa/Instructions.scala:115:39, :116:31, playground/src/pipeline/execute/fu/Mdu.scala:41:{8,18,58}
+    .io_signed (_GEN_4),	// playground/src/defines/isa/Instructions.scala:115:39
     .io_result (_Div_io_result)
   );
-  assign io_result = io_info_op[3] ? {{32{result[31]}}, result[31:0]} : result;	// playground/src/defines/Util.scala:9:20, :10:{44,49}, playground/src/defines/isa/Instructions.scala:142:31, playground/src/pipeline/execute/fu/Mdu.scala:9:7, :48:23, :50:{19,45}
+  assign io_result = io_info_op[3] ? {{32{result[31]}}, result[31:0]} : result;	// playground/src/defines/Util.scala:33:20, :34:{44,49}, playground/src/defines/isa/Instructions.scala:116:31, playground/src/pipeline/execute/fu/Mdu.scala:9:7, :48:23, :50:{19,45}
 endmodule
 
 module Lsu(	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
   input         clock,	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
                 io_info_valid,	// playground/src/pipeline/execute/fu/Lsu.scala:11:14
   input  [2:0]  io_info_fusel,	// playground/src/pipeline/execute/fu/Lsu.scala:11:14
-  input  [6:0]  io_info_op,	// playground/src/pipeline/execute/fu/Lsu.scala:11:14
+  input  [5:0]  io_info_op,	// playground/src/pipeline/execute/fu/Lsu.scala:11:14
   input  [63:0] io_info_imm,	// playground/src/pipeline/execute/fu/Lsu.scala:11:14
                 io_src_info_src1_data,	// playground/src/pipeline/execute/fu/Lsu.scala:11:14
                 io_src_info_src2_data,	// playground/src/pipeline/execute/fu/Lsu.scala:11:14
+  output        io_ex_exception_4,	// playground/src/pipeline/execute/fu/Lsu.scala:11:14
+                io_ex_exception_6,	// playground/src/pipeline/execute/fu/Lsu.scala:11:14
+  output [63:0] io_ex_tval_4,	// playground/src/pipeline/execute/fu/Lsu.scala:11:14
+                io_ex_tval_6,	// playground/src/pipeline/execute/fu/Lsu.scala:11:14
   output        io_dataSram_en,	// playground/src/pipeline/execute/fu/Lsu.scala:11:14
   output [31:0] io_dataSram_addr,	// playground/src/pipeline/execute/fu/Lsu.scala:11:14
   output [63:0] io_dataSram_wdata,	// playground/src/pipeline/execute/fu/Lsu.scala:11:14
   output [7:0]  io_dataSram_wen,	// playground/src/pipeline/execute/fu/Lsu.scala:11:14
   input  [63:0] io_dataSram_rdata,	// playground/src/pipeline/execute/fu/Lsu.scala:11:14
-  input         allow_to_go__bore,
   output [63:0] result__bore,
-  input  [63:0] mem_addr__bore,
-  input  [6:0]  mem_op__bore
+  input         allow_to_go__bore,
+  input  [5:0]  mem_op__bore,
+  input  [63:0] mem_addr__bore
 );
 
-  wire        valid = io_info_valid & io_info_fusel == 3'h1 & allow_to_go__bore;	// playground/src/pipeline/execute/fu/Lsu.scala:64:{50,65}
-  wire [63:0] _addr_T = io_src_info_src1_data + io_info_imm;	// playground/src/pipeline/execute/fu/Lsu.scala:68:41
-  wire        _req_wmask_T_1 = io_info_op[1:0] == 2'h1;	// playground/src/defines/Util.scala:22:34, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :70:21
-  wire        _req_wmask_T_2 = io_info_op[1:0] == 2'h2;	// playground/src/defines/Util.scala:22:34, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :70:21
+  wire        valid = io_info_valid & io_info_fusel == 3'h2 & allow_to_go__bore;	// playground/src/pipeline/execute/fu/Lsu.scala:65:{50,65}
+  wire        is_store = valid & io_info_op[3];	// playground/src/defines/isa/Instructions.scala:93:39, playground/src/pipeline/execute/fu/Lsu.scala:65:65, :68:25
+  wire [63:0] _addr_T = io_src_info_src1_data + io_info_imm;	// playground/src/pipeline/execute/fu/Lsu.scala:69:41
+  wire        _req_wmask_T_1 = io_info_op[1:0] == 2'h1;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :71:21
+  wire        _req_wmask_T_2 = io_info_op[1:0] == 2'h2;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :71:21
   wire [14:0] req_wmask =
     {7'h0,
      {4'h0,
       {2'h0, {1'h0, ~(|(io_info_op[1:0]))} | {2{_req_wmask_T_1}}} | {4{_req_wmask_T_2}}}
-       | {8{&(io_info_op[1:0])}}} << _addr_T[2:0];	// playground/src/defines/Util.scala:22:34, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :29:{7,14}, :68:41, :70:21, src/main/scala/chisel3/util/Mux.scala:30:73
-  wire [63:0] _rdata64_T_17 = mem_addr__bore[2:0] == 3'h0 ? io_dataSram_rdata : 64'h0;	// playground/src/defines/Util.scala:22:34, playground/src/pipeline/execute/fu/Lsu.scala:81:13, src/main/scala/chisel3/util/Mux.scala:30:73
+       | {8{&(io_info_op[1:0])}}} << _addr_T[2:0];	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :30:{7,14}, :69:41, :71:21, src/main/scala/chisel3/util/Mux.scala:30:73
+  wire [63:0] _rdata64_T_17 = mem_addr__bore[2:0] == 3'h0 ? io_dataSram_rdata : 64'h0;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:82:13, :138:55, src/main/scala/chisel3/util/Mux.scala:30:73
   wire [55:0] _GEN =
-    _rdata64_T_17[55:0] | (mem_addr__bore[2:0] == 3'h1 ? io_dataSram_rdata[63:8] : 56'h0);	// playground/src/defines/Util.scala:10:49, :22:34, playground/src/pipeline/execute/fu/Lsu.scala:64:50, :81:13, :84:24, src/main/scala/chisel3/util/Mux.scala:30:73
+    _rdata64_T_17[55:0] | (mem_addr__bore[2:0] == 3'h1 ? io_dataSram_rdata[63:8] : 56'h0);	// playground/src/defines/Util.scala:34:49, :46:34, playground/src/pipeline/execute/fu/Lsu.scala:82:13, :85:24, src/main/scala/chisel3/util/Mux.scala:30:73
   wire [47:0] _GEN_0 =
-    _GEN[47:0] | (mem_addr__bore[2:0] == 3'h2 ? io_dataSram_rdata[63:16] : 48'h0);	// playground/src/defines/Util.scala:10:49, :22:34, playground/src/pipeline/execute/fu/Lsu.scala:81:13, :85:24, src/main/scala/chisel3/util/Mux.scala:30:73
+    _GEN[47:0] | (mem_addr__bore[2:0] == 3'h2 ? io_dataSram_rdata[63:16] : 48'h0);	// playground/src/defines/Util.scala:34:49, :46:34, playground/src/pipeline/execute/fu/Lsu.scala:65:50, :82:13, :86:24, src/main/scala/chisel3/util/Mux.scala:30:73
   wire [39:0] _GEN_1 =
-    _GEN_0[39:0] | (mem_addr__bore[2:0] == 3'h3 ? io_dataSram_rdata[63:24] : 40'h0);	// playground/src/defines/Util.scala:22:34, playground/src/pipeline/execute/fu/Lsu.scala:81:13, :86:24, src/main/scala/chisel3/util/Mux.scala:30:73
+    _GEN_0[39:0] | (mem_addr__bore[2:0] == 3'h3 ? io_dataSram_rdata[63:24] : 40'h0);	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:82:13, :87:24, src/main/scala/chisel3/util/Mux.scala:30:73
   wire [31:0] _GEN_2 =
-    _GEN_1[31:0] | (mem_addr__bore[2:0] == 3'h4 ? io_dataSram_rdata[63:32] : 32'h0);	// playground/src/defines/Util.scala:10:49, :22:34, playground/src/pipeline/execute/fu/Lsu.scala:81:13, :87:24, src/main/scala/chisel3/util/Mux.scala:30:73
+    _GEN_1[31:0] | (mem_addr__bore[2:0] == 3'h4 ? io_dataSram_rdata[63:32] : 32'h0);	// playground/src/defines/Util.scala:34:49, :46:34, playground/src/pipeline/execute/fu/Lsu.scala:82:13, :88:24, src/main/scala/chisel3/util/Mux.scala:30:73
   wire [23:0] _GEN_3 =
-    _GEN_2[23:0] | (mem_addr__bore[2:0] == 3'h5 ? io_dataSram_rdata[63:40] : 24'h0);	// playground/src/defines/Util.scala:22:34, playground/src/pipeline/execute/fu/Lsu.scala:81:13, :88:24, src/main/scala/chisel3/util/Mux.scala:30:73
+    _GEN_2[23:0] | (mem_addr__bore[2:0] == 3'h5 ? io_dataSram_rdata[63:40] : 24'h0);	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:82:13, :89:24, src/main/scala/chisel3/util/Mux.scala:30:73
   wire [15:0] _GEN_4 =
-    _GEN_3[15:0] | (mem_addr__bore[2:0] == 3'h6 ? io_dataSram_rdata[63:48] : 16'h0);	// playground/src/defines/Util.scala:22:34, playground/src/pipeline/execute/fu/Lsu.scala:81:13, :89:24, src/main/scala/chisel3/util/Mux.scala:30:73
+    _GEN_3[15:0] | (mem_addr__bore[2:0] == 3'h6 ? io_dataSram_rdata[63:48] : 16'h0);	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:82:13, :90:24, src/main/scala/chisel3/util/Mux.scala:30:73
   wire [7:0]  _rdata_partial_result_T_9 =
-    _GEN_4[7:0] | ((&(mem_addr__bore[2:0])) ? io_dataSram_rdata[63:56] : 8'h0);	// playground/src/defines/Util.scala:22:34, playground/src/pipeline/execute/fu/Lsu.scala:81:13, :90:24, :126:40, src/main/scala/chisel3/util/Mux.scala:30:73
-  reg  [63:0] addr_last;	// playground/src/pipeline/execute/fu/Lsu.scala:123:28
+    _GEN_4[7:0] | ((&(mem_addr__bore[2:0])) ? io_dataSram_rdata[63:56] : 8'h0);	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:82:13, :91:24, :127:40, src/main/scala/chisel3/util/Mux.scala:30:73
+  wire        addr_aligned =
+    ~(|(io_info_op[1:0])) | io_info_op[1:0] == 2'h1 & ~(_addr_T[0])
+    | io_info_op[1:0] == 2'h2 & _addr_T[1:0] == 2'h0 | (&(io_info_op[1:0]))
+    & _addr_T[2:0] == 3'h0;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :30:14, :69:41, :71:21, :119:{23,27}, :120:{23,30}, :121:30, src/main/scala/chisel3/util/Mux.scala:30:73
+  reg  [63:0] addr_last;	// playground/src/pipeline/execute/fu/Lsu.scala:124:28
   wire [63:0] result =
-    ~(mem_op__bore[3]) & mem_op__bore != 7'h3
-      ? (mem_op__bore == 7'h0
+    ~(mem_op__bore[3]) & mem_op__bore != 6'h3
+      ? (mem_op__bore == 6'h0
            ? {{56{_rdata_partial_result_T_9[7]}}, _rdata_partial_result_T_9}
            : 64'h0)
-        | (mem_op__bore == 7'h1
+        | (mem_op__bore == 6'h1
              ? {{48{_GEN_4[15]}}, _GEN_4[15:8], _rdata_partial_result_T_9}
              : 64'h0)
-        | (mem_op__bore == 7'h2
+        | (mem_op__bore == 6'h2
              ? {{32{_GEN_2[31]}},
                 _GEN_2[31:24],
                 _GEN_3[23:16],
                 _GEN_4[15:8],
                 _rdata_partial_result_T_9}
              : 64'h0)
-        | (mem_op__bore == 7'h4 ? {56'h0, _rdata_partial_result_T_9} : 64'h0)
-        | (mem_op__bore == 7'h5
+        | (mem_op__bore == 6'h4 ? {56'h0, _rdata_partial_result_T_9} : 64'h0)
+        | (mem_op__bore == 6'h5
              ? {48'h0, _GEN_4[15:8], _rdata_partial_result_T_9}
              : 64'h0)
-        | (mem_op__bore == 7'h6
+        | (mem_op__bore == 6'h6
              ? {32'h0,
                 _GEN_2[31:24],
                 _GEN_3[23:16],
@@ -1184,10 +1502,10 @@ module Lsu(	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
          _GEN_2[31:24],
          _GEN_3[23:16],
          _GEN_4[15:8],
-         _rdata_partial_result_T_9};	// playground/src/defines/Util.scala:9:20, :10:{44,49}, :17:44, :22:34, playground/src/defines/isa/Instructions.scala:109:39, playground/src/pipeline/execute/fu/Lsu.scala:29:7, :78:{26,53,64}, :106:49, :107:49, :108:49, :130:20, :131:16, src/main/scala/chisel3/util/Mux.scala:30:73
+         _rdata_partial_result_T_9};	// playground/src/defines/Util.scala:33:20, :34:{44,49}, :41:44, :46:34, playground/src/defines/isa/Instructions.scala:93:39, playground/src/pipeline/execute/fu/Lsu.scala:79:{26,53,64}, :107:49, :108:49, :109:49, :131:20, :132:16, :138:55, src/main/scala/chisel3/util/Mux.scala:30:73
   always @(posedge clock) begin	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
     if (allow_to_go__bore)
-      addr_last <= _addr_T;	// playground/src/pipeline/execute/fu/Lsu.scala:68:41, :123:28
+      addr_last <= _addr_T;	// playground/src/pipeline/execute/fu/Lsu.scala:69:41, :124:28
   end // always @(posedge)
   `ifdef ENABLE_INITIAL_REG_	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
     `ifdef FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
@@ -1202,60 +1520,555 @@ module Lsu(	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
         for (logic [1:0] i = 2'h0; i < 2'h2; i += 2'h1) begin
           _RANDOM[i[0]] = `RANDOM;	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
         end	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
-        addr_last = {_RANDOM[1'h0], _RANDOM[1'h1]};	// playground/src/pipeline/execute/fu/Lsu.scala:10:7, :123:28
+        addr_last = {_RANDOM[1'h0], _RANDOM[1'h1]};	// playground/src/pipeline/execute/fu/Lsu.scala:10:7, :124:28
       `endif // RANDOMIZE_REG_INIT
     end // initial
     `ifdef FIRRTL_AFTER_INITIAL	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
       `FIRRTL_AFTER_INITIAL	// playground/src/pipeline/execute/fu/Lsu.scala:10:7
     `endif // FIRRTL_AFTER_INITIAL
   `endif // ENABLE_INITIAL_REG_
-  assign io_dataSram_en =
-    valid
-    & (~(|(io_info_op[1:0])) | io_info_op[1:0] == 2'h1 & ~(_addr_T[0])
-       | io_info_op[1:0] == 2'h2 & _addr_T[1:0] == 2'h0 | (&(io_info_op[1:0]))
-       & _addr_T[2:0] == 3'h0);	// playground/src/defines/Util.scala:22:34, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :29:14, :64:65, :68:41, :70:21, :118:{23,27}, :119:{23,30}, :120:30, :125:30, src/main/scala/chisel3/util/Mux.scala:30:73
-  assign io_dataSram_addr = allow_to_go__bore ? _addr_T[31:0] : addr_last[31:0];	// playground/src/pipeline/execute/fu/Lsu.scala:10:7, :68:41, :123:28, :127:27
+  assign io_ex_exception_4 = valid & ~(io_info_op[3]) & ~addr_aligned;	// playground/src/defines/isa/Instructions.scala:93:39, :94:35, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :65:65, :139:{51,54}, src/main/scala/chisel3/util/Mux.scala:30:73
+  assign io_ex_exception_6 = is_store & ~addr_aligned;	// playground/src/pipeline/execute/fu/Lsu.scala:10:7, :68:25, :139:54, :140:52, src/main/scala/chisel3/util/Mux.scala:30:73
+  assign io_ex_tval_4 = _addr_T;	// playground/src/pipeline/execute/fu/Lsu.scala:10:7, :69:41
+  assign io_ex_tval_6 = _addr_T;	// playground/src/pipeline/execute/fu/Lsu.scala:10:7, :69:41
+  assign io_dataSram_en = valid & addr_aligned;	// playground/src/pipeline/execute/fu/Lsu.scala:10:7, :65:65, :126:30, src/main/scala/chisel3/util/Mux.scala:30:73
+  assign io_dataSram_addr = allow_to_go__bore ? _addr_T[31:0] : addr_last[31:0];	// playground/src/pipeline/execute/fu/Lsu.scala:10:7, :69:41, :124:28, :128:27
   assign io_dataSram_wdata =
     ((|(io_info_op[1:0])) ? 64'h0 : {2{{2{{2{io_src_info_src2_data[7:0]}}}}}})
     | (_req_wmask_T_1 ? {2{{2{io_src_info_src2_data[15:0]}}}} : 64'h0)
     | (_req_wmask_T_2 ? {2{io_src_info_src2_data[31:0]}} : 64'h0)
-    | ((&(io_info_op[1:0])) ? io_src_info_src2_data : 64'h0);	// playground/src/defines/Util.scala:22:34, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :35:{24,32}, :36:{24,32}, :37:{24,32}, :70:21, src/main/scala/chisel3/util/Mux.scala:30:73
-  assign io_dataSram_wen = req_wmask[7:0] & {8{valid & io_info_op[3]}};	// playground/src/defines/isa/Instructions.scala:109:39, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :29:7, :64:65, :67:25, :126:{34,40}
-  assign result__bore = result;	// playground/src/pipeline/execute/fu/Lsu.scala:10:7, :130:20
+    | ((&(io_info_op[1:0])) ? io_src_info_src2_data : 64'h0);	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Lsu.scala:10:7, :36:{24,32}, :37:{24,32}, :38:{24,32}, :71:21, :138:55, src/main/scala/chisel3/util/Mux.scala:30:73
+  assign io_dataSram_wen = req_wmask[7:0] & {8{is_store}};	// playground/src/pipeline/execute/fu/Lsu.scala:10:7, :30:7, :68:25, :127:{34,40}
+  assign result__bore = result;	// playground/src/pipeline/execute/fu/Lsu.scala:10:7, :131:20
+endmodule
+
+module Csr(	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+  input         clock,	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+                reset,	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+  input  [63:0] io_in_pc,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+  input         io_in_info_valid,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+  input  [2:0]  io_in_info_fusel,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+  input  [5:0]  io_in_info_op,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+  input  [63:0] io_in_info_inst,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_in_src_info_src1_data,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+  input         io_in_ex_exception_0,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_in_ex_exception_2,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_in_ex_exception_3,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_in_ex_exception_4,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_in_ex_exception_6,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_in_ex_exception_8,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_in_ex_exception_9,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_in_ex_exception_11,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_in_ex_interrupt_0,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_in_ex_interrupt_1,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_in_ex_interrupt_2,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_in_ex_interrupt_3,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_in_ex_interrupt_4,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_in_ex_interrupt_5,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_in_ex_interrupt_6,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_in_ex_interrupt_7,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_in_ex_interrupt_8,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_in_ex_interrupt_9,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_in_ex_interrupt_10,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_in_ex_interrupt_11,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+  input  [63:0] io_in_ex_tval_0,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_in_ex_tval_4,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_in_ex_tval_6,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+  output [63:0] io_out_rdata,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+  output        io_out_ex_exception_0,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_out_ex_exception_2,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_out_ex_exception_3,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_out_ex_exception_4,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_out_ex_exception_6,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_out_ex_exception_8,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_out_ex_exception_9,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_out_ex_exception_11,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_out_ex_interrupt_0,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_out_ex_interrupt_1,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_out_ex_interrupt_2,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_out_ex_interrupt_3,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_out_ex_interrupt_4,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_out_ex_interrupt_5,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_out_ex_interrupt_6,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_out_ex_interrupt_7,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_out_ex_interrupt_8,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_out_ex_interrupt_9,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_out_ex_interrupt_10,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_out_ex_interrupt_11,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+                io_out_flush,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+  output [63:0] io_out_target,	// playground/src/pipeline/execute/fu/Csr.scala:11:14
+  input  [1:0]  commit_num__bore,
+  input         mtip__bore,
+                meip__bore,
+  output [11:0] interrupt__bore,
+  input         msip__bore,
+  output [1:0]  mode__bore
+);
+
+  wire        io_out_ex_exception_2_0;	// playground/src/pipeline/execute/fu/Csr.scala:277:18
+  wire [63:0] _rdata_T_74;	// src/main/scala/chisel3/util/Mux.scala:30:73
+  reg  [63:0] mstatus;	// playground/src/pipeline/execute/fu/Csr.scala:42:30
+  reg  [63:0] mie;	// playground/src/pipeline/execute/fu/Csr.scala:55:27
+  reg  [63:0] mtvec;	// playground/src/pipeline/execute/fu/Csr.scala:56:27
+  reg  [63:0] mcounteren;	// playground/src/pipeline/execute/fu/Csr.scala:57:27
+  reg  [63:0] mscratch;	// playground/src/pipeline/execute/fu/Csr.scala:60:27
+  reg  [63:0] mepc;	// playground/src/pipeline/execute/fu/Csr.scala:61:27
+  reg  [63:0] mcause;	// playground/src/pipeline/execute/fu/Csr.scala:62:27
+  reg  [63:0] mtval;	// playground/src/pipeline/execute/fu/Csr.scala:63:27
+  reg  [63:0] mipReg;	// playground/src/pipeline/execute/fu/Csr.scala:65:27
+  wire [63:0] mip =
+    {52'h0, meip__bore, 3'h0, mtip__bore, 3'h0, msip__bore, 3'h0} | mipReg;	// playground/src/pipeline/execute/fu/Csr.scala:65:27, :67:35, :223:74
+  reg  [63:0] mcycle;	// playground/src/pipeline/execute/fu/Csr.scala:82:23
+  reg  [63:0] minstret;	// playground/src/pipeline/execute/fu/Csr.scala:84:25
+  reg  [1:0]  mode;	// playground/src/pipeline/execute/fu/Csr.scala:145:21
+  wire        isMretIllegal = mode != 2'h3;	// playground/src/pipeline/execute/fu/Csr.scala:145:21, :160:79
+  wire [11:0] interrupt =
+    mie[11:0] & mip[11:0] & {12{(&mode) & mstatus[3] | isMretIllegal}};	// playground/src/pipeline/execute/fu/Csr.scala:42:30, :43:39, :55:27, :67:35, :145:21, :160:{36,47,70,79}, :161:33, :163:{19,58,65,71}
+  wire [7:0]  _GEN =
+    {io_in_ex_exception_11,
+     io_in_ex_exception_9,
+     io_in_ex_exception_8,
+     io_in_ex_exception_6,
+     io_in_ex_exception_4,
+     io_in_ex_exception_3,
+     io_in_ex_exception_2,
+     io_in_ex_exception_0};	// playground/src/defines/Util.scala:8:18
+  wire        _isMretInst_T = io_in_info_fusel == 3'h4;	// playground/src/pipeline/execute/fu/Csr.scala:170:59
+  wire        valid =
+    io_in_info_valid
+    & ~((|_GEN)
+        | (|{io_in_ex_interrupt_11,
+             io_in_ex_interrupt_10,
+             io_in_ex_interrupt_9,
+             io_in_ex_interrupt_8,
+             io_in_ex_interrupt_7,
+             io_in_ex_interrupt_6,
+             io_in_ex_interrupt_5,
+             io_in_ex_interrupt_4,
+             io_in_ex_interrupt_3,
+             io_in_ex_interrupt_2,
+             io_in_ex_interrupt_1,
+             io_in_ex_interrupt_0})) & _isMretInst_T | (|_GEN)
+    | (|{io_in_ex_interrupt_11,
+         io_in_ex_interrupt_10,
+         io_in_ex_interrupt_9,
+         io_in_ex_interrupt_8,
+         io_in_ex_interrupt_7,
+         io_in_ex_interrupt_6,
+         io_in_ex_interrupt_5,
+         io_in_ex_interrupt_4,
+         io_in_ex_interrupt_3,
+         io_in_ex_interrupt_2,
+         io_in_ex_interrupt_1,
+         io_in_ex_interrupt_0});	// playground/src/defines/Util.scala:8:{18,25,29,45,52}, playground/src/pipeline/execute/fu/Csr.scala:170:{29,50,59,74}
+  wire        raise_exception =
+    (|{io_in_ex_exception_11,
+       io_in_ex_exception_9,
+       io_in_ex_exception_8,
+       io_in_ex_exception_6,
+       io_in_ex_exception_4,
+       io_in_ex_exception_3,
+       io_out_ex_exception_2_0,
+       io_in_ex_exception_0}) & io_in_info_valid;	// playground/src/pipeline/execute/fu/Csr.scala:174:{45,52,56}, :277:18
+  wire        raise_interrupt =
+    (|{io_in_ex_interrupt_11,
+       io_in_ex_interrupt_10,
+       io_in_ex_interrupt_9,
+       io_in_ex_interrupt_8,
+       io_in_ex_interrupt_7,
+       io_in_ex_interrupt_6,
+       io_in_ex_interrupt_5,
+       io_in_ex_interrupt_4,
+       io_in_ex_interrupt_3,
+       io_in_ex_interrupt_2,
+       io_in_ex_interrupt_1,
+       io_in_ex_interrupt_0}) & io_in_info_valid;	// playground/src/pipeline/execute/fu/Csr.scala:175:{45,52,56}
+  wire        raise_exc_int = raise_exception | raise_interrupt;	// playground/src/pipeline/execute/fu/Csr.scala:174:56, :175:56, :176:41
+  wire [63:0] csri = {59'h0, io_in_info_inst[19:15]};	// playground/src/defines/Util.scala:41:44, playground/src/pipeline/execute/fu/Csr.scala:180:40
+  wire [63:0] _wdata_T_22 =
+    (io_in_info_op == 6'h1 ? io_in_src_info_src1_data : 64'h0)
+    | (io_in_info_op == 6'h2 ? _rdata_T_74 | io_in_src_info_src1_data : 64'h0)
+    | (io_in_info_op == 6'h3 ? _rdata_T_74 & ~io_in_src_info_src1_data : 64'h0)
+    | (io_in_info_op == 6'h5 ? csri : 64'h0)
+    | (io_in_info_op == 6'h6 ? _rdata_T_74 | csri : 64'h0)
+    | (io_in_info_op == 6'h7
+         ? _rdata_T_74 & {59'h7FFFFFFFFFFFFFF, ~(io_in_info_inst[19:15])}
+         : 64'h0);	// playground/src/defines/Util.scala:41:44, :46:34, playground/src/pipeline/execute/fu/Csr.scala:10:7, :11:14, :180:40, :185:34, :186:{34,36}, :188:34, :189:{34,36}, src/main/scala/chisel3/util/Mux.scala:30:73
+  wire        _mstatus_illegal_T = io_in_info_inst[31:20] == 12'h300;	// playground/src/pipeline/execute/fu/Csr.scala:178:29, :195:30
+  wire        write = valid & ~(io_in_info_op[3]);	// playground/src/defines/isa/Instructions.scala:133:{27,30}, playground/src/pipeline/execute/fu/Csr.scala:170:74, :198:22
+  wire        illegal_access =
+    mode < io_in_info_inst[29:28] | write & (&(io_in_info_inst[31:30]))
+    & ~((io_in_info_op == 6'h2 | io_in_info_op == 6'h6 | io_in_info_op == 6'h3
+         | io_in_info_op == 6'h7) & io_in_src_info_src1_data == 64'h0)
+    | _mstatus_illegal_T & ~((&(_wdata_T_22[12:11])) | _wdata_T_22[12:11] == 2'h0);	// playground/src/pipeline/execute/fu/Csr.scala:10:7, :11:14, :39:35, :145:21, :178:29, :195:{30,44}, :196:{5,36,51}, :198:22, :200:{91,96,104}, :201:{28,34}, :202:{37,46,59,62}, :205:54, src/main/scala/chisel3/util/Mux.scala:30:73
+  wire        _illegal_addr_illegalAddr_T = io_in_info_inst[31:20] == 12'h342;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Csr.scala:178:29
+  wire        _illegal_addr_illegalAddr_T_2 = io_in_info_inst[31:20] == 12'h306;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Csr.scala:178:29
+  wire        _illegal_addr_illegalAddr_T_8 = io_in_info_inst[31:20] == 12'h305;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Csr.scala:178:29
+  wire        _illegal_addr_illegalAddr_T_10 = io_in_info_inst[31:20] == 12'h304;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Csr.scala:178:29
+  wire        _illegal_addr_illegalAddr_T_12 = io_in_info_inst[31:20] == 12'h300;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Csr.scala:178:29, :195:30
+  wire        _illegal_addr_illegalAddr_T_14 = io_in_info_inst[31:20] == 12'hB02;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Csr.scala:178:29
+  wire        _illegal_addr_illegalAddr_T_18 = io_in_info_inst[31:20] == 12'h340;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Csr.scala:178:29
+  wire        _illegal_addr_illegalAddr_T_20 = io_in_info_inst[31:20] == 12'hC00;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Csr.scala:178:29
+  wire        _illegal_addr_illegalAddr_T_24 = io_in_info_inst[31:20] == 12'h301;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Csr.scala:178:29
+  wire        _illegal_addr_illegalAddr_T_26 = io_in_info_inst[31:20] == 12'h7A0;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Csr.scala:178:29
+  wire        _illegal_addr_illegalAddr_T_28 = io_in_info_inst[31:20] == 12'hB00;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Csr.scala:178:29
+  wire        _rdataDummy_T_1 = io_in_info_inst[31:20] == 12'h344;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Csr.scala:178:29
+  wire        _illegal_addr_illegalAddr_T_34 = io_in_info_inst[31:20] == 12'h341;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Csr.scala:178:29
+  wire        _illegal_addr_illegalAddr_T_36 = io_in_info_inst[31:20] == 12'h343;	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Csr.scala:178:29
+  assign _rdata_T_74 =
+    (_illegal_addr_illegalAddr_T ? mcause : 64'h0)
+    | (_illegal_addr_illegalAddr_T_2 ? mcounteren : 64'h0)
+    | (_illegal_addr_illegalAddr_T_8 ? mtvec : 64'h0)
+    | (_illegal_addr_illegalAddr_T_10 ? mie : 64'h0)
+    | (_illegal_addr_illegalAddr_T_12 ? mstatus : 64'h0)
+    | (_illegal_addr_illegalAddr_T_14 ? minstret : 64'h0)
+    | (_illegal_addr_illegalAddr_T_18 ? mscratch : 64'h0)
+    | (_illegal_addr_illegalAddr_T_20 ? mcycle : 64'h0)
+    | (_illegal_addr_illegalAddr_T_24 ? 64'h8000000000101100 : 64'h0)
+    | {63'h0, _illegal_addr_illegalAddr_T_26}
+    | (_illegal_addr_illegalAddr_T_28 ? mcycle : 64'h0) | (_rdataDummy_T_1 ? mip : 64'h0)
+    | (_illegal_addr_illegalAddr_T_34 ? mepc : 64'h0)
+    | (_illegal_addr_illegalAddr_T_36 ? mtval : 64'h0);	// playground/src/defines/Util.scala:46:34, playground/src/pipeline/execute/fu/Csr.scala:11:14, :31:26, :42:30, :54:52, :55:27, :56:27, :57:27, :60:27, :61:27, :62:27, :63:27, :67:35, :82:23, :84:25, src/main/scala/chisel3/util/Mux.scala:30:73
+  wire        isMretInst = _isMretInst_T & io_in_info_op == 6'hA & valid;	// playground/src/defines/Util.scala:14:42, playground/src/pipeline/execute/fu/Csr.scala:10:7, :170:{59,74}, :217:36
+  wire        isMret = isMretInst & ~isMretIllegal;	// playground/src/pipeline/execute/fu/Csr.scala:160:79, :217:36, :219:{34,37}
+  wire [3:0]  exceptionNO =
+    io_in_ex_exception_3
+      ? 4'h3
+      : io_out_ex_exception_2_0
+          ? 4'h2
+          : io_in_ex_exception_0
+              ? 4'h0
+              : io_in_ex_exception_11
+                  ? 4'hB
+                  : io_in_ex_exception_9
+                      ? 4'h9
+                      : io_in_ex_exception_8
+                          ? 4'h8
+                          : io_in_ex_exception_6
+                              ? 4'h6
+                              : {1'h0, io_in_ex_exception_4, 2'h0};	// playground/src/defines/Util.scala:8:18, playground/src/pipeline/execute/fu/Csr.scala:11:14, :39:35, :174:45, :223:74, :277:18
+  wire [3:0]  _causeNO_T_1 =
+    raise_interrupt
+      ? (io_in_ex_interrupt_3
+           ? 4'h3
+           : io_in_ex_interrupt_11
+               ? 4'hB
+               : io_in_ex_interrupt_7
+                   ? 4'h7
+                   : io_in_ex_interrupt_1
+                       ? 4'h1
+                       : io_in_ex_interrupt_9
+                           ? 4'h9
+                           : io_in_ex_interrupt_5
+                               ? 4'h5
+                               : io_in_ex_interrupt_0
+                                   ? 4'h0
+                                   : io_in_ex_interrupt_8
+                                       ? 4'h8
+                                       : {1'h0, io_in_ex_interrupt_4, 2'h0})
+      : exceptionNO;	// playground/src/defines/Util.scala:8:18, playground/src/pipeline/execute/fu/Csr.scala:11:14, :39:35, :174:45, :175:56, :223:74, :224:74, :225:58
+  assign io_out_ex_exception_2_0 =
+    (~(_illegal_addr_illegalAddr_T_36 | _illegal_addr_illegalAddr_T_34
+       | io_in_info_inst[31:20] == 12'hF14 | _rdataDummy_T_1
+       | _illegal_addr_illegalAddr_T_28 | _illegal_addr_illegalAddr_T_26
+       | _illegal_addr_illegalAddr_T_24 | io_in_info_inst[31:20] == 12'hF12
+       | _illegal_addr_illegalAddr_T_20 | _illegal_addr_illegalAddr_T_18
+       | io_in_info_inst[31:20] == 12'hF13 | _illegal_addr_illegalAddr_T_14
+       | _illegal_addr_illegalAddr_T_12 | _illegal_addr_illegalAddr_T_10
+       | _illegal_addr_illegalAddr_T_8 | io_in_info_inst[31:20] == 12'h7A1
+       | io_in_info_inst[31:20] == 12'hF11 | _illegal_addr_illegalAddr_T_2)
+     & ~_illegal_addr_illegalAddr_T | illegal_access) & write | isMretInst & isMretIllegal
+    | io_in_ex_exception_2;	// playground/src/defines/Util.scala:46:34, :51:28, playground/src/pipeline/execute/fu/Csr.scala:31:26, :47:43, :160:79, :178:29, :198:22, :205:54, :217:36, :221:34, :276:{19,38}, :277:18
+  always @(posedge clock) begin	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+    if (reset) begin	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+      mstatus <= 64'hA00000000;	// playground/src/pipeline/execute/fu/Csr.scala:42:{30,58}
+      mie <= 64'h0;	// playground/src/pipeline/execute/fu/Csr.scala:11:14, :55:27
+      mtvec <= 64'h0;	// playground/src/pipeline/execute/fu/Csr.scala:11:14, :56:27
+      mcounteren <= 64'h0;	// playground/src/pipeline/execute/fu/Csr.scala:11:14, :57:27
+      mscratch <= 64'h0;	// playground/src/pipeline/execute/fu/Csr.scala:11:14, :60:27
+      mepc <= 64'h0;	// playground/src/pipeline/execute/fu/Csr.scala:11:14, :61:27
+      mcause <= 64'h0;	// playground/src/pipeline/execute/fu/Csr.scala:11:14, :62:27
+      mtval <= 64'h0;	// playground/src/pipeline/execute/fu/Csr.scala:11:14, :63:27
+      mipReg <= 64'h0;	// playground/src/pipeline/execute/fu/Csr.scala:11:14, :65:27
+      mcycle <= 64'h0;	// playground/src/pipeline/execute/fu/Csr.scala:11:14, :82:23
+      minstret <= 64'h0;	// playground/src/pipeline/execute/fu/Csr.scala:11:14, :84:25
+      mode <= 2'h3;	// playground/src/pipeline/execute/fu/Csr.scala:145:21
+    end
+    else begin	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+      automatic logic wen;	// playground/src/pipeline/execute/fu/Csr.scala:206:30
+      wen = write & ~illegal_access;	// playground/src/pipeline/execute/fu/Csr.scala:198:22, :205:54, :206:{30,33}
+      if (isMret) begin	// playground/src/pipeline/execute/fu/Csr.scala:219:34
+        mstatus <=
+          {mstatus[63:18],
+           (&(mstatus[12:11])) & mstatus[17],
+           mstatus[16:13],
+           2'h0,
+           mstatus[10:8],
+           1'h1,
+           mstatus[6:4],
+           mstatus[7],
+           mstatus[2:0]};	// playground/src/pipeline/execute/fu/Csr.scala:39:35, :42:30, :47:43, :245:27, :260:47, :261:{30,47}, :262:{25,36}, :263:23, :269:36
+        mode <= mstatus[12:11];	// playground/src/pipeline/execute/fu/Csr.scala:42:30, :145:21, :260:47
+      end
+      else if (raise_exc_int) begin	// playground/src/pipeline/execute/fu/Csr.scala:176:41
+        mstatus <=
+          {mstatus[63:13],
+           mode,
+           mstatus[10:8],
+           mstatus[3],
+           mstatus[6:4],
+           1'h0,
+           mstatus[2:0]};	// playground/src/pipeline/execute/fu/Csr.scala:11:14, :42:30, :145:21, :235:47, :245:27
+        mode <= 2'h3;	// playground/src/pipeline/execute/fu/Csr.scala:145:21
+      end
+      else if (wen & _mstatus_illegal_T)	// playground/src/defines/Util.scala:115:57, playground/src/pipeline/execute/fu/Csr.scala:195:30, :206:30
+        mstatus <= _wdata_T_22 & 64'h21888 | mstatus & 64'hFFFFFFFFFFFDE777;	// playground/src/defines/Util.scala:58:{14,26,37,39}, playground/src/pipeline/execute/fu/Csr.scala:42:30, src/main/scala/chisel3/util/Mux.scala:30:73
+      if (wen & io_in_info_inst[31:20] == 12'h304)	// playground/src/defines/Util.scala:46:34, :115:{57,66}, playground/src/pipeline/execute/fu/Csr.scala:178:29, :206:30
+        mie <= _wdata_T_22;	// playground/src/pipeline/execute/fu/Csr.scala:55:27, src/main/scala/chisel3/util/Mux.scala:30:73
+      if (wen & io_in_info_inst[31:20] == 12'h305)	// playground/src/defines/Util.scala:46:34, :115:{57,66}, playground/src/pipeline/execute/fu/Csr.scala:178:29, :206:30
+        mtvec <= _wdata_T_22;	// playground/src/pipeline/execute/fu/Csr.scala:56:27, src/main/scala/chisel3/util/Mux.scala:30:73
+      if (wen & io_in_info_inst[31:20] == 12'h306)	// playground/src/defines/Util.scala:46:34, :115:{57,66}, playground/src/pipeline/execute/fu/Csr.scala:178:29, :206:30
+        mcounteren <= _wdata_T_22 & 64'h5 | mcounteren & 64'hFFFFFFFFFFFFFFFA;	// playground/src/defines/Util.scala:58:{14,26,37,39}, playground/src/pipeline/execute/fu/Csr.scala:57:27, :94:30, src/main/scala/chisel3/util/Mux.scala:30:73
+      if (wen & io_in_info_inst[31:20] == 12'h340)	// playground/src/defines/Util.scala:46:34, :115:{57,66}, playground/src/pipeline/execute/fu/Csr.scala:178:29, :206:30
+        mscratch <= _wdata_T_22;	// playground/src/pipeline/execute/fu/Csr.scala:60:27, src/main/scala/chisel3/util/Mux.scala:30:73
+      if (raise_exc_int) begin	// playground/src/pipeline/execute/fu/Csr.scala:176:41
+        mepc <= io_in_pc;	// playground/src/pipeline/execute/fu/Csr.scala:61:27
+        mcause <= {raise_interrupt, 59'h0, _causeNO_T_1};	// playground/src/defines/Util.scala:41:44, playground/src/pipeline/execute/fu/Csr.scala:62:27, :175:56, :225:{53,58}
+      end
+      else begin	// playground/src/pipeline/execute/fu/Csr.scala:176:41
+        if (wen & io_in_info_inst[31:20] == 12'h341)	// playground/src/defines/Util.scala:46:34, :115:{57,66}, playground/src/pipeline/execute/fu/Csr.scala:178:29, :206:30
+          mepc <= _wdata_T_22;	// playground/src/pipeline/execute/fu/Csr.scala:61:27, src/main/scala/chisel3/util/Mux.scala:30:73
+        if (wen & io_in_info_inst[31:20] == 12'h342)	// playground/src/defines/Util.scala:46:34, :115:{57,66}, playground/src/pipeline/execute/fu/Csr.scala:178:29, :206:30
+          mcause <= _wdata_T_22;	// playground/src/pipeline/execute/fu/Csr.scala:62:27, src/main/scala/chisel3/util/Mux.scala:30:73
+      end
+      if (raise_exc_int & (raise_interrupt | ~raise_exception))	// playground/src/pipeline/execute/fu/Csr.scala:174:56, :175:56, :176:41, :227:{34,37}, :229:25, :234:23, :244:{20,28}
+        mtval <= 64'h0;	// playground/src/pipeline/execute/fu/Csr.scala:11:14, :63:27
+      else if (raise_exception) begin	// playground/src/pipeline/execute/fu/Csr.scala:174:56
+        automatic logic [15:0][63:0] _GEN_0 =
+          {{64'h0},
+           {64'h0},
+           {64'h0},
+           {64'h0},
+           {64'h0},
+           {64'h0},
+           {64'h0},
+           {64'h0},
+           {64'h0},
+           {io_in_ex_tval_6},
+           {64'h0},
+           {io_in_ex_tval_4},
+           {64'h0},
+           {io_in_info_inst},
+           {64'h0},
+           {io_in_ex_tval_0}};	// playground/src/pipeline/execute/fu/Csr.scala:11:14, :231:11
+        mtval <= _GEN_0[exceptionNO];	// playground/src/pipeline/execute/fu/Csr.scala:63:27, :223:74, :231:11
+      end
+      else if (wen & io_in_info_inst[31:20] == 12'h343)	// playground/src/defines/Util.scala:46:34, :115:{57,66}, playground/src/pipeline/execute/fu/Csr.scala:178:29, :206:30
+        mtval <= _wdata_T_22;	// playground/src/pipeline/execute/fu/Csr.scala:63:27, src/main/scala/chisel3/util/Mux.scala:30:73
+      if (wen & io_in_info_inst[31:20] == 12'h344)	// playground/src/defines/Util.scala:46:34, :115:{57,66}, playground/src/pipeline/execute/fu/Csr.scala:178:29, :206:30
+        mipReg <= _wdata_T_22 & 64'h888 | mipReg & 64'hFFFFFFFFFFFFF777;	// playground/src/defines/Util.scala:58:{14,26,37,39}, playground/src/pipeline/execute/fu/Csr.scala:65:27, src/main/scala/chisel3/util/Mux.scala:30:73
+      if (wen & io_in_info_inst[31:20] == 12'hB00 | wen
+          & io_in_info_inst[31:20] == 12'hC00)	// playground/src/defines/Util.scala:46:34, :115:{57,66,73,77}, playground/src/pipeline/execute/fu/Csr.scala:83:10, :178:29, :206:30
+        mcycle <= _wdata_T_22;	// playground/src/pipeline/execute/fu/Csr.scala:82:23, src/main/scala/chisel3/util/Mux.scala:30:73
+      else	// playground/src/defines/Util.scala:115:{73,77}, playground/src/pipeline/execute/fu/Csr.scala:83:10
+        mcycle <= mcycle + 64'h1;	// playground/src/pipeline/execute/fu/Csr.scala:82:23, :83:20, :91:24
+      if (wen & io_in_info_inst[31:20] == 12'hB02)	// playground/src/defines/Util.scala:46:34, :115:{57,66}, playground/src/pipeline/execute/fu/Csr.scala:178:29, :206:30
+        minstret <= _wdata_T_22;	// playground/src/pipeline/execute/fu/Csr.scala:84:25, src/main/scala/chisel3/util/Mux.scala:30:73
+      else	// playground/src/defines/Util.scala:115:57
+        minstret <= minstret + {62'h0, commit_num__bore};	// playground/src/pipeline/execute/fu/Csr.scala:84:25, :88:24
+    end
+  end // always @(posedge)
+  `ifdef ENABLE_INITIAL_REG_	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+    `ifdef FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+      `FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+    `endif // FIRRTL_BEFORE_INITIAL
+    initial begin	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+      automatic logic [31:0] _RANDOM[0:52];	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+      `ifdef INIT_RANDOM_PROLOG_	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+        `INIT_RANDOM_PROLOG_	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+      `endif // INIT_RANDOM_PROLOG_
+      `ifdef RANDOMIZE_REG_INIT	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+        for (logic [5:0] i = 6'h0; i < 6'h35; i += 6'h1) begin
+          _RANDOM[i] = `RANDOM;	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+        end	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+        mstatus = {_RANDOM[6'h8], _RANDOM[6'h9]};	// playground/src/pipeline/execute/fu/Csr.scala:10:7, :42:30
+        mie = {_RANDOM[6'hC], _RANDOM[6'hD]};	// playground/src/pipeline/execute/fu/Csr.scala:10:7, :55:27
+        mtvec = {_RANDOM[6'hE], _RANDOM[6'hF]};	// playground/src/pipeline/execute/fu/Csr.scala:10:7, :56:27
+        mcounteren = {_RANDOM[6'h10], _RANDOM[6'h11]};	// playground/src/pipeline/execute/fu/Csr.scala:10:7, :57:27
+        mscratch = {_RANDOM[6'h12], _RANDOM[6'h13]};	// playground/src/pipeline/execute/fu/Csr.scala:10:7, :60:27
+        mepc = {_RANDOM[6'h14], _RANDOM[6'h15]};	// playground/src/pipeline/execute/fu/Csr.scala:10:7, :61:27
+        mcause = {_RANDOM[6'h16], _RANDOM[6'h17]};	// playground/src/pipeline/execute/fu/Csr.scala:10:7, :62:27
+        mtval = {_RANDOM[6'h18], _RANDOM[6'h19]};	// playground/src/pipeline/execute/fu/Csr.scala:10:7, :63:27
+        mipReg = {_RANDOM[6'h1A], _RANDOM[6'h1B]};	// playground/src/pipeline/execute/fu/Csr.scala:10:7, :65:27
+        mcycle = {_RANDOM[6'h2C], _RANDOM[6'h2D]};	// playground/src/pipeline/execute/fu/Csr.scala:10:7, :82:23
+        minstret = {_RANDOM[6'h2E], _RANDOM[6'h2F]};	// playground/src/pipeline/execute/fu/Csr.scala:10:7, :84:25
+        mode = _RANDOM[6'h34][1:0];	// playground/src/pipeline/execute/fu/Csr.scala:10:7, :145:21
+      `endif // RANDOMIZE_REG_INIT
+    end // initial
+    `ifdef FIRRTL_AFTER_INITIAL	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+      `FIRRTL_AFTER_INITIAL	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+    `endif // FIRRTL_AFTER_INITIAL
+  `endif // ENABLE_INITIAL_REG_
+  assign io_out_rdata = _rdata_T_74;	// playground/src/pipeline/execute/fu/Csr.scala:10:7, src/main/scala/chisel3/util/Mux.scala:30:73
+  assign io_out_ex_exception_0 = io_in_ex_exception_0;	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+  assign io_out_ex_exception_2 = io_out_ex_exception_2_0;	// playground/src/pipeline/execute/fu/Csr.scala:10:7, :277:18
+  assign io_out_ex_exception_3 = io_in_ex_exception_3;	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+  assign io_out_ex_exception_4 = io_in_ex_exception_4;	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+  assign io_out_ex_exception_6 = io_in_ex_exception_6;	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+  assign io_out_ex_exception_8 = io_in_ex_exception_8;	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+  assign io_out_ex_exception_9 = io_in_ex_exception_9;	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+  assign io_out_ex_exception_11 = io_in_ex_exception_11;	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+  assign io_out_ex_interrupt_0 = io_in_ex_interrupt_0;	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+  assign io_out_ex_interrupt_1 = io_in_ex_interrupt_1;	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+  assign io_out_ex_interrupt_2 = io_in_ex_interrupt_2;	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+  assign io_out_ex_interrupt_3 = io_in_ex_interrupt_3;	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+  assign io_out_ex_interrupt_4 = io_in_ex_interrupt_4;	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+  assign io_out_ex_interrupt_5 = io_in_ex_interrupt_5;	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+  assign io_out_ex_interrupt_6 = io_in_ex_interrupt_6;	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+  assign io_out_ex_interrupt_7 = io_in_ex_interrupt_7;	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+  assign io_out_ex_interrupt_8 = io_in_ex_interrupt_8;	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+  assign io_out_ex_interrupt_9 = io_in_ex_interrupt_9;	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+  assign io_out_ex_interrupt_10 = io_in_ex_interrupt_10;	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+  assign io_out_ex_interrupt_11 = io_in_ex_interrupt_11;	// playground/src/pipeline/execute/fu/Csr.scala:10:7
+  assign io_out_flush = raise_exc_int | isMret;	// playground/src/pipeline/execute/fu/Csr.scala:10:7, :176:41, :219:34, :282:34
+  assign io_out_target =
+    raise_exc_int
+      ? {mtvec[63:2], 2'h0}
+        + (mtvec[0] & raise_interrupt ? {58'h0, _causeNO_T_1, 2'h0} : 64'h0)
+      : mepc;	// playground/src/pipeline/execute/fu/Csr.scala:10:7, :11:14, :39:35, :56:27, :61:27, :175:56, :176:41, :225:58, :253:{23,43,48}, :254:{9,13}, :255:14, :283:23
+  assign interrupt__bore = interrupt;	// playground/src/pipeline/execute/fu/Csr.scala:10:7, :161:33
+  assign mode__bore = mode;	// playground/src/pipeline/execute/fu/Csr.scala:10:7, :145:21
 endmodule
 
 module Fu(	// playground/src/pipeline/execute/Fu.scala:9:7
   input         clock,	// playground/src/pipeline/execute/Fu.scala:9:7
+                reset,	// playground/src/pipeline/execute/Fu.scala:9:7
   input  [63:0] io_data_pc,	// playground/src/pipeline/execute/Fu.scala:10:14
   input         io_data_info_valid,	// playground/src/pipeline/execute/Fu.scala:10:14
   input  [2:0]  io_data_info_fusel,	// playground/src/pipeline/execute/Fu.scala:10:14
-  input  [6:0]  io_data_info_op,	// playground/src/pipeline/execute/Fu.scala:10:14
+  input  [5:0]  io_data_info_op,	// playground/src/pipeline/execute/Fu.scala:10:14
   input  [63:0] io_data_info_imm,	// playground/src/pipeline/execute/Fu.scala:10:14
+                io_data_info_inst,	// playground/src/pipeline/execute/Fu.scala:10:14
                 io_data_src_info_src1_data,	// playground/src/pipeline/execute/Fu.scala:10:14
                 io_data_src_info_src2_data,	// playground/src/pipeline/execute/Fu.scala:10:14
   output [63:0] io_data_rd_info_wdata_0,	// playground/src/pipeline/execute/Fu.scala:10:14
-                io_data_rd_info_wdata_2,	// playground/src/pipeline/execute/Fu.scala:10:14
-                io_data_rd_info_wdata_5,	// playground/src/pipeline/execute/Fu.scala:10:14
-  output        io_dataSram_en,	// playground/src/pipeline/execute/Fu.scala:10:14
+                io_data_rd_info_wdata_1,	// playground/src/pipeline/execute/Fu.scala:10:14
+                io_data_rd_info_wdata_3,	// playground/src/pipeline/execute/Fu.scala:10:14
+                io_data_rd_info_wdata_4,	// playground/src/pipeline/execute/Fu.scala:10:14
+  input         io_data_ex_exception_0,	// playground/src/pipeline/execute/Fu.scala:10:14
+                io_data_ex_exception_2,	// playground/src/pipeline/execute/Fu.scala:10:14
+                io_data_ex_exception_3,	// playground/src/pipeline/execute/Fu.scala:10:14
+                io_data_ex_exception_8,	// playground/src/pipeline/execute/Fu.scala:10:14
+                io_data_ex_exception_9,	// playground/src/pipeline/execute/Fu.scala:10:14
+                io_data_ex_exception_11,	// playground/src/pipeline/execute/Fu.scala:10:14
+                io_data_ex_interrupt_0,	// playground/src/pipeline/execute/Fu.scala:10:14
+                io_data_ex_interrupt_1,	// playground/src/pipeline/execute/Fu.scala:10:14
+                io_data_ex_interrupt_2,	// playground/src/pipeline/execute/Fu.scala:10:14
+                io_data_ex_interrupt_3,	// playground/src/pipeline/execute/Fu.scala:10:14
+                io_data_ex_interrupt_4,	// playground/src/pipeline/execute/Fu.scala:10:14
+                io_data_ex_interrupt_5,	// playground/src/pipeline/execute/Fu.scala:10:14
+                io_data_ex_interrupt_6,	// playground/src/pipeline/execute/Fu.scala:10:14
+                io_data_ex_interrupt_7,	// playground/src/pipeline/execute/Fu.scala:10:14
+                io_data_ex_interrupt_8,	// playground/src/pipeline/execute/Fu.scala:10:14
+                io_data_ex_interrupt_9,	// playground/src/pipeline/execute/Fu.scala:10:14
+                io_data_ex_interrupt_10,	// playground/src/pipeline/execute/Fu.scala:10:14
+                io_data_ex_interrupt_11,	// playground/src/pipeline/execute/Fu.scala:10:14
+  input  [63:0] io_data_ex_tval_0,	// playground/src/pipeline/execute/Fu.scala:10:14
+  output        io_data_has_exception,	// playground/src/pipeline/execute/Fu.scala:10:14
+                io_dataSram_en,	// playground/src/pipeline/execute/Fu.scala:10:14
   output [31:0] io_dataSram_addr,	// playground/src/pipeline/execute/Fu.scala:10:14
   output [63:0] io_dataSram_wdata,	// playground/src/pipeline/execute/Fu.scala:10:14
   output [7:0]  io_dataSram_wen,	// playground/src/pipeline/execute/Fu.scala:10:14
   input  [63:0] io_dataSram_rdata,	// playground/src/pipeline/execute/Fu.scala:10:14
   output        io_ctrl_flush,	// playground/src/pipeline/execute/Fu.scala:10:14
   output [63:0] io_ctrl_target,	// playground/src/pipeline/execute/Fu.scala:10:14
-  input         Lsu_allow_to_go__bore,
+  input  [1:0]  Csr_commit_num__bore,
+  input         Csr_mtip__bore,
   output [63:0] Lsu_result__bore,
-  input  [63:0] Lsu_mem_addr__bore,
-  input  [6:0]  Lsu_mem_op__bore
+  input         Csr_meip__bore,
+  output [11:0] Csr_interrupt__bore,
+  input         Csr_msip__bore,
+  output [1:0]  Csr_mode__bore,
+  input         Lsu_allow_to_go__bore,
+  input  [5:0]  Lsu_mem_op__bore,
+  input  [63:0] Lsu_mem_addr__bore
 );
 
-  Alu Alu (	// playground/src/pipeline/execute/Fu.scala:25:19
+  wire        _Csr_io_out_ex_exception_0;	// playground/src/pipeline/execute/Fu.scala:31:19
+  wire        _Csr_io_out_ex_exception_2;	// playground/src/pipeline/execute/Fu.scala:31:19
+  wire        _Csr_io_out_ex_exception_3;	// playground/src/pipeline/execute/Fu.scala:31:19
+  wire        _Csr_io_out_ex_exception_4;	// playground/src/pipeline/execute/Fu.scala:31:19
+  wire        _Csr_io_out_ex_exception_6;	// playground/src/pipeline/execute/Fu.scala:31:19
+  wire        _Csr_io_out_ex_exception_8;	// playground/src/pipeline/execute/Fu.scala:31:19
+  wire        _Csr_io_out_ex_exception_9;	// playground/src/pipeline/execute/Fu.scala:31:19
+  wire        _Csr_io_out_ex_exception_11;	// playground/src/pipeline/execute/Fu.scala:31:19
+  wire        _Csr_io_out_ex_interrupt_0;	// playground/src/pipeline/execute/Fu.scala:31:19
+  wire        _Csr_io_out_ex_interrupt_1;	// playground/src/pipeline/execute/Fu.scala:31:19
+  wire        _Csr_io_out_ex_interrupt_2;	// playground/src/pipeline/execute/Fu.scala:31:19
+  wire        _Csr_io_out_ex_interrupt_3;	// playground/src/pipeline/execute/Fu.scala:31:19
+  wire        _Csr_io_out_ex_interrupt_4;	// playground/src/pipeline/execute/Fu.scala:31:19
+  wire        _Csr_io_out_ex_interrupt_5;	// playground/src/pipeline/execute/Fu.scala:31:19
+  wire        _Csr_io_out_ex_interrupt_6;	// playground/src/pipeline/execute/Fu.scala:31:19
+  wire        _Csr_io_out_ex_interrupt_7;	// playground/src/pipeline/execute/Fu.scala:31:19
+  wire        _Csr_io_out_ex_interrupt_8;	// playground/src/pipeline/execute/Fu.scala:31:19
+  wire        _Csr_io_out_ex_interrupt_9;	// playground/src/pipeline/execute/Fu.scala:31:19
+  wire        _Csr_io_out_ex_interrupt_10;	// playground/src/pipeline/execute/Fu.scala:31:19
+  wire        _Csr_io_out_ex_interrupt_11;	// playground/src/pipeline/execute/Fu.scala:31:19
+  wire        _Csr_io_out_flush;	// playground/src/pipeline/execute/Fu.scala:31:19
+  wire [63:0] _Csr_io_out_target;	// playground/src/pipeline/execute/Fu.scala:31:19
+  wire        _Lsu_io_ex_exception_4;	// playground/src/pipeline/execute/Fu.scala:30:19
+  wire        _Lsu_io_ex_exception_6;	// playground/src/pipeline/execute/Fu.scala:30:19
+  wire [63:0] _Lsu_io_ex_tval_4;	// playground/src/pipeline/execute/Fu.scala:30:19
+  wire [63:0] _Lsu_io_ex_tval_6;	// playground/src/pipeline/execute/Fu.scala:30:19
+  wire        _Bru_io_out_branch;	// playground/src/pipeline/execute/Fu.scala:28:19
+  wire [63:0] _Bru_io_out_target;	// playground/src/pipeline/execute/Fu.scala:28:19
+  wire        _Bru_io_out_ex_exception_0;	// playground/src/pipeline/execute/Fu.scala:28:19
+  wire [63:0] _Bru_io_out_ex_tval_0;	// playground/src/pipeline/execute/Fu.scala:28:19
+  wire [5:0]  _GEN =
+    {io_data_ex_exception_11,
+     io_data_ex_exception_9,
+     io_data_ex_exception_8,
+     io_data_ex_exception_3,
+     io_data_ex_exception_2,
+     io_data_ex_exception_0};	// playground/src/defines/Util.scala:8:18
+  wire        _exception_T_7 =
+    io_data_info_fusel == 3'h2
+    & ~((|_GEN)
+        | (|{io_data_ex_interrupt_11,
+             io_data_ex_interrupt_10,
+             io_data_ex_interrupt_9,
+             io_data_ex_interrupt_8,
+             io_data_ex_interrupt_7,
+             io_data_ex_interrupt_6,
+             io_data_ex_interrupt_5,
+             io_data_ex_interrupt_4,
+             io_data_ex_interrupt_3,
+             io_data_ex_interrupt_2,
+             io_data_ex_interrupt_1,
+             io_data_ex_interrupt_0}));	// playground/src/defines/Util.scala:8:{18,25,29,45,52}, playground/src/pipeline/execute/Fu.scala:58:{14,29,32}
+  wire        _exception_T_15 =
+    io_data_info_fusel == 3'h3
+    & ~((|_GEN)
+        | (|{io_data_ex_interrupt_11,
+             io_data_ex_interrupt_10,
+             io_data_ex_interrupt_9,
+             io_data_ex_interrupt_8,
+             io_data_ex_interrupt_7,
+             io_data_ex_interrupt_6,
+             io_data_ex_interrupt_5,
+             io_data_ex_interrupt_4,
+             io_data_ex_interrupt_3,
+             io_data_ex_interrupt_2,
+             io_data_ex_interrupt_1,
+             io_data_ex_interrupt_0}));	// playground/src/defines/Util.scala:8:{18,25,29,45,52}, playground/src/pipeline/execute/Fu.scala:59:{14,29,32}
+  wire        _GEN_0 = _exception_T_7 | _exception_T_15;	// playground/src/pipeline/execute/Fu.scala:58:29, :59:29, src/main/scala/chisel3/util/Mux.scala:126:16
+  Alu Alu (	// playground/src/pipeline/execute/Fu.scala:27:19
     .io_info_op            (io_data_info_op),
     .io_src_info_src1_data (io_data_src_info_src1_data),
     .io_src_info_src2_data (io_data_src_info_src2_data),
     .io_result             (io_data_rd_info_wdata_0)
   );
-  Bru Bru (	// playground/src/pipeline/execute/Fu.scala:26:19
+  Bru Bru (	// playground/src/pipeline/execute/Fu.scala:28:19
     .io_in_pc                 (io_data_pc),
     .io_in_info_valid         (io_data_info_valid),
     .io_in_info_fusel         (io_data_info_fusel),
@@ -1263,16 +2076,18 @@ module Fu(	// playground/src/pipeline/execute/Fu.scala:9:7
     .io_in_info_imm           (io_data_info_imm),
     .io_in_src_info_src1_data (io_data_src_info_src1_data),
     .io_in_src_info_src2_data (io_data_src_info_src2_data),
-    .io_out_branch            (io_ctrl_flush),
-    .io_out_target            (io_ctrl_target)
+    .io_out_branch            (_Bru_io_out_branch),
+    .io_out_target            (_Bru_io_out_target),
+    .io_out_ex_exception_0    (_Bru_io_out_ex_exception_0),
+    .io_out_ex_tval_0         (_Bru_io_out_ex_tval_0)
   );
-  Mdu Mdu (	// playground/src/pipeline/execute/Fu.scala:27:19
+  Mdu Mdu (	// playground/src/pipeline/execute/Fu.scala:29:19
     .io_info_op            (io_data_info_op),
     .io_src_info_src1_data (io_data_src_info_src1_data),
     .io_src_info_src2_data (io_data_src_info_src2_data),
-    .io_result             (io_data_rd_info_wdata_2)
+    .io_result             (io_data_rd_info_wdata_1)
   );
-  Lsu Lsu (	// playground/src/pipeline/execute/Fu.scala:28:19
+  Lsu Lsu (	// playground/src/pipeline/execute/Fu.scala:30:19
     .clock                 (clock),
     .io_info_valid         (io_data_info_valid),
     .io_info_fusel         (io_data_info_fusel),
@@ -1280,88 +2095,233 @@ module Fu(	// playground/src/pipeline/execute/Fu.scala:9:7
     .io_info_imm           (io_data_info_imm),
     .io_src_info_src1_data (io_data_src_info_src1_data),
     .io_src_info_src2_data (io_data_src_info_src2_data),
+    .io_ex_exception_4     (_Lsu_io_ex_exception_4),
+    .io_ex_exception_6     (_Lsu_io_ex_exception_6),
+    .io_ex_tval_4          (_Lsu_io_ex_tval_4),
+    .io_ex_tval_6          (_Lsu_io_ex_tval_6),
     .io_dataSram_en        (io_dataSram_en),
     .io_dataSram_addr      (io_dataSram_addr),
     .io_dataSram_wdata     (io_dataSram_wdata),
     .io_dataSram_wen       (io_dataSram_wen),
     .io_dataSram_rdata     (io_dataSram_rdata),
-    .allow_to_go__bore     (Lsu_allow_to_go__bore),
     .result__bore          (Lsu_result__bore),
-    .mem_addr__bore        (Lsu_mem_addr__bore),
-    .mem_op__bore          (Lsu_mem_op__bore)
+    .allow_to_go__bore     (Lsu_allow_to_go__bore),
+    .mem_op__bore          (Lsu_mem_op__bore),
+    .mem_addr__bore        (Lsu_mem_addr__bore)
   );
-  assign io_data_rd_info_wdata_5 = io_data_pc + 64'h4;	// playground/src/pipeline/execute/Fu.scala:9:7, :46:51
+  Csr Csr (	// playground/src/pipeline/execute/Fu.scala:31:19
+    .clock                    (clock),
+    .reset                    (reset),
+    .io_in_pc                 (io_data_pc),
+    .io_in_info_valid         (io_data_info_valid),
+    .io_in_info_fusel         (io_data_info_fusel),
+    .io_in_info_op            (io_data_info_op),
+    .io_in_info_inst          (io_data_info_inst),
+    .io_in_src_info_src1_data (io_data_src_info_src1_data),
+    .io_in_ex_exception_0
+      (~_exception_T_7
+       & (_exception_T_15 ? _Bru_io_out_ex_exception_0 : io_data_ex_exception_0)),	// playground/src/pipeline/execute/Fu.scala:28:19, :58:29, :59:29, src/main/scala/chisel3/util/Mux.scala:126:16
+    .io_in_ex_exception_2     (~_GEN_0 & io_data_ex_exception_2),	// src/main/scala/chisel3/util/Mux.scala:126:16
+    .io_in_ex_exception_3     (~_GEN_0 & io_data_ex_exception_3),	// src/main/scala/chisel3/util/Mux.scala:126:16
+    .io_in_ex_exception_4     (_exception_T_7 & _Lsu_io_ex_exception_4),	// playground/src/pipeline/execute/Fu.scala:30:19, :58:29, src/main/scala/chisel3/util/Mux.scala:126:16
+    .io_in_ex_exception_6     (_exception_T_7 & _Lsu_io_ex_exception_6),	// playground/src/pipeline/execute/Fu.scala:30:19, :58:29, src/main/scala/chisel3/util/Mux.scala:126:16
+    .io_in_ex_exception_8     (~_GEN_0 & io_data_ex_exception_8),	// src/main/scala/chisel3/util/Mux.scala:126:16
+    .io_in_ex_exception_9     (~_GEN_0 & io_data_ex_exception_9),	// src/main/scala/chisel3/util/Mux.scala:126:16
+    .io_in_ex_exception_11    (~_GEN_0 & io_data_ex_exception_11),	// src/main/scala/chisel3/util/Mux.scala:126:16
+    .io_in_ex_interrupt_0     (~_GEN_0 & io_data_ex_interrupt_0),	// src/main/scala/chisel3/util/Mux.scala:126:16
+    .io_in_ex_interrupt_1     (~_GEN_0 & io_data_ex_interrupt_1),	// src/main/scala/chisel3/util/Mux.scala:126:16
+    .io_in_ex_interrupt_2     (~_GEN_0 & io_data_ex_interrupt_2),	// src/main/scala/chisel3/util/Mux.scala:126:16
+    .io_in_ex_interrupt_3     (~_GEN_0 & io_data_ex_interrupt_3),	// src/main/scala/chisel3/util/Mux.scala:126:16
+    .io_in_ex_interrupt_4     (~_GEN_0 & io_data_ex_interrupt_4),	// src/main/scala/chisel3/util/Mux.scala:126:16
+    .io_in_ex_interrupt_5     (~_GEN_0 & io_data_ex_interrupt_5),	// src/main/scala/chisel3/util/Mux.scala:126:16
+    .io_in_ex_interrupt_6     (~_GEN_0 & io_data_ex_interrupt_6),	// src/main/scala/chisel3/util/Mux.scala:126:16
+    .io_in_ex_interrupt_7     (~_GEN_0 & io_data_ex_interrupt_7),	// src/main/scala/chisel3/util/Mux.scala:126:16
+    .io_in_ex_interrupt_8     (~_GEN_0 & io_data_ex_interrupt_8),	// src/main/scala/chisel3/util/Mux.scala:126:16
+    .io_in_ex_interrupt_9     (~_GEN_0 & io_data_ex_interrupt_9),	// src/main/scala/chisel3/util/Mux.scala:126:16
+    .io_in_ex_interrupt_10    (~_GEN_0 & io_data_ex_interrupt_10),	// src/main/scala/chisel3/util/Mux.scala:126:16
+    .io_in_ex_interrupt_11    (~_GEN_0 & io_data_ex_interrupt_11),	// src/main/scala/chisel3/util/Mux.scala:126:16
+    .io_in_ex_tval_0
+      (_exception_T_7
+         ? 64'h0
+         : _exception_T_15 ? _Bru_io_out_ex_tval_0 : io_data_ex_tval_0),	// playground/src/pipeline/execute/Fu.scala:10:14, :28:19, :31:19, :58:29, :59:29, src/main/scala/chisel3/util/Mux.scala:126:16
+    .io_in_ex_tval_4          (_exception_T_7 ? _Lsu_io_ex_tval_4 : 64'h0),	// playground/src/pipeline/execute/Fu.scala:10:14, :30:19, :31:19, :58:29, src/main/scala/chisel3/util/Mux.scala:126:16
+    .io_in_ex_tval_6          (_exception_T_7 ? _Lsu_io_ex_tval_6 : 64'h0),	// playground/src/pipeline/execute/Fu.scala:10:14, :30:19, :31:19, :58:29, src/main/scala/chisel3/util/Mux.scala:126:16
+    .io_out_rdata             (io_data_rd_info_wdata_4),
+    .io_out_ex_exception_0    (_Csr_io_out_ex_exception_0),
+    .io_out_ex_exception_2    (_Csr_io_out_ex_exception_2),
+    .io_out_ex_exception_3    (_Csr_io_out_ex_exception_3),
+    .io_out_ex_exception_4    (_Csr_io_out_ex_exception_4),
+    .io_out_ex_exception_6    (_Csr_io_out_ex_exception_6),
+    .io_out_ex_exception_8    (_Csr_io_out_ex_exception_8),
+    .io_out_ex_exception_9    (_Csr_io_out_ex_exception_9),
+    .io_out_ex_exception_11   (_Csr_io_out_ex_exception_11),
+    .io_out_ex_interrupt_0    (_Csr_io_out_ex_interrupt_0),
+    .io_out_ex_interrupt_1    (_Csr_io_out_ex_interrupt_1),
+    .io_out_ex_interrupt_2    (_Csr_io_out_ex_interrupt_2),
+    .io_out_ex_interrupt_3    (_Csr_io_out_ex_interrupt_3),
+    .io_out_ex_interrupt_4    (_Csr_io_out_ex_interrupt_4),
+    .io_out_ex_interrupt_5    (_Csr_io_out_ex_interrupt_5),
+    .io_out_ex_interrupt_6    (_Csr_io_out_ex_interrupt_6),
+    .io_out_ex_interrupt_7    (_Csr_io_out_ex_interrupt_7),
+    .io_out_ex_interrupt_8    (_Csr_io_out_ex_interrupt_8),
+    .io_out_ex_interrupt_9    (_Csr_io_out_ex_interrupt_9),
+    .io_out_ex_interrupt_10   (_Csr_io_out_ex_interrupt_10),
+    .io_out_ex_interrupt_11   (_Csr_io_out_ex_interrupt_11),
+    .io_out_flush             (_Csr_io_out_flush),
+    .io_out_target            (_Csr_io_out_target),
+    .commit_num__bore         (Csr_commit_num__bore),
+    .mtip__bore               (Csr_mtip__bore),
+    .meip__bore               (Csr_meip__bore),
+    .interrupt__bore          (Csr_interrupt__bore),
+    .msip__bore               (Csr_msip__bore),
+    .mode__bore               (Csr_mode__bore)
+  );
+  assign io_data_rd_info_wdata_3 = io_data_pc + 64'h4;	// playground/src/pipeline/execute/Fu.scala:9:7, :65:51
+  assign io_data_has_exception =
+    (|{_Csr_io_out_ex_exception_11,
+       _Csr_io_out_ex_exception_9,
+       _Csr_io_out_ex_exception_8,
+       _Csr_io_out_ex_exception_6,
+       _Csr_io_out_ex_exception_4,
+       _Csr_io_out_ex_exception_3,
+       _Csr_io_out_ex_exception_2,
+       _Csr_io_out_ex_exception_0})
+    | (|{_Csr_io_out_ex_interrupt_11,
+         _Csr_io_out_ex_interrupt_10,
+         _Csr_io_out_ex_interrupt_9,
+         _Csr_io_out_ex_interrupt_8,
+         _Csr_io_out_ex_interrupt_7,
+         _Csr_io_out_ex_interrupt_6,
+         _Csr_io_out_ex_interrupt_5,
+         _Csr_io_out_ex_interrupt_4,
+         _Csr_io_out_ex_interrupt_3,
+         _Csr_io_out_ex_interrupt_2,
+         _Csr_io_out_ex_interrupt_1,
+         _Csr_io_out_ex_interrupt_0});	// playground/src/defines/Util.scala:8:{18,25,29,45,52}, playground/src/pipeline/execute/Fu.scala:9:7, :31:19
+  assign io_ctrl_flush = _Bru_io_out_branch | _Csr_io_out_flush;	// playground/src/pipeline/execute/Fu.scala:9:7, :28:19, :31:19, :70:36
+  assign io_ctrl_target = _Csr_io_out_flush ? _Csr_io_out_target : _Bru_io_out_target;	// playground/src/pipeline/execute/Fu.scala:9:7, :28:19, :31:19, :71:24
 endmodule
 
 module ExecuteUnit(	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
   input         clock,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
-  output        io_ctrl_data_is_load,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
-  output [4:0]  io_ctrl_data_reg_waddr,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                reset,	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
+  output        io_ctrl_info_valid,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output [2:0]  io_ctrl_info_fusel,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output [5:0]  io_ctrl_info_op,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output [4:0]  io_ctrl_info_reg_waddr,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
   output        io_ctrl_flush,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
   output [63:0] io_ctrl_target,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
   input         io_ctrl_ctrlSignal_allow_to_go,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
   input  [63:0] io_executeStage_data_pc,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
   input         io_executeStage_data_info_valid,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
   input  [2:0]  io_executeStage_data_info_fusel,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
-  input  [6:0]  io_executeStage_data_info_op,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  input  [5:0]  io_executeStage_data_info_op,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
   input         io_executeStage_data_info_reg_wen,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
   input  [4:0]  io_executeStage_data_info_reg_waddr,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
   input  [63:0] io_executeStage_data_info_imm,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                io_executeStage_data_info_inst,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
                 io_executeStage_data_src_info_src1_data,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
                 io_executeStage_data_src_info_src2_data,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
-  output        io_decodeUnit_forward_exe_wen,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
-  output [4:0]  io_decodeUnit_forward_exe_waddr,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
-  output [63:0] io_decodeUnit_forward_exe_wdata,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
-  output        io_decodeUnit_forward_is_load,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
-  output [63:0] io_memoryStage_data_pc,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  input         io_executeStage_data_ex_exception_0,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                io_executeStage_data_ex_exception_2,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                io_executeStage_data_ex_exception_3,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                io_executeStage_data_ex_exception_8,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                io_executeStage_data_ex_exception_9,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                io_executeStage_data_ex_exception_11,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                io_executeStage_data_ex_interrupt_0,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                io_executeStage_data_ex_interrupt_1,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                io_executeStage_data_ex_interrupt_2,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                io_executeStage_data_ex_interrupt_3,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                io_executeStage_data_ex_interrupt_4,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                io_executeStage_data_ex_interrupt_5,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                io_executeStage_data_ex_interrupt_6,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                io_executeStage_data_ex_interrupt_7,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                io_executeStage_data_ex_interrupt_8,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                io_executeStage_data_ex_interrupt_9,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                io_executeStage_data_ex_interrupt_10,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                io_executeStage_data_ex_interrupt_11,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  input  [63:0] io_executeStage_data_ex_tval_0,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output        io_decodeUnit_wen,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output [4:0]  io_decodeUnit_waddr,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output [63:0] io_decodeUnit_wdata,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                io_memoryStage_data_pc,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
   output        io_memoryStage_data_info_valid,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
   output [2:0]  io_memoryStage_data_info_fusel,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
-  output [6:0]  io_memoryStage_data_info_op,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output [5:0]  io_memoryStage_data_info_op,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
   output        io_memoryStage_data_info_reg_wen,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
   output [4:0]  io_memoryStage_data_info_reg_waddr,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
   output [63:0] io_memoryStage_data_info_imm,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
                 io_memoryStage_data_rd_info_wdata_0,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
-                io_memoryStage_data_rd_info_wdata_2,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
-                io_memoryStage_data_rd_info_wdata_5,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                io_memoryStage_data_rd_info_wdata_1,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                io_memoryStage_data_rd_info_wdata_3,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                io_memoryStage_data_rd_info_wdata_4,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
                 io_memoryStage_data_src_info_src1_data,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
-  output        io_dataSram_en,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  output        io_memoryStage_data_has_exception,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+                io_dataSram_en,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
   output [31:0] io_dataSram_addr,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
   output [63:0] io_dataSram_wdata,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
   output [7:0]  io_dataSram_wen,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
   input  [63:0] io_dataSram_rdata,	// playground/src/pipeline/execute/ExecuteUnit.scala:11:14
+  input  [1:0]  Fu_Csr_commit_num__bore,
+  input         Fu_Csr_mtip__bore,
   output [63:0] Fu_Lsu_result__bore,
-  input  [63:0] Fu_Lsu_mem_addr__bore,
-  input  [6:0]  Fu_Lsu_mem_op__bore
+  input         Fu_Csr_meip__bore,
+  output [11:0] Fu_Csr_interrupt__bore,
+  input         Fu_Csr_msip__bore,
+  output [1:0]  Fu_Csr_mode__bore,
+  input  [5:0]  Fu_Lsu_mem_op__bore,
+  input  [63:0] Fu_Lsu_mem_addr__bore
 );
 
-  wire [63:0]      _Fu_io_data_rd_info_wdata_0;	// playground/src/pipeline/execute/ExecuteUnit.scala:32:18
-  wire [63:0]      _Fu_io_data_rd_info_wdata_2;	// playground/src/pipeline/execute/ExecuteUnit.scala:32:18
-  wire [63:0]      _Fu_io_data_rd_info_wdata_5;	// playground/src/pipeline/execute/ExecuteUnit.scala:32:18
-  wire             _Fu_io_ctrl_flush;	// playground/src/pipeline/execute/ExecuteUnit.scala:32:18
-  wire             io_ctrl_data_is_load_0 =
-    io_executeStage_data_info_fusel == 3'h1 & ~(io_executeStage_data_info_op[3])
-    & ~(io_executeStage_data_info_op[5]);	// playground/src/defines/isa/Instructions.scala:108:39, :109:39, :110:{35,52}, playground/src/pipeline/execute/ExecuteUnit.scala:39:{35,50}
+  wire [63:0]      _Fu_io_data_rd_info_wdata_0;	// playground/src/pipeline/execute/ExecuteUnit.scala:25:18
+  wire [63:0]      _Fu_io_data_rd_info_wdata_1;	// playground/src/pipeline/execute/ExecuteUnit.scala:25:18
+  wire [63:0]      _Fu_io_data_rd_info_wdata_3;	// playground/src/pipeline/execute/ExecuteUnit.scala:25:18
+  wire [63:0]      _Fu_io_data_rd_info_wdata_4;	// playground/src/pipeline/execute/ExecuteUnit.scala:25:18
+  wire             _Fu_io_ctrl_flush;	// playground/src/pipeline/execute/ExecuteUnit.scala:25:18
   wire [7:0][63:0] _GEN =
     {{_Fu_io_data_rd_info_wdata_0},
      {_Fu_io_data_rd_info_wdata_0},
-     {_Fu_io_data_rd_info_wdata_5},
+     {_Fu_io_data_rd_info_wdata_0},
+     {_Fu_io_data_rd_info_wdata_4},
+     {_Fu_io_data_rd_info_wdata_3},
      {64'h0},
-     {64'h0},
-     {_Fu_io_data_rd_info_wdata_2},
-     {64'h0},
-     {_Fu_io_data_rd_info_wdata_0}};	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :11:14, :32:18, :52:35
-  Fu Fu (	// playground/src/pipeline/execute/ExecuteUnit.scala:32:18
+     {_Fu_io_data_rd_info_wdata_1},
+     {_Fu_io_data_rd_info_wdata_0}};	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :11:14, :25:18, :46:23
+  Fu Fu (	// playground/src/pipeline/execute/ExecuteUnit.scala:25:18
     .clock                      (clock),
+    .reset                      (reset),
     .io_data_pc                 (io_executeStage_data_pc),
     .io_data_info_valid         (io_executeStage_data_info_valid),
     .io_data_info_fusel         (io_executeStage_data_info_fusel),
     .io_data_info_op            (io_executeStage_data_info_op),
     .io_data_info_imm           (io_executeStage_data_info_imm),
+    .io_data_info_inst          (io_executeStage_data_info_inst),
     .io_data_src_info_src1_data (io_executeStage_data_src_info_src1_data),
     .io_data_src_info_src2_data (io_executeStage_data_src_info_src2_data),
     .io_data_rd_info_wdata_0    (_Fu_io_data_rd_info_wdata_0),
-    .io_data_rd_info_wdata_2    (_Fu_io_data_rd_info_wdata_2),
-    .io_data_rd_info_wdata_5    (_Fu_io_data_rd_info_wdata_5),
+    .io_data_rd_info_wdata_1    (_Fu_io_data_rd_info_wdata_1),
+    .io_data_rd_info_wdata_3    (_Fu_io_data_rd_info_wdata_3),
+    .io_data_rd_info_wdata_4    (_Fu_io_data_rd_info_wdata_4),
+    .io_data_ex_exception_0     (io_executeStage_data_ex_exception_0),
+    .io_data_ex_exception_2     (io_executeStage_data_ex_exception_2),
+    .io_data_ex_exception_3     (io_executeStage_data_ex_exception_3),
+    .io_data_ex_exception_8     (io_executeStage_data_ex_exception_8),
+    .io_data_ex_exception_9     (io_executeStage_data_ex_exception_9),
+    .io_data_ex_exception_11    (io_executeStage_data_ex_exception_11),
+    .io_data_ex_interrupt_0     (io_executeStage_data_ex_interrupt_0),
+    .io_data_ex_interrupt_1     (io_executeStage_data_ex_interrupt_1),
+    .io_data_ex_interrupt_2     (io_executeStage_data_ex_interrupt_2),
+    .io_data_ex_interrupt_3     (io_executeStage_data_ex_interrupt_3),
+    .io_data_ex_interrupt_4     (io_executeStage_data_ex_interrupt_4),
+    .io_data_ex_interrupt_5     (io_executeStage_data_ex_interrupt_5),
+    .io_data_ex_interrupt_6     (io_executeStage_data_ex_interrupt_6),
+    .io_data_ex_interrupt_7     (io_executeStage_data_ex_interrupt_7),
+    .io_data_ex_interrupt_8     (io_executeStage_data_ex_interrupt_8),
+    .io_data_ex_interrupt_9     (io_executeStage_data_ex_interrupt_9),
+    .io_data_ex_interrupt_10    (io_executeStage_data_ex_interrupt_10),
+    .io_data_ex_interrupt_11    (io_executeStage_data_ex_interrupt_11),
+    .io_data_ex_tval_0          (io_executeStage_data_ex_tval_0),
+    .io_data_has_exception      (io_memoryStage_data_has_exception),
     .io_dataSram_en             (io_dataSram_en),
     .io_dataSram_addr           (io_dataSram_addr),
     .io_dataSram_wdata          (io_dataSram_wdata),
@@ -1369,19 +2329,26 @@ module ExecuteUnit(	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
     .io_dataSram_rdata          (io_dataSram_rdata),
     .io_ctrl_flush              (_Fu_io_ctrl_flush),
     .io_ctrl_target             (io_ctrl_target),
-    .Lsu_allow_to_go__bore      (io_ctrl_ctrlSignal_allow_to_go),
+    .Csr_commit_num__bore       (Fu_Csr_commit_num__bore),
+    .Csr_mtip__bore             (Fu_Csr_mtip__bore),
     .Lsu_result__bore           (Fu_Lsu_result__bore),
-    .Lsu_mem_addr__bore         (Fu_Lsu_mem_addr__bore),
-    .Lsu_mem_op__bore           (Fu_Lsu_mem_op__bore)
+    .Csr_meip__bore             (Fu_Csr_meip__bore),
+    .Csr_interrupt__bore        (Fu_Csr_interrupt__bore),
+    .Csr_msip__bore             (Fu_Csr_msip__bore),
+    .Csr_mode__bore             (Fu_Csr_mode__bore),
+    .Lsu_allow_to_go__bore      (io_ctrl_ctrlSignal_allow_to_go),
+    .Lsu_mem_op__bore           (Fu_Lsu_mem_op__bore),
+    .Lsu_mem_addr__bore         (Fu_Lsu_mem_addr__bore)
   );
-  assign io_ctrl_data_is_load = io_ctrl_data_is_load_0;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :39:50
-  assign io_ctrl_data_reg_waddr = io_executeStage_data_info_reg_waddr;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
+  assign io_ctrl_info_valid = io_executeStage_data_info_valid;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
+  assign io_ctrl_info_fusel = io_executeStage_data_info_fusel;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
+  assign io_ctrl_info_op = io_executeStage_data_info_op;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
+  assign io_ctrl_info_reg_waddr = io_executeStage_data_info_reg_waddr;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
   assign io_ctrl_flush =
-    io_executeStage_data_info_valid & io_ctrl_ctrlSignal_allow_to_go & _Fu_io_ctrl_flush;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :32:18, :41:35
-  assign io_decodeUnit_forward_exe_wen = io_executeStage_data_info_reg_wen;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
-  assign io_decodeUnit_forward_exe_waddr = io_executeStage_data_info_reg_waddr;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
-  assign io_decodeUnit_forward_exe_wdata = _GEN[io_executeStage_data_info_fusel];	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :52:35
-  assign io_decodeUnit_forward_is_load = io_ctrl_data_is_load_0;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :39:50
+    io_executeStage_data_info_valid & io_ctrl_ctrlSignal_allow_to_go & _Fu_io_ctrl_flush;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :25:18, :34:27
+  assign io_decodeUnit_wen = io_executeStage_data_info_reg_wen;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
+  assign io_decodeUnit_waddr = io_executeStage_data_info_reg_waddr;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
+  assign io_decodeUnit_wdata = _GEN[io_executeStage_data_info_fusel];	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :46:23
   assign io_memoryStage_data_pc = io_executeStage_data_pc;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
   assign io_memoryStage_data_info_valid = io_executeStage_data_info_valid;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
   assign io_memoryStage_data_info_fusel = io_executeStage_data_info_fusel;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
@@ -1389,135 +2356,152 @@ module ExecuteUnit(	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
   assign io_memoryStage_data_info_reg_wen = io_executeStage_data_info_reg_wen;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
   assign io_memoryStage_data_info_reg_waddr = io_executeStage_data_info_reg_waddr;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
   assign io_memoryStage_data_info_imm = io_executeStage_data_info_imm;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
-  assign io_memoryStage_data_rd_info_wdata_0 = _Fu_io_data_rd_info_wdata_0;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :32:18
-  assign io_memoryStage_data_rd_info_wdata_2 = _Fu_io_data_rd_info_wdata_2;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :32:18
-  assign io_memoryStage_data_rd_info_wdata_5 = _Fu_io_data_rd_info_wdata_5;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :32:18
+  assign io_memoryStage_data_rd_info_wdata_0 = _Fu_io_data_rd_info_wdata_0;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :25:18
+  assign io_memoryStage_data_rd_info_wdata_1 = _Fu_io_data_rd_info_wdata_1;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :25:18
+  assign io_memoryStage_data_rd_info_wdata_3 = _Fu_io_data_rd_info_wdata_3;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :25:18
+  assign io_memoryStage_data_rd_info_wdata_4 = _Fu_io_data_rd_info_wdata_4;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7, :25:18
   assign io_memoryStage_data_src_info_src1_data = io_executeStage_data_src_info_src1_data;	// playground/src/pipeline/execute/ExecuteUnit.scala:10:7
 endmodule
 
-module MemoryStage(	// playground/src/pipeline/memory/MemoryStage.scala:20:7
-  input         clock,	// playground/src/pipeline/memory/MemoryStage.scala:20:7
-                reset,	// playground/src/pipeline/memory/MemoryStage.scala:20:7
-  input  [63:0] io_executeUnit_data_pc,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
-  input         io_executeUnit_data_info_valid,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
-  input  [2:0]  io_executeUnit_data_info_fusel,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
-  input  [6:0]  io_executeUnit_data_info_op,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
-  input         io_executeUnit_data_info_reg_wen,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
-  input  [4:0]  io_executeUnit_data_info_reg_waddr,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
-  input  [63:0] io_executeUnit_data_info_imm,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
-                io_executeUnit_data_rd_info_wdata_0,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
-                io_executeUnit_data_rd_info_wdata_2,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
-                io_executeUnit_data_rd_info_wdata_5,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
-                io_executeUnit_data_src_info_src1_data,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
-  output [63:0] io_memoryUnit_data_pc,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
-  output        io_memoryUnit_data_info_valid,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
-  output [2:0]  io_memoryUnit_data_info_fusel,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
-  output [6:0]  io_memoryUnit_data_info_op,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
-  output        io_memoryUnit_data_info_reg_wen,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
-  output [4:0]  io_memoryUnit_data_info_reg_waddr,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
-  output [63:0] io_memoryUnit_data_info_imm,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
-                io_memoryUnit_data_rd_info_wdata_0,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
-                io_memoryUnit_data_rd_info_wdata_2,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
-                io_memoryUnit_data_rd_info_wdata_5,	// playground/src/pipeline/memory/MemoryStage.scala:21:14
-                io_memoryUnit_data_src_info_src1_data	// playground/src/pipeline/memory/MemoryStage.scala:21:14
+module MemoryStage(	// playground/src/pipeline/memory/MemoryStage.scala:21:7
+  input         clock,	// playground/src/pipeline/memory/MemoryStage.scala:21:7
+                reset,	// playground/src/pipeline/memory/MemoryStage.scala:21:7
+  input  [63:0] io_executeUnit_data_pc,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
+  input         io_executeUnit_data_info_valid,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
+  input  [2:0]  io_executeUnit_data_info_fusel,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
+  input  [5:0]  io_executeUnit_data_info_op,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
+  input         io_executeUnit_data_info_reg_wen,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
+  input  [4:0]  io_executeUnit_data_info_reg_waddr,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
+  input  [63:0] io_executeUnit_data_info_imm,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
+                io_executeUnit_data_rd_info_wdata_0,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
+                io_executeUnit_data_rd_info_wdata_1,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
+                io_executeUnit_data_rd_info_wdata_3,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
+                io_executeUnit_data_rd_info_wdata_4,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
+                io_executeUnit_data_src_info_src1_data,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
+  input         io_executeUnit_data_has_exception,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
+  output [63:0] io_memoryUnit_data_pc,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
+  output        io_memoryUnit_data_info_valid,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
+  output [2:0]  io_memoryUnit_data_info_fusel,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
+  output [5:0]  io_memoryUnit_data_info_op,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
+  output        io_memoryUnit_data_info_reg_wen,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
+  output [4:0]  io_memoryUnit_data_info_reg_waddr,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
+  output [63:0] io_memoryUnit_data_info_imm,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
+                io_memoryUnit_data_rd_info_wdata_0,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
+                io_memoryUnit_data_rd_info_wdata_1,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
+                io_memoryUnit_data_rd_info_wdata_3,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
+                io_memoryUnit_data_rd_info_wdata_4,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
+                io_memoryUnit_data_src_info_src1_data,	// playground/src/pipeline/memory/MemoryStage.scala:22:14
+  output        io_memoryUnit_data_has_exception	// playground/src/pipeline/memory/MemoryStage.scala:22:14
 );
 
-  reg [63:0] data_pc;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
-  reg        data_info_valid;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
-  reg [2:0]  data_info_fusel;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
-  reg [6:0]  data_info_op;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
-  reg        data_info_reg_wen;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
-  reg [4:0]  data_info_reg_waddr;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
-  reg [63:0] data_info_imm;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
-  reg [63:0] data_rd_info_wdata_0;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
-  reg [63:0] data_rd_info_wdata_2;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
-  reg [63:0] data_rd_info_wdata_5;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
-  reg [63:0] data_src_info_src1_data;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
-  always @(posedge clock) begin	// playground/src/pipeline/memory/MemoryStage.scala:20:7
-    if (reset) begin	// playground/src/pipeline/memory/MemoryStage.scala:20:7
-      data_pc <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:21:14, :27:21, :28:26, :29:10, :30:35
-      data_info_valid <= 1'h0;	// playground/src/pipeline/memory/MemoryStage.scala:21:14, :27:21
-      data_info_fusel <= 3'h0;	// playground/src/pipeline/memory/MemoryStage.scala:27:{21,34}
-      data_info_op <= 7'h0;	// playground/src/pipeline/memory/MemoryStage.scala:27:{21,34}
-      data_info_reg_wen <= 1'h0;	// playground/src/pipeline/memory/MemoryStage.scala:21:14, :27:21
-      data_info_reg_waddr <= 5'h0;	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
-      data_info_imm <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:21:14, :27:21, :28:26, :29:10, :30:35
-      data_rd_info_wdata_0 <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:21:14, :27:21, :28:26, :29:10, :30:35
-      data_rd_info_wdata_2 <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:21:14, :27:21, :28:26, :29:10, :30:35
-      data_rd_info_wdata_5 <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:21:14, :27:21, :28:26, :29:10, :30:35
-      data_src_info_src1_data <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:21:14, :27:21, :28:26, :29:10, :30:35
+  reg [63:0] data_pc;	// playground/src/pipeline/memory/MemoryStage.scala:28:21
+  reg        data_info_valid;	// playground/src/pipeline/memory/MemoryStage.scala:28:21
+  reg [2:0]  data_info_fusel;	// playground/src/pipeline/memory/MemoryStage.scala:28:21
+  reg [5:0]  data_info_op;	// playground/src/pipeline/memory/MemoryStage.scala:28:21
+  reg        data_info_reg_wen;	// playground/src/pipeline/memory/MemoryStage.scala:28:21
+  reg [4:0]  data_info_reg_waddr;	// playground/src/pipeline/memory/MemoryStage.scala:28:21
+  reg [63:0] data_info_imm;	// playground/src/pipeline/memory/MemoryStage.scala:28:21
+  reg [63:0] data_rd_info_wdata_0;	// playground/src/pipeline/memory/MemoryStage.scala:28:21
+  reg [63:0] data_rd_info_wdata_1;	// playground/src/pipeline/memory/MemoryStage.scala:28:21
+  reg [63:0] data_rd_info_wdata_3;	// playground/src/pipeline/memory/MemoryStage.scala:28:21
+  reg [63:0] data_rd_info_wdata_4;	// playground/src/pipeline/memory/MemoryStage.scala:28:21
+  reg [63:0] data_src_info_src1_data;	// playground/src/pipeline/memory/MemoryStage.scala:28:21
+  reg        data_has_exception;	// playground/src/pipeline/memory/MemoryStage.scala:28:21
+  always @(posedge clock) begin	// playground/src/pipeline/memory/MemoryStage.scala:21:7
+    if (reset) begin	// playground/src/pipeline/memory/MemoryStage.scala:21:7
+      data_pc <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:28:{21,34}
+      data_info_valid <= 1'h0;	// playground/src/pipeline/memory/MemoryStage.scala:22:14, :28:21
+      data_info_fusel <= 3'h0;	// playground/src/pipeline/memory/MemoryStage.scala:28:{21,34}
+      data_info_op <= 6'h0;	// playground/src/pipeline/memory/MemoryStage.scala:28:{21,34}
+      data_info_reg_wen <= 1'h0;	// playground/src/pipeline/memory/MemoryStage.scala:22:14, :28:21
+      data_info_reg_waddr <= 5'h0;	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :28:21
+      data_info_imm <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:28:{21,34}
+      data_rd_info_wdata_0 <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:28:{21,34}
+      data_rd_info_wdata_1 <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:28:{21,34}
+      data_rd_info_wdata_3 <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:28:{21,34}
+      data_rd_info_wdata_4 <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:28:{21,34}
+      data_src_info_src1_data <= 64'h0;	// playground/src/pipeline/memory/MemoryStage.scala:28:{21,34}
+      data_has_exception <= 1'h0;	// playground/src/pipeline/memory/MemoryStage.scala:22:14, :28:21
     end
-    else begin	// playground/src/pipeline/memory/MemoryStage.scala:20:7
-      data_pc <= io_executeUnit_data_pc;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
-      data_info_valid <= io_executeUnit_data_info_valid;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
-      data_info_fusel <= io_executeUnit_data_info_fusel;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
-      data_info_op <= io_executeUnit_data_info_op;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
-      data_info_reg_wen <= io_executeUnit_data_info_reg_wen;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
-      data_info_reg_waddr <= io_executeUnit_data_info_reg_waddr;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
-      data_info_imm <= io_executeUnit_data_info_imm;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
-      data_rd_info_wdata_0 <= io_executeUnit_data_rd_info_wdata_0;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
-      data_rd_info_wdata_2 <= io_executeUnit_data_rd_info_wdata_2;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
-      data_rd_info_wdata_5 <= io_executeUnit_data_rd_info_wdata_5;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
-      data_src_info_src1_data <= io_executeUnit_data_src_info_src1_data;	// playground/src/pipeline/memory/MemoryStage.scala:27:21
+    else begin	// playground/src/pipeline/memory/MemoryStage.scala:21:7
+      data_pc <= io_executeUnit_data_pc;	// playground/src/pipeline/memory/MemoryStage.scala:28:21
+      data_info_valid <= io_executeUnit_data_info_valid;	// playground/src/pipeline/memory/MemoryStage.scala:28:21
+      data_info_fusel <= io_executeUnit_data_info_fusel;	// playground/src/pipeline/memory/MemoryStage.scala:28:21
+      data_info_op <= io_executeUnit_data_info_op;	// playground/src/pipeline/memory/MemoryStage.scala:28:21
+      data_info_reg_wen <= io_executeUnit_data_info_reg_wen;	// playground/src/pipeline/memory/MemoryStage.scala:28:21
+      data_info_reg_waddr <= io_executeUnit_data_info_reg_waddr;	// playground/src/pipeline/memory/MemoryStage.scala:28:21
+      data_info_imm <= io_executeUnit_data_info_imm;	// playground/src/pipeline/memory/MemoryStage.scala:28:21
+      data_rd_info_wdata_0 <= io_executeUnit_data_rd_info_wdata_0;	// playground/src/pipeline/memory/MemoryStage.scala:28:21
+      data_rd_info_wdata_1 <= io_executeUnit_data_rd_info_wdata_1;	// playground/src/pipeline/memory/MemoryStage.scala:28:21
+      data_rd_info_wdata_3 <= io_executeUnit_data_rd_info_wdata_3;	// playground/src/pipeline/memory/MemoryStage.scala:28:21
+      data_rd_info_wdata_4 <= io_executeUnit_data_rd_info_wdata_4;	// playground/src/pipeline/memory/MemoryStage.scala:28:21
+      data_src_info_src1_data <= io_executeUnit_data_src_info_src1_data;	// playground/src/pipeline/memory/MemoryStage.scala:28:21
+      data_has_exception <= io_executeUnit_data_has_exception;	// playground/src/pipeline/memory/MemoryStage.scala:28:21
     end
   end // always @(posedge)
-  `ifdef ENABLE_INITIAL_REG_	// playground/src/pipeline/memory/MemoryStage.scala:20:7
-    `ifdef FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/memory/MemoryStage.scala:20:7
-      `FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/memory/MemoryStage.scala:20:7
+  `ifdef ENABLE_INITIAL_REG_	// playground/src/pipeline/memory/MemoryStage.scala:21:7
+    `ifdef FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/memory/MemoryStage.scala:21:7
+      `FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/memory/MemoryStage.scala:21:7
     `endif // FIRRTL_BEFORE_INITIAL
-    initial begin	// playground/src/pipeline/memory/MemoryStage.scala:20:7
-      automatic logic [31:0] _RANDOM[0:20];	// playground/src/pipeline/memory/MemoryStage.scala:20:7
-      `ifdef INIT_RANDOM_PROLOG_	// playground/src/pipeline/memory/MemoryStage.scala:20:7
-        `INIT_RANDOM_PROLOG_	// playground/src/pipeline/memory/MemoryStage.scala:20:7
+    initial begin	// playground/src/pipeline/memory/MemoryStage.scala:21:7
+      automatic logic [31:0] _RANDOM[0:20];	// playground/src/pipeline/memory/MemoryStage.scala:21:7
+      `ifdef INIT_RANDOM_PROLOG_	// playground/src/pipeline/memory/MemoryStage.scala:21:7
+        `INIT_RANDOM_PROLOG_	// playground/src/pipeline/memory/MemoryStage.scala:21:7
       `endif // INIT_RANDOM_PROLOG_
-      `ifdef RANDOMIZE_REG_INIT	// playground/src/pipeline/memory/MemoryStage.scala:20:7
+      `ifdef RANDOMIZE_REG_INIT	// playground/src/pipeline/memory/MemoryStage.scala:21:7
         for (logic [4:0] i = 5'h0; i < 5'h15; i += 5'h1) begin
-          _RANDOM[i] = `RANDOM;	// playground/src/pipeline/memory/MemoryStage.scala:20:7
-        end	// playground/src/pipeline/memory/MemoryStage.scala:20:7
-        data_pc = {_RANDOM[5'h0], _RANDOM[5'h1]};	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
-        data_info_valid = _RANDOM[5'h2][0];	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
-        data_info_fusel = _RANDOM[5'h2][16:14];	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
-        data_info_op = _RANDOM[5'h2][23:17];	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
-        data_info_reg_wen = _RANDOM[5'h2][24];	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
-        data_info_reg_waddr = _RANDOM[5'h2][29:25];	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
-        data_info_imm = {_RANDOM[5'h2][31:30], _RANDOM[5'h3], _RANDOM[5'h4][29:0]};	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
-        data_rd_info_wdata_0 = {_RANDOM[5'h6][31:30], _RANDOM[5'h7], _RANDOM[5'h8][29:0]};	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
-        data_rd_info_wdata_2 = {_RANDOM[5'hA][31:30], _RANDOM[5'hB], _RANDOM[5'hC][29:0]};	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
-        data_rd_info_wdata_5 =
-          {_RANDOM[5'h10][31:30], _RANDOM[5'h11], _RANDOM[5'h12][29:0]};	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
+          _RANDOM[i] = `RANDOM;	// playground/src/pipeline/memory/MemoryStage.scala:21:7
+        end	// playground/src/pipeline/memory/MemoryStage.scala:21:7
+        data_pc = {_RANDOM[5'h0], _RANDOM[5'h1]};	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :28:21
+        data_info_valid = _RANDOM[5'h2][0];	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :28:21
+        data_info_fusel = _RANDOM[5'h2][16:14];	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :28:21
+        data_info_op = _RANDOM[5'h2][22:17];	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :28:21
+        data_info_reg_wen = _RANDOM[5'h2][23];	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :28:21
+        data_info_reg_waddr = _RANDOM[5'h2][28:24];	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :28:21
+        data_info_imm = {_RANDOM[5'h2][31:29], _RANDOM[5'h3], _RANDOM[5'h4][28:0]};	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :28:21
+        data_rd_info_wdata_0 = {_RANDOM[5'h6][31:29], _RANDOM[5'h7], _RANDOM[5'h8][28:0]};	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :28:21
+        data_rd_info_wdata_1 = {_RANDOM[5'h8][31:29], _RANDOM[5'h9], _RANDOM[5'hA][28:0]};	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :28:21
+        data_rd_info_wdata_3 = {_RANDOM[5'hC][31:29], _RANDOM[5'hD], _RANDOM[5'hE][28:0]};	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :28:21
+        data_rd_info_wdata_4 =
+          {_RANDOM[5'hE][31:29], _RANDOM[5'hF], _RANDOM[5'h10][28:0]};	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :28:21
         data_src_info_src1_data =
-          {_RANDOM[5'h12][31:30], _RANDOM[5'h13], _RANDOM[5'h14][29:0]};	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
+          {_RANDOM[5'h10][31:29], _RANDOM[5'h11], _RANDOM[5'h12][28:0]};	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :28:21
+        data_has_exception = _RANDOM[5'h14][29];	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :28:21
       `endif // RANDOMIZE_REG_INIT
     end // initial
-    `ifdef FIRRTL_AFTER_INITIAL	// playground/src/pipeline/memory/MemoryStage.scala:20:7
-      `FIRRTL_AFTER_INITIAL	// playground/src/pipeline/memory/MemoryStage.scala:20:7
+    `ifdef FIRRTL_AFTER_INITIAL	// playground/src/pipeline/memory/MemoryStage.scala:21:7
+      `FIRRTL_AFTER_INITIAL	// playground/src/pipeline/memory/MemoryStage.scala:21:7
     `endif // FIRRTL_AFTER_INITIAL
   `endif // ENABLE_INITIAL_REG_
-  assign io_memoryUnit_data_pc = data_pc;	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
-  assign io_memoryUnit_data_info_valid = data_info_valid;	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
-  assign io_memoryUnit_data_info_fusel = data_info_fusel;	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
-  assign io_memoryUnit_data_info_op = data_info_op;	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
-  assign io_memoryUnit_data_info_reg_wen = data_info_reg_wen;	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
-  assign io_memoryUnit_data_info_reg_waddr = data_info_reg_waddr;	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
-  assign io_memoryUnit_data_info_imm = data_info_imm;	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
-  assign io_memoryUnit_data_rd_info_wdata_0 = data_rd_info_wdata_0;	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
-  assign io_memoryUnit_data_rd_info_wdata_2 = data_rd_info_wdata_2;	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
-  assign io_memoryUnit_data_rd_info_wdata_5 = data_rd_info_wdata_5;	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
-  assign io_memoryUnit_data_src_info_src1_data = data_src_info_src1_data;	// playground/src/pipeline/memory/MemoryStage.scala:20:7, :27:21
+  assign io_memoryUnit_data_pc = data_pc;	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :28:21
+  assign io_memoryUnit_data_info_valid = data_info_valid;	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :28:21
+  assign io_memoryUnit_data_info_fusel = data_info_fusel;	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :28:21
+  assign io_memoryUnit_data_info_op = data_info_op;	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :28:21
+  assign io_memoryUnit_data_info_reg_wen = data_info_reg_wen;	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :28:21
+  assign io_memoryUnit_data_info_reg_waddr = data_info_reg_waddr;	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :28:21
+  assign io_memoryUnit_data_info_imm = data_info_imm;	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :28:21
+  assign io_memoryUnit_data_rd_info_wdata_0 = data_rd_info_wdata_0;	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :28:21
+  assign io_memoryUnit_data_rd_info_wdata_1 = data_rd_info_wdata_1;	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :28:21
+  assign io_memoryUnit_data_rd_info_wdata_3 = data_rd_info_wdata_3;	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :28:21
+  assign io_memoryUnit_data_rd_info_wdata_4 = data_rd_info_wdata_4;	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :28:21
+  assign io_memoryUnit_data_src_info_src1_data = data_src_info_src1_data;	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :28:21
+  assign io_memoryUnit_data_has_exception = data_has_exception;	// playground/src/pipeline/memory/MemoryStage.scala:21:7, :28:21
 endmodule
 
 module MemoryUnit(	// playground/src/pipeline/memory/MemoryUnit.scala:10:7
   input  [63:0] io_memoryStage_data_pc,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
   input         io_memoryStage_data_info_valid,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
   input  [2:0]  io_memoryStage_data_info_fusel,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
-  input  [6:0]  io_memoryStage_data_info_op,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
+  input  [5:0]  io_memoryStage_data_info_op,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
   input         io_memoryStage_data_info_reg_wen,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
   input  [4:0]  io_memoryStage_data_info_reg_waddr,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
   input  [63:0] io_memoryStage_data_info_imm,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
                 io_memoryStage_data_rd_info_wdata_0,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
-                io_memoryStage_data_rd_info_wdata_2,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
-                io_memoryStage_data_rd_info_wdata_5,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
+                io_memoryStage_data_rd_info_wdata_1,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
+                io_memoryStage_data_rd_info_wdata_3,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
+                io_memoryStage_data_rd_info_wdata_4,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
                 io_memoryStage_data_src_info_src1_data,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
+  input         io_memoryStage_data_has_exception,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
   output        io_decodeUnit_wen,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
   output [4:0]  io_decodeUnit_waddr,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
   output [63:0] io_decodeUnit_wdata,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
@@ -1529,24 +2513,26 @@ module MemoryUnit(	// playground/src/pipeline/memory/MemoryUnit.scala:10:7
   output [63:0] io_writeBackStage_data_rd_info_wdata_0,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
                 io_writeBackStage_data_rd_info_wdata_1,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
                 io_writeBackStage_data_rd_info_wdata_2,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
-                io_writeBackStage_data_rd_info_wdata_5,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
+                io_writeBackStage_data_rd_info_wdata_3,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
+                io_writeBackStage_data_rd_info_wdata_4,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
+  output        io_writeBackStage_data_has_exception,	// playground/src/pipeline/memory/MemoryUnit.scala:11:14
   input  [63:0] rdata__bore,
-  output [63:0] addr__bore,
-  output [6:0]  op__bore
+  output [5:0]  op__bore,
+  output [63:0] addr__bore
 );
 
-  wire [6:0]       op = io_memoryStage_data_info_op;	// playground/src/pipeline/memory/MemoryUnit.scala:19:19
+  wire [5:0]       op = io_memoryStage_data_info_op;	// playground/src/pipeline/memory/MemoryUnit.scala:19:19
   wire [63:0]      addr =
     io_memoryStage_data_src_info_src1_data + io_memoryStage_data_info_imm;	// playground/src/pipeline/memory/MemoryUnit.scala:20:19, :22:50
   wire [7:0][63:0] _GEN =
     {{io_memoryStage_data_rd_info_wdata_0},
      {io_memoryStage_data_rd_info_wdata_0},
-     {io_memoryStage_data_rd_info_wdata_5},
-     {64'h0},
-     {64'h0},
-     {io_memoryStage_data_rd_info_wdata_2},
+     {io_memoryStage_data_rd_info_wdata_0},
+     {io_memoryStage_data_rd_info_wdata_4},
+     {io_memoryStage_data_rd_info_wdata_3},
      {rdata__bore},
-     {io_memoryStage_data_rd_info_wdata_0}};	// playground/src/pipeline/memory/MemoryUnit.scala:11:14, :29:23
+     {io_memoryStage_data_rd_info_wdata_1},
+     {io_memoryStage_data_rd_info_wdata_0}};	// playground/src/pipeline/memory/MemoryUnit.scala:29:23
   assign io_decodeUnit_wen = io_memoryStage_data_info_reg_wen;	// playground/src/pipeline/memory/MemoryUnit.scala:10:7
   assign io_decodeUnit_waddr = io_memoryStage_data_info_reg_waddr;	// playground/src/pipeline/memory/MemoryUnit.scala:10:7
   assign io_decodeUnit_wdata = _GEN[io_memoryStage_data_info_fusel];	// playground/src/pipeline/memory/MemoryUnit.scala:10:7, :29:23
@@ -1556,336 +2542,401 @@ module MemoryUnit(	// playground/src/pipeline/memory/MemoryUnit.scala:10:7
   assign io_writeBackStage_data_info_reg_wen = io_memoryStage_data_info_reg_wen;	// playground/src/pipeline/memory/MemoryUnit.scala:10:7
   assign io_writeBackStage_data_info_reg_waddr = io_memoryStage_data_info_reg_waddr;	// playground/src/pipeline/memory/MemoryUnit.scala:10:7
   assign io_writeBackStage_data_rd_info_wdata_0 = io_memoryStage_data_rd_info_wdata_0;	// playground/src/pipeline/memory/MemoryUnit.scala:10:7
-  assign io_writeBackStage_data_rd_info_wdata_1 = rdata__bore;	// playground/src/pipeline/memory/MemoryUnit.scala:10:7
-  assign io_writeBackStage_data_rd_info_wdata_2 = io_memoryStage_data_rd_info_wdata_2;	// playground/src/pipeline/memory/MemoryUnit.scala:10:7
-  assign io_writeBackStage_data_rd_info_wdata_5 = io_memoryStage_data_rd_info_wdata_5;	// playground/src/pipeline/memory/MemoryUnit.scala:10:7
-  assign addr__bore = addr;	// playground/src/pipeline/memory/MemoryUnit.scala:10:7, :20:19
+  assign io_writeBackStage_data_rd_info_wdata_1 = io_memoryStage_data_rd_info_wdata_1;	// playground/src/pipeline/memory/MemoryUnit.scala:10:7
+  assign io_writeBackStage_data_rd_info_wdata_2 = rdata__bore;	// playground/src/pipeline/memory/MemoryUnit.scala:10:7
+  assign io_writeBackStage_data_rd_info_wdata_3 = io_memoryStage_data_rd_info_wdata_3;	// playground/src/pipeline/memory/MemoryUnit.scala:10:7
+  assign io_writeBackStage_data_rd_info_wdata_4 = io_memoryStage_data_rd_info_wdata_4;	// playground/src/pipeline/memory/MemoryUnit.scala:10:7
+  assign io_writeBackStage_data_has_exception = io_memoryStage_data_has_exception;	// playground/src/pipeline/memory/MemoryUnit.scala:10:7
   assign op__bore = op;	// playground/src/pipeline/memory/MemoryUnit.scala:10:7, :19:19
+  assign addr__bore = addr;	// playground/src/pipeline/memory/MemoryUnit.scala:10:7, :20:19
 endmodule
 
-module WriteBackStage(	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
-  input         clock,	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
-                reset,	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
-  input  [63:0] io_memoryUnit_data_pc,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
-  input         io_memoryUnit_data_info_valid,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
-  input  [2:0]  io_memoryUnit_data_info_fusel,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
-  input         io_memoryUnit_data_info_reg_wen,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
-  input  [4:0]  io_memoryUnit_data_info_reg_waddr,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
-  input  [63:0] io_memoryUnit_data_rd_info_wdata_0,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
-                io_memoryUnit_data_rd_info_wdata_1,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
-                io_memoryUnit_data_rd_info_wdata_2,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
-                io_memoryUnit_data_rd_info_wdata_5,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
-  output [63:0] io_writeBackUnit_data_pc,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
-  output        io_writeBackUnit_data_info_valid,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
-  output [2:0]  io_writeBackUnit_data_info_fusel,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
-  output        io_writeBackUnit_data_info_reg_wen,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
-  output [4:0]  io_writeBackUnit_data_info_reg_waddr,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
-  output [63:0] io_writeBackUnit_data_rd_info_wdata_0,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
-                io_writeBackUnit_data_rd_info_wdata_1,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
-                io_writeBackUnit_data_rd_info_wdata_2,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
-                io_writeBackUnit_data_rd_info_wdata_3,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
-                io_writeBackUnit_data_rd_info_wdata_4,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
-                io_writeBackUnit_data_rd_info_wdata_5	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14
+module WriteBackStage(	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7
+  input         clock,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7
+                reset,	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7
+  input  [63:0] io_memoryUnit_data_pc,	// playground/src/pipeline/writeback/WriteBackStage.scala:20:14
+  input         io_memoryUnit_data_info_valid,	// playground/src/pipeline/writeback/WriteBackStage.scala:20:14
+  input  [2:0]  io_memoryUnit_data_info_fusel,	// playground/src/pipeline/writeback/WriteBackStage.scala:20:14
+  input         io_memoryUnit_data_info_reg_wen,	// playground/src/pipeline/writeback/WriteBackStage.scala:20:14
+  input  [4:0]  io_memoryUnit_data_info_reg_waddr,	// playground/src/pipeline/writeback/WriteBackStage.scala:20:14
+  input  [63:0] io_memoryUnit_data_rd_info_wdata_0,	// playground/src/pipeline/writeback/WriteBackStage.scala:20:14
+                io_memoryUnit_data_rd_info_wdata_1,	// playground/src/pipeline/writeback/WriteBackStage.scala:20:14
+                io_memoryUnit_data_rd_info_wdata_2,	// playground/src/pipeline/writeback/WriteBackStage.scala:20:14
+                io_memoryUnit_data_rd_info_wdata_3,	// playground/src/pipeline/writeback/WriteBackStage.scala:20:14
+                io_memoryUnit_data_rd_info_wdata_4,	// playground/src/pipeline/writeback/WriteBackStage.scala:20:14
+  input         io_memoryUnit_data_has_exception,	// playground/src/pipeline/writeback/WriteBackStage.scala:20:14
+  output [63:0] io_writeBackUnit_data_pc,	// playground/src/pipeline/writeback/WriteBackStage.scala:20:14
+  output        io_writeBackUnit_data_info_valid,	// playground/src/pipeline/writeback/WriteBackStage.scala:20:14
+  output [2:0]  io_writeBackUnit_data_info_fusel,	// playground/src/pipeline/writeback/WriteBackStage.scala:20:14
+  output        io_writeBackUnit_data_info_reg_wen,	// playground/src/pipeline/writeback/WriteBackStage.scala:20:14
+  output [4:0]  io_writeBackUnit_data_info_reg_waddr,	// playground/src/pipeline/writeback/WriteBackStage.scala:20:14
+  output [63:0] io_writeBackUnit_data_rd_info_wdata_0,	// playground/src/pipeline/writeback/WriteBackStage.scala:20:14
+                io_writeBackUnit_data_rd_info_wdata_1,	// playground/src/pipeline/writeback/WriteBackStage.scala:20:14
+                io_writeBackUnit_data_rd_info_wdata_2,	// playground/src/pipeline/writeback/WriteBackStage.scala:20:14
+                io_writeBackUnit_data_rd_info_wdata_3,	// playground/src/pipeline/writeback/WriteBackStage.scala:20:14
+                io_writeBackUnit_data_rd_info_wdata_4,	// playground/src/pipeline/writeback/WriteBackStage.scala:20:14
+  output        io_writeBackUnit_data_has_exception	// playground/src/pipeline/writeback/WriteBackStage.scala:20:14
 );
 
-  reg [63:0] data_pc;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
-  reg        data_info_valid;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
-  reg [2:0]  data_info_fusel;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
-  reg        data_info_reg_wen;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
-  reg [4:0]  data_info_reg_waddr;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
-  reg [63:0] data_rd_info_wdata_0;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
-  reg [63:0] data_rd_info_wdata_1;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
-  reg [63:0] data_rd_info_wdata_2;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
-  reg [63:0] data_rd_info_wdata_3;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
-  reg [63:0] data_rd_info_wdata_4;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
-  reg [63:0] data_rd_info_wdata_5;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
-  always @(posedge clock) begin	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
-    if (reset) begin	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
-      data_pc <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14, :25:21
-      data_info_valid <= 1'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14, :25:21
-      data_info_fusel <= 3'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:{21,34}
-      data_info_reg_wen <= 1'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14, :25:21
-      data_info_reg_waddr <= 5'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
-      data_rd_info_wdata_0 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14, :25:21
-      data_rd_info_wdata_1 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14, :25:21
-      data_rd_info_wdata_2 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14, :25:21
-      data_rd_info_wdata_3 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14, :25:21
-      data_rd_info_wdata_4 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14, :25:21
-      data_rd_info_wdata_5 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14, :25:21
+  reg [63:0] data_pc;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:21
+  reg        data_info_valid;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:21
+  reg [2:0]  data_info_fusel;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:21
+  reg        data_info_reg_wen;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:21
+  reg [4:0]  data_info_reg_waddr;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:21
+  reg [63:0] data_rd_info_wdata_0;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:21
+  reg [63:0] data_rd_info_wdata_1;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:21
+  reg [63:0] data_rd_info_wdata_2;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:21
+  reg [63:0] data_rd_info_wdata_3;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:21
+  reg [63:0] data_rd_info_wdata_4;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:21
+  reg        data_has_exception;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:21
+  always @(posedge clock) begin	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7
+    if (reset) begin	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7
+      data_pc <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:{21,34}
+      data_info_valid <= 1'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:20:14, :26:21
+      data_info_fusel <= 3'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:{21,34}
+      data_info_reg_wen <= 1'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:20:14, :26:21
+      data_info_reg_waddr <= 5'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7, :26:21
+      data_rd_info_wdata_0 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:{21,34}
+      data_rd_info_wdata_1 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:{21,34}
+      data_rd_info_wdata_2 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:{21,34}
+      data_rd_info_wdata_3 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:{21,34}
+      data_rd_info_wdata_4 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:{21,34}
+      data_has_exception <= 1'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:20:14, :26:21
     end
-    else begin	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
-      data_pc <= io_memoryUnit_data_pc;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
-      data_info_valid <= io_memoryUnit_data_info_valid;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
-      data_info_fusel <= io_memoryUnit_data_info_fusel;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
-      data_info_reg_wen <= io_memoryUnit_data_info_reg_wen;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
-      data_info_reg_waddr <= io_memoryUnit_data_info_reg_waddr;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
-      data_rd_info_wdata_0 <= io_memoryUnit_data_rd_info_wdata_0;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
-      data_rd_info_wdata_1 <= io_memoryUnit_data_rd_info_wdata_1;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
-      data_rd_info_wdata_2 <= io_memoryUnit_data_rd_info_wdata_2;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
-      data_rd_info_wdata_3 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14, :25:21
-      data_rd_info_wdata_4 <= 64'h0;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:14, :25:21
-      data_rd_info_wdata_5 <= io_memoryUnit_data_rd_info_wdata_5;	// playground/src/pipeline/writeback/WriteBackStage.scala:25:21
+    else begin	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7
+      data_pc <= io_memoryUnit_data_pc;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:21
+      data_info_valid <= io_memoryUnit_data_info_valid;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:21
+      data_info_fusel <= io_memoryUnit_data_info_fusel;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:21
+      data_info_reg_wen <= io_memoryUnit_data_info_reg_wen;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:21
+      data_info_reg_waddr <= io_memoryUnit_data_info_reg_waddr;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:21
+      data_rd_info_wdata_0 <= io_memoryUnit_data_rd_info_wdata_0;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:21
+      data_rd_info_wdata_1 <= io_memoryUnit_data_rd_info_wdata_1;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:21
+      data_rd_info_wdata_2 <= io_memoryUnit_data_rd_info_wdata_2;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:21
+      data_rd_info_wdata_3 <= io_memoryUnit_data_rd_info_wdata_3;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:21
+      data_rd_info_wdata_4 <= io_memoryUnit_data_rd_info_wdata_4;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:21
+      data_has_exception <= io_memoryUnit_data_has_exception;	// playground/src/pipeline/writeback/WriteBackStage.scala:26:21
     end
   end // always @(posedge)
-  `ifdef ENABLE_INITIAL_REG_	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
-    `ifdef FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
-      `FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
+  `ifdef ENABLE_INITIAL_REG_	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7
+    `ifdef FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7
+      `FIRRTL_BEFORE_INITIAL	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7
     `endif // FIRRTL_BEFORE_INITIAL
-    initial begin	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
-      automatic logic [31:0] _RANDOM[0:18];	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
-      `ifdef INIT_RANDOM_PROLOG_	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
-        `INIT_RANDOM_PROLOG_	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
+    initial begin	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7
+      automatic logic [31:0] _RANDOM[0:16];	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7
+      `ifdef INIT_RANDOM_PROLOG_	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7
+        `INIT_RANDOM_PROLOG_	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7
       `endif // INIT_RANDOM_PROLOG_
-      `ifdef RANDOMIZE_REG_INIT	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
-        for (logic [4:0] i = 5'h0; i < 5'h13; i += 5'h1) begin
-          _RANDOM[i] = `RANDOM;	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
-        end	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
-        data_pc = {_RANDOM[5'h0], _RANDOM[5'h1]};	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
-        data_info_valid = _RANDOM[5'h2][0];	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
-        data_info_fusel = _RANDOM[5'h2][16:14];	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
-        data_info_reg_wen = _RANDOM[5'h2][24];	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
-        data_info_reg_waddr = _RANDOM[5'h2][29:25];	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
-        data_rd_info_wdata_0 = {_RANDOM[5'h6][31:30], _RANDOM[5'h7], _RANDOM[5'h8][29:0]};	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
-        data_rd_info_wdata_1 = {_RANDOM[5'h8][31:30], _RANDOM[5'h9], _RANDOM[5'hA][29:0]};	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
-        data_rd_info_wdata_2 = {_RANDOM[5'hA][31:30], _RANDOM[5'hB], _RANDOM[5'hC][29:0]};	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
-        data_rd_info_wdata_3 = {_RANDOM[5'hC][31:30], _RANDOM[5'hD], _RANDOM[5'hE][29:0]};	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
+      `ifdef RANDOMIZE_REG_INIT	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7
+        for (logic [4:0] i = 5'h0; i < 5'h11; i += 5'h1) begin
+          _RANDOM[i] = `RANDOM;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7
+        end	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7
+        data_pc = {_RANDOM[5'h0], _RANDOM[5'h1]};	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7, :26:21
+        data_info_valid = _RANDOM[5'h2][0];	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7, :26:21
+        data_info_fusel = _RANDOM[5'h2][16:14];	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7, :26:21
+        data_info_reg_wen = _RANDOM[5'h2][23];	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7, :26:21
+        data_info_reg_waddr = _RANDOM[5'h2][28:24];	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7, :26:21
+        data_rd_info_wdata_0 = {_RANDOM[5'h6][31:29], _RANDOM[5'h7], _RANDOM[5'h8][28:0]};	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7, :26:21
+        data_rd_info_wdata_1 = {_RANDOM[5'h8][31:29], _RANDOM[5'h9], _RANDOM[5'hA][28:0]};	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7, :26:21
+        data_rd_info_wdata_2 = {_RANDOM[5'hA][31:29], _RANDOM[5'hB], _RANDOM[5'hC][28:0]};	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7, :26:21
+        data_rd_info_wdata_3 = {_RANDOM[5'hC][31:29], _RANDOM[5'hD], _RANDOM[5'hE][28:0]};	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7, :26:21
         data_rd_info_wdata_4 =
-          {_RANDOM[5'hE][31:30], _RANDOM[5'hF], _RANDOM[5'h10][29:0]};	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
-        data_rd_info_wdata_5 =
-          {_RANDOM[5'h10][31:30], _RANDOM[5'h11], _RANDOM[5'h12][29:0]};	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
+          {_RANDOM[5'hE][31:29], _RANDOM[5'hF], _RANDOM[5'h10][28:0]};	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7, :26:21
+        data_has_exception = _RANDOM[5'h10][29];	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7, :26:21
       `endif // RANDOMIZE_REG_INIT
     end // initial
-    `ifdef FIRRTL_AFTER_INITIAL	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
-      `FIRRTL_AFTER_INITIAL	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7
+    `ifdef FIRRTL_AFTER_INITIAL	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7
+      `FIRRTL_AFTER_INITIAL	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7
     `endif // FIRRTL_AFTER_INITIAL
   `endif // ENABLE_INITIAL_REG_
-  assign io_writeBackUnit_data_pc = data_pc;	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
-  assign io_writeBackUnit_data_info_valid = data_info_valid;	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
-  assign io_writeBackUnit_data_info_fusel = data_info_fusel;	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
-  assign io_writeBackUnit_data_info_reg_wen = data_info_reg_wen;	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
-  assign io_writeBackUnit_data_info_reg_waddr = data_info_reg_waddr;	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
-  assign io_writeBackUnit_data_rd_info_wdata_0 = data_rd_info_wdata_0;	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
-  assign io_writeBackUnit_data_rd_info_wdata_1 = data_rd_info_wdata_1;	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
-  assign io_writeBackUnit_data_rd_info_wdata_2 = data_rd_info_wdata_2;	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
-  assign io_writeBackUnit_data_rd_info_wdata_3 = data_rd_info_wdata_3;	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
-  assign io_writeBackUnit_data_rd_info_wdata_4 = data_rd_info_wdata_4;	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
-  assign io_writeBackUnit_data_rd_info_wdata_5 = data_rd_info_wdata_5;	// playground/src/pipeline/writeback/WriteBackStage.scala:18:7, :25:21
+  assign io_writeBackUnit_data_pc = data_pc;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7, :26:21
+  assign io_writeBackUnit_data_info_valid = data_info_valid;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7, :26:21
+  assign io_writeBackUnit_data_info_fusel = data_info_fusel;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7, :26:21
+  assign io_writeBackUnit_data_info_reg_wen = data_info_reg_wen;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7, :26:21
+  assign io_writeBackUnit_data_info_reg_waddr = data_info_reg_waddr;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7, :26:21
+  assign io_writeBackUnit_data_rd_info_wdata_0 = data_rd_info_wdata_0;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7, :26:21
+  assign io_writeBackUnit_data_rd_info_wdata_1 = data_rd_info_wdata_1;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7, :26:21
+  assign io_writeBackUnit_data_rd_info_wdata_2 = data_rd_info_wdata_2;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7, :26:21
+  assign io_writeBackUnit_data_rd_info_wdata_3 = data_rd_info_wdata_3;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7, :26:21
+  assign io_writeBackUnit_data_rd_info_wdata_4 = data_rd_info_wdata_4;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7, :26:21
+  assign io_writeBackUnit_data_has_exception = data_has_exception;	// playground/src/pipeline/writeback/WriteBackStage.scala:19:7, :26:21
 endmodule
 
-module WriteBackUnit(	// playground/src/pipeline/writeback/WriteBackUnit.scala:9:7
-  input  [63:0] io_writeBackStage_data_pc,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
-  input         io_writeBackStage_data_info_valid,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
-  input  [2:0]  io_writeBackStage_data_info_fusel,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
-  input         io_writeBackStage_data_info_reg_wen,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
-  input  [4:0]  io_writeBackStage_data_info_reg_waddr,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
-  input  [63:0] io_writeBackStage_data_rd_info_wdata_0,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
-                io_writeBackStage_data_rd_info_wdata_1,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
-                io_writeBackStage_data_rd_info_wdata_2,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
-                io_writeBackStage_data_rd_info_wdata_3,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
-                io_writeBackStage_data_rd_info_wdata_4,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
-                io_writeBackStage_data_rd_info_wdata_5,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
-  output        io_regfile_wen,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
-  output [4:0]  io_regfile_waddr,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
-  output [63:0] io_regfile_wdata,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
-                io_debug_pc,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
-  output        io_debug_commit,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
-  output [4:0]  io_debug_rf_wnum,	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
-  output [63:0] io_debug_rf_wdata	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:14
+module WriteBackUnit(	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:7
+  input  [63:0] io_writeBackStage_data_pc,	// playground/src/pipeline/writeback/WriteBackUnit.scala:11:14
+  input         io_writeBackStage_data_info_valid,	// playground/src/pipeline/writeback/WriteBackUnit.scala:11:14
+  input  [2:0]  io_writeBackStage_data_info_fusel,	// playground/src/pipeline/writeback/WriteBackUnit.scala:11:14
+  input         io_writeBackStage_data_info_reg_wen,	// playground/src/pipeline/writeback/WriteBackUnit.scala:11:14
+  input  [4:0]  io_writeBackStage_data_info_reg_waddr,	// playground/src/pipeline/writeback/WriteBackUnit.scala:11:14
+  input  [63:0] io_writeBackStage_data_rd_info_wdata_0,	// playground/src/pipeline/writeback/WriteBackUnit.scala:11:14
+                io_writeBackStage_data_rd_info_wdata_1,	// playground/src/pipeline/writeback/WriteBackUnit.scala:11:14
+                io_writeBackStage_data_rd_info_wdata_2,	// playground/src/pipeline/writeback/WriteBackUnit.scala:11:14
+                io_writeBackStage_data_rd_info_wdata_3,	// playground/src/pipeline/writeback/WriteBackUnit.scala:11:14
+                io_writeBackStage_data_rd_info_wdata_4,	// playground/src/pipeline/writeback/WriteBackUnit.scala:11:14
+  input         io_writeBackStage_data_has_exception,	// playground/src/pipeline/writeback/WriteBackUnit.scala:11:14
+  output        io_regfile_wen,	// playground/src/pipeline/writeback/WriteBackUnit.scala:11:14
+  output [4:0]  io_regfile_waddr,	// playground/src/pipeline/writeback/WriteBackUnit.scala:11:14
+  output [63:0] io_regfile_wdata,	// playground/src/pipeline/writeback/WriteBackUnit.scala:11:14
+                io_debug_pc,	// playground/src/pipeline/writeback/WriteBackUnit.scala:11:14
+  output        io_debug_commit,	// playground/src/pipeline/writeback/WriteBackUnit.scala:11:14
+  output [4:0]  io_debug_rf_wnum,	// playground/src/pipeline/writeback/WriteBackUnit.scala:11:14
+  output [63:0] io_debug_rf_wdata,	// playground/src/pipeline/writeback/WriteBackUnit.scala:11:14
+  output        io_debug_commit__bore
 );
 
   wire [7:0][63:0] _GEN =
     {{io_writeBackStage_data_rd_info_wdata_0},
      {io_writeBackStage_data_rd_info_wdata_0},
-     {io_writeBackStage_data_rd_info_wdata_5},
+     {io_writeBackStage_data_rd_info_wdata_0},
      {io_writeBackStage_data_rd_info_wdata_4},
      {io_writeBackStage_data_rd_info_wdata_3},
      {io_writeBackStage_data_rd_info_wdata_2},
      {io_writeBackStage_data_rd_info_wdata_1},
-     {io_writeBackStage_data_rd_info_wdata_0}};	// playground/src/pipeline/writeback/WriteBackUnit.scala:23:20
+     {io_writeBackStage_data_rd_info_wdata_0}};	// playground/src/pipeline/writeback/WriteBackUnit.scala:25:20
   assign io_regfile_wen =
-    io_writeBackStage_data_info_valid & io_writeBackStage_data_info_reg_wen;	// playground/src/pipeline/writeback/WriteBackUnit.scala:9:7, :19:38
-  assign io_regfile_waddr = io_writeBackStage_data_info_reg_waddr;	// playground/src/pipeline/writeback/WriteBackUnit.scala:9:7
-  assign io_regfile_wdata = _GEN[io_writeBackStage_data_info_fusel];	// playground/src/pipeline/writeback/WriteBackUnit.scala:9:7, :23:20
-  assign io_debug_pc = io_writeBackStage_data_pc;	// playground/src/pipeline/writeback/WriteBackUnit.scala:9:7
-  assign io_debug_commit = io_writeBackStage_data_info_valid;	// playground/src/pipeline/writeback/WriteBackUnit.scala:9:7
-  assign io_debug_rf_wnum = io_writeBackStage_data_info_reg_waddr;	// playground/src/pipeline/writeback/WriteBackUnit.scala:9:7
-  assign io_debug_rf_wdata = _GEN[io_writeBackStage_data_info_fusel];	// playground/src/pipeline/writeback/WriteBackUnit.scala:9:7, :23:20
+    io_writeBackStage_data_info_valid & io_writeBackStage_data_info_reg_wen
+    & ~io_writeBackStage_data_has_exception;	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:7, :21:43, :22:7
+  assign io_regfile_waddr = io_writeBackStage_data_info_reg_waddr;	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:7
+  assign io_regfile_wdata = _GEN[io_writeBackStage_data_info_fusel];	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:7, :25:20
+  assign io_debug_pc = io_writeBackStage_data_pc;	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:7
+  assign io_debug_commit = io_writeBackStage_data_info_valid;	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:7
+  assign io_debug_rf_wnum = io_writeBackStage_data_info_reg_waddr;	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:7
+  assign io_debug_rf_wdata = _GEN[io_writeBackStage_data_info_fusel];	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:7, :25:20
+  assign io_debug_commit__bore = io_writeBackStage_data_info_valid;	// playground/src/pipeline/writeback/WriteBackUnit.scala:10:7
 endmodule
 
-module Core(	// playground/src/Core.scala:10:7
-  input         clock,	// playground/src/Core.scala:10:7
-                reset,	// playground/src/Core.scala:10:7
-  output        io_instSram_en,	// playground/src/Core.scala:11:14
-  output [31:0] io_instSram_addr,	// playground/src/Core.scala:11:14
-  input  [31:0] io_instSram_rdata,	// playground/src/Core.scala:11:14
-  output        io_dataSram_en,	// playground/src/Core.scala:11:14
-  output [31:0] io_dataSram_addr,	// playground/src/Core.scala:11:14
-  output [63:0] io_dataSram_wdata,	// playground/src/Core.scala:11:14
-  output [7:0]  io_dataSram_wen,	// playground/src/Core.scala:11:14
-  input  [63:0] io_dataSram_rdata,	// playground/src/Core.scala:11:14
-  output [63:0] io_debug_pc,	// playground/src/Core.scala:11:14
-  output        io_debug_commit,	// playground/src/Core.scala:11:14
-  output [4:0]  io_debug_rf_wnum,	// playground/src/Core.scala:11:14
-  output [63:0] io_debug_rf_wdata	// playground/src/Core.scala:11:14
+module Core(	// playground/src/Core.scala:11:7
+  input         clock,	// playground/src/Core.scala:11:7
+                reset,	// playground/src/Core.scala:11:7
+                io_interrupt_mei,	// playground/src/Core.scala:12:14
+                io_interrupt_mti,	// playground/src/Core.scala:12:14
+                io_interrupt_msi,	// playground/src/Core.scala:12:14
+  output        io_instSram_en,	// playground/src/Core.scala:12:14
+  output [31:0] io_instSram_addr,	// playground/src/Core.scala:12:14
+  input  [31:0] io_instSram_rdata,	// playground/src/Core.scala:12:14
+  output        io_dataSram_en,	// playground/src/Core.scala:12:14
+  output [31:0] io_dataSram_addr,	// playground/src/Core.scala:12:14
+  output [63:0] io_dataSram_wdata,	// playground/src/Core.scala:12:14
+  output [7:0]  io_dataSram_wen,	// playground/src/Core.scala:12:14
+  input  [63:0] io_dataSram_rdata,	// playground/src/Core.scala:12:14
+  output [63:0] io_debug_pc,	// playground/src/Core.scala:12:14
+  output        io_debug_commit,	// playground/src/Core.scala:12:14
+  output [4:0]  io_debug_rf_wnum,	// playground/src/Core.scala:12:14
+  output [63:0] io_debug_rf_wdata	// playground/src/Core.scala:12:14
 );
 
-  wire        _WriteBackUnit_io_regfile_wen;	// playground/src/Core.scala:28:30
-  wire [4:0]  _WriteBackUnit_io_regfile_waddr;	// playground/src/Core.scala:28:30
-  wire [63:0] _WriteBackUnit_io_regfile_wdata;	// playground/src/Core.scala:28:30
-  wire [63:0] _WriteBackStage_io_writeBackUnit_data_pc;	// playground/src/Core.scala:27:30
-  wire        _WriteBackStage_io_writeBackUnit_data_info_valid;	// playground/src/Core.scala:27:30
-  wire [2:0]  _WriteBackStage_io_writeBackUnit_data_info_fusel;	// playground/src/Core.scala:27:30
-  wire        _WriteBackStage_io_writeBackUnit_data_info_reg_wen;	// playground/src/Core.scala:27:30
-  wire [4:0]  _WriteBackStage_io_writeBackUnit_data_info_reg_waddr;	// playground/src/Core.scala:27:30
-  wire [63:0] _WriteBackStage_io_writeBackUnit_data_rd_info_wdata_0;	// playground/src/Core.scala:27:30
-  wire [63:0] _WriteBackStage_io_writeBackUnit_data_rd_info_wdata_1;	// playground/src/Core.scala:27:30
-  wire [63:0] _WriteBackStage_io_writeBackUnit_data_rd_info_wdata_2;	// playground/src/Core.scala:27:30
-  wire [63:0] _WriteBackStage_io_writeBackUnit_data_rd_info_wdata_3;	// playground/src/Core.scala:27:30
-  wire [63:0] _WriteBackStage_io_writeBackUnit_data_rd_info_wdata_4;	// playground/src/Core.scala:27:30
-  wire [63:0] _WriteBackStage_io_writeBackUnit_data_rd_info_wdata_5;	// playground/src/Core.scala:27:30
-  wire        _MemoryUnit_io_decodeUnit_wen;	// playground/src/Core.scala:26:30
-  wire [4:0]  _MemoryUnit_io_decodeUnit_waddr;	// playground/src/Core.scala:26:30
-  wire [63:0] _MemoryUnit_io_decodeUnit_wdata;	// playground/src/Core.scala:26:30
-  wire [63:0] _MemoryUnit_io_writeBackStage_data_pc;	// playground/src/Core.scala:26:30
-  wire        _MemoryUnit_io_writeBackStage_data_info_valid;	// playground/src/Core.scala:26:30
-  wire [2:0]  _MemoryUnit_io_writeBackStage_data_info_fusel;	// playground/src/Core.scala:26:30
-  wire        _MemoryUnit_io_writeBackStage_data_info_reg_wen;	// playground/src/Core.scala:26:30
-  wire [4:0]  _MemoryUnit_io_writeBackStage_data_info_reg_waddr;	// playground/src/Core.scala:26:30
-  wire [63:0] _MemoryUnit_io_writeBackStage_data_rd_info_wdata_0;	// playground/src/Core.scala:26:30
-  wire [63:0] _MemoryUnit_io_writeBackStage_data_rd_info_wdata_1;	// playground/src/Core.scala:26:30
-  wire [63:0] _MemoryUnit_io_writeBackStage_data_rd_info_wdata_2;	// playground/src/Core.scala:26:30
-  wire [63:0] _MemoryUnit_io_writeBackStage_data_rd_info_wdata_5;	// playground/src/Core.scala:26:30
-  wire [63:0] _MemoryUnit_addr__bore;	// playground/src/Core.scala:26:30
-  wire [6:0]  _MemoryUnit_op__bore;	// playground/src/Core.scala:26:30
-  wire [63:0] _MemoryStage_io_memoryUnit_data_pc;	// playground/src/Core.scala:25:30
-  wire        _MemoryStage_io_memoryUnit_data_info_valid;	// playground/src/Core.scala:25:30
-  wire [2:0]  _MemoryStage_io_memoryUnit_data_info_fusel;	// playground/src/Core.scala:25:30
-  wire [6:0]  _MemoryStage_io_memoryUnit_data_info_op;	// playground/src/Core.scala:25:30
-  wire        _MemoryStage_io_memoryUnit_data_info_reg_wen;	// playground/src/Core.scala:25:30
-  wire [4:0]  _MemoryStage_io_memoryUnit_data_info_reg_waddr;	// playground/src/Core.scala:25:30
-  wire [63:0] _MemoryStage_io_memoryUnit_data_info_imm;	// playground/src/Core.scala:25:30
-  wire [63:0] _MemoryStage_io_memoryUnit_data_rd_info_wdata_0;	// playground/src/Core.scala:25:30
-  wire [63:0] _MemoryStage_io_memoryUnit_data_rd_info_wdata_2;	// playground/src/Core.scala:25:30
-  wire [63:0] _MemoryStage_io_memoryUnit_data_rd_info_wdata_5;	// playground/src/Core.scala:25:30
-  wire [63:0] _MemoryStage_io_memoryUnit_data_src_info_src1_data;	// playground/src/Core.scala:25:30
-  wire        _ExecuteUnit_io_ctrl_data_is_load;	// playground/src/Core.scala:24:30
-  wire [4:0]  _ExecuteUnit_io_ctrl_data_reg_waddr;	// playground/src/Core.scala:24:30
-  wire        _ExecuteUnit_io_ctrl_flush;	// playground/src/Core.scala:24:30
-  wire [63:0] _ExecuteUnit_io_ctrl_target;	// playground/src/Core.scala:24:30
-  wire        _ExecuteUnit_io_decodeUnit_forward_exe_wen;	// playground/src/Core.scala:24:30
-  wire [4:0]  _ExecuteUnit_io_decodeUnit_forward_exe_waddr;	// playground/src/Core.scala:24:30
-  wire [63:0] _ExecuteUnit_io_decodeUnit_forward_exe_wdata;	// playground/src/Core.scala:24:30
-  wire        _ExecuteUnit_io_decodeUnit_forward_is_load;	// playground/src/Core.scala:24:30
-  wire [63:0] _ExecuteUnit_io_memoryStage_data_pc;	// playground/src/Core.scala:24:30
-  wire        _ExecuteUnit_io_memoryStage_data_info_valid;	// playground/src/Core.scala:24:30
-  wire [2:0]  _ExecuteUnit_io_memoryStage_data_info_fusel;	// playground/src/Core.scala:24:30
-  wire [6:0]  _ExecuteUnit_io_memoryStage_data_info_op;	// playground/src/Core.scala:24:30
-  wire        _ExecuteUnit_io_memoryStage_data_info_reg_wen;	// playground/src/Core.scala:24:30
-  wire [4:0]  _ExecuteUnit_io_memoryStage_data_info_reg_waddr;	// playground/src/Core.scala:24:30
-  wire [63:0] _ExecuteUnit_io_memoryStage_data_info_imm;	// playground/src/Core.scala:24:30
-  wire [63:0] _ExecuteUnit_io_memoryStage_data_rd_info_wdata_0;	// playground/src/Core.scala:24:30
-  wire [63:0] _ExecuteUnit_io_memoryStage_data_rd_info_wdata_2;	// playground/src/Core.scala:24:30
-  wire [63:0] _ExecuteUnit_io_memoryStage_data_rd_info_wdata_5;	// playground/src/Core.scala:24:30
-  wire [63:0] _ExecuteUnit_io_memoryStage_data_src_info_src1_data;	// playground/src/Core.scala:24:30
-  wire [63:0] _ExecuteUnit_Fu_Lsu_result__bore;	// playground/src/Core.scala:24:30
-  wire [63:0] _ExecuteStage_io_executeUnit_data_pc;	// playground/src/Core.scala:23:30
-  wire        _ExecuteStage_io_executeUnit_data_info_valid;	// playground/src/Core.scala:23:30
-  wire [2:0]  _ExecuteStage_io_executeUnit_data_info_fusel;	// playground/src/Core.scala:23:30
-  wire [6:0]  _ExecuteStage_io_executeUnit_data_info_op;	// playground/src/Core.scala:23:30
-  wire        _ExecuteStage_io_executeUnit_data_info_reg_wen;	// playground/src/Core.scala:23:30
-  wire [4:0]  _ExecuteStage_io_executeUnit_data_info_reg_waddr;	// playground/src/Core.scala:23:30
-  wire [63:0] _ExecuteStage_io_executeUnit_data_info_imm;	// playground/src/Core.scala:23:30
-  wire [63:0] _ExecuteStage_io_executeUnit_data_src_info_src1_data;	// playground/src/Core.scala:23:30
-  wire [63:0] _ExecuteStage_io_executeUnit_data_src_info_src2_data;	// playground/src/Core.scala:23:30
-  wire [63:0] _ARegFile_io_read_src1_rdata;	// playground/src/Core.scala:22:30
-  wire [63:0] _ARegFile_io_read_src2_rdata;	// playground/src/Core.scala:22:30
-  wire        _DecodeUnit_io_ctrl_src_info_src1_ren;	// playground/src/Core.scala:21:30
-  wire [4:0]  _DecodeUnit_io_ctrl_src_info_src1_raddr;	// playground/src/Core.scala:21:30
-  wire        _DecodeUnit_io_ctrl_src_info_src2_ren;	// playground/src/Core.scala:21:30
-  wire [4:0]  _DecodeUnit_io_ctrl_src_info_src2_raddr;	// playground/src/Core.scala:21:30
-  wire [4:0]  _DecodeUnit_io_regfile_src1_raddr;	// playground/src/Core.scala:21:30
-  wire [4:0]  _DecodeUnit_io_regfile_src2_raddr;	// playground/src/Core.scala:21:30
-  wire [63:0] _DecodeUnit_io_executeStage_data_pc;	// playground/src/Core.scala:21:30
-  wire        _DecodeUnit_io_executeStage_data_info_valid;	// playground/src/Core.scala:21:30
-  wire [2:0]  _DecodeUnit_io_executeStage_data_info_fusel;	// playground/src/Core.scala:21:30
-  wire [6:0]  _DecodeUnit_io_executeStage_data_info_op;	// playground/src/Core.scala:21:30
-  wire        _DecodeUnit_io_executeStage_data_info_reg_wen;	// playground/src/Core.scala:21:30
-  wire [4:0]  _DecodeUnit_io_executeStage_data_info_reg_waddr;	// playground/src/Core.scala:21:30
-  wire [63:0] _DecodeUnit_io_executeStage_data_info_imm;	// playground/src/Core.scala:21:30
-  wire [63:0] _DecodeUnit_io_executeStage_data_src_info_src1_data;	// playground/src/Core.scala:21:30
-  wire [63:0] _DecodeUnit_io_executeStage_data_src_info_src2_data;	// playground/src/Core.scala:21:30
-  wire [63:0] _DecodeStage_io_decodeUnit_data_inst;	// playground/src/Core.scala:20:30
-  wire        _DecodeStage_io_decodeUnit_data_valid;	// playground/src/Core.scala:20:30
-  wire [63:0] _DecodeStage_io_decodeUnit_data_pc;	// playground/src/Core.scala:20:30
-  wire [63:0] _FetchUnit_io_decodeStage_data_inst;	// playground/src/Core.scala:19:30
-  wire        _FetchUnit_io_decodeStage_data_valid;	// playground/src/Core.scala:19:30
-  wire [63:0] _FetchUnit_io_decodeStage_data_pc;	// playground/src/Core.scala:19:30
-  wire [63:0] _Ctrl_io_fetchUnit_target;	// playground/src/Core.scala:18:30
-  wire        _Ctrl_io_fetchUnit_ctrlSignal_allow_to_go;	// playground/src/Core.scala:18:30
-  wire        _Ctrl_io_fetchUnit_ctrlSignal_do_flush;	// playground/src/Core.scala:18:30
-  wire        _Ctrl_io_decodeUnit_ctrlSignal_allow_to_go;	// playground/src/Core.scala:18:30
-  wire        _Ctrl_io_decodeUnit_ctrlSignal_do_flush;	// playground/src/Core.scala:18:30
-  Ctrl Ctrl (	// playground/src/Core.scala:18:30
+  wire        _WriteBackUnit_io_regfile_wen;	// playground/src/Core.scala:29:30
+  wire [4:0]  _WriteBackUnit_io_regfile_waddr;	// playground/src/Core.scala:29:30
+  wire [63:0] _WriteBackUnit_io_regfile_wdata;	// playground/src/Core.scala:29:30
+  wire        _WriteBackUnit_io_debug_commit__bore;	// playground/src/Core.scala:29:30
+  wire [63:0] _WriteBackStage_io_writeBackUnit_data_pc;	// playground/src/Core.scala:28:30
+  wire        _WriteBackStage_io_writeBackUnit_data_info_valid;	// playground/src/Core.scala:28:30
+  wire [2:0]  _WriteBackStage_io_writeBackUnit_data_info_fusel;	// playground/src/Core.scala:28:30
+  wire        _WriteBackStage_io_writeBackUnit_data_info_reg_wen;	// playground/src/Core.scala:28:30
+  wire [4:0]  _WriteBackStage_io_writeBackUnit_data_info_reg_waddr;	// playground/src/Core.scala:28:30
+  wire [63:0] _WriteBackStage_io_writeBackUnit_data_rd_info_wdata_0;	// playground/src/Core.scala:28:30
+  wire [63:0] _WriteBackStage_io_writeBackUnit_data_rd_info_wdata_1;	// playground/src/Core.scala:28:30
+  wire [63:0] _WriteBackStage_io_writeBackUnit_data_rd_info_wdata_2;	// playground/src/Core.scala:28:30
+  wire [63:0] _WriteBackStage_io_writeBackUnit_data_rd_info_wdata_3;	// playground/src/Core.scala:28:30
+  wire [63:0] _WriteBackStage_io_writeBackUnit_data_rd_info_wdata_4;	// playground/src/Core.scala:28:30
+  wire        _WriteBackStage_io_writeBackUnit_data_has_exception;	// playground/src/Core.scala:28:30
+  wire        _MemoryUnit_io_decodeUnit_wen;	// playground/src/Core.scala:27:30
+  wire [4:0]  _MemoryUnit_io_decodeUnit_waddr;	// playground/src/Core.scala:27:30
+  wire [63:0] _MemoryUnit_io_decodeUnit_wdata;	// playground/src/Core.scala:27:30
+  wire [63:0] _MemoryUnit_io_writeBackStage_data_pc;	// playground/src/Core.scala:27:30
+  wire        _MemoryUnit_io_writeBackStage_data_info_valid;	// playground/src/Core.scala:27:30
+  wire [2:0]  _MemoryUnit_io_writeBackStage_data_info_fusel;	// playground/src/Core.scala:27:30
+  wire        _MemoryUnit_io_writeBackStage_data_info_reg_wen;	// playground/src/Core.scala:27:30
+  wire [4:0]  _MemoryUnit_io_writeBackStage_data_info_reg_waddr;	// playground/src/Core.scala:27:30
+  wire [63:0] _MemoryUnit_io_writeBackStage_data_rd_info_wdata_0;	// playground/src/Core.scala:27:30
+  wire [63:0] _MemoryUnit_io_writeBackStage_data_rd_info_wdata_1;	// playground/src/Core.scala:27:30
+  wire [63:0] _MemoryUnit_io_writeBackStage_data_rd_info_wdata_2;	// playground/src/Core.scala:27:30
+  wire [63:0] _MemoryUnit_io_writeBackStage_data_rd_info_wdata_3;	// playground/src/Core.scala:27:30
+  wire [63:0] _MemoryUnit_io_writeBackStage_data_rd_info_wdata_4;	// playground/src/Core.scala:27:30
+  wire        _MemoryUnit_io_writeBackStage_data_has_exception;	// playground/src/Core.scala:27:30
+  wire [5:0]  _MemoryUnit_op__bore;	// playground/src/Core.scala:27:30
+  wire [63:0] _MemoryUnit_addr__bore;	// playground/src/Core.scala:27:30
+  wire [63:0] _MemoryStage_io_memoryUnit_data_pc;	// playground/src/Core.scala:26:30
+  wire        _MemoryStage_io_memoryUnit_data_info_valid;	// playground/src/Core.scala:26:30
+  wire [2:0]  _MemoryStage_io_memoryUnit_data_info_fusel;	// playground/src/Core.scala:26:30
+  wire [5:0]  _MemoryStage_io_memoryUnit_data_info_op;	// playground/src/Core.scala:26:30
+  wire        _MemoryStage_io_memoryUnit_data_info_reg_wen;	// playground/src/Core.scala:26:30
+  wire [4:0]  _MemoryStage_io_memoryUnit_data_info_reg_waddr;	// playground/src/Core.scala:26:30
+  wire [63:0] _MemoryStage_io_memoryUnit_data_info_imm;	// playground/src/Core.scala:26:30
+  wire [63:0] _MemoryStage_io_memoryUnit_data_rd_info_wdata_0;	// playground/src/Core.scala:26:30
+  wire [63:0] _MemoryStage_io_memoryUnit_data_rd_info_wdata_1;	// playground/src/Core.scala:26:30
+  wire [63:0] _MemoryStage_io_memoryUnit_data_rd_info_wdata_3;	// playground/src/Core.scala:26:30
+  wire [63:0] _MemoryStage_io_memoryUnit_data_rd_info_wdata_4;	// playground/src/Core.scala:26:30
+  wire [63:0] _MemoryStage_io_memoryUnit_data_src_info_src1_data;	// playground/src/Core.scala:26:30
+  wire        _MemoryStage_io_memoryUnit_data_has_exception;	// playground/src/Core.scala:26:30
+  wire        _ExecuteUnit_io_ctrl_info_valid;	// playground/src/Core.scala:25:30
+  wire [2:0]  _ExecuteUnit_io_ctrl_info_fusel;	// playground/src/Core.scala:25:30
+  wire [5:0]  _ExecuteUnit_io_ctrl_info_op;	// playground/src/Core.scala:25:30
+  wire [4:0]  _ExecuteUnit_io_ctrl_info_reg_waddr;	// playground/src/Core.scala:25:30
+  wire        _ExecuteUnit_io_ctrl_flush;	// playground/src/Core.scala:25:30
+  wire [63:0] _ExecuteUnit_io_ctrl_target;	// playground/src/Core.scala:25:30
+  wire        _ExecuteUnit_io_decodeUnit_wen;	// playground/src/Core.scala:25:30
+  wire [4:0]  _ExecuteUnit_io_decodeUnit_waddr;	// playground/src/Core.scala:25:30
+  wire [63:0] _ExecuteUnit_io_decodeUnit_wdata;	// playground/src/Core.scala:25:30
+  wire [63:0] _ExecuteUnit_io_memoryStage_data_pc;	// playground/src/Core.scala:25:30
+  wire        _ExecuteUnit_io_memoryStage_data_info_valid;	// playground/src/Core.scala:25:30
+  wire [2:0]  _ExecuteUnit_io_memoryStage_data_info_fusel;	// playground/src/Core.scala:25:30
+  wire [5:0]  _ExecuteUnit_io_memoryStage_data_info_op;	// playground/src/Core.scala:25:30
+  wire        _ExecuteUnit_io_memoryStage_data_info_reg_wen;	// playground/src/Core.scala:25:30
+  wire [4:0]  _ExecuteUnit_io_memoryStage_data_info_reg_waddr;	// playground/src/Core.scala:25:30
+  wire [63:0] _ExecuteUnit_io_memoryStage_data_info_imm;	// playground/src/Core.scala:25:30
+  wire [63:0] _ExecuteUnit_io_memoryStage_data_rd_info_wdata_0;	// playground/src/Core.scala:25:30
+  wire [63:0] _ExecuteUnit_io_memoryStage_data_rd_info_wdata_1;	// playground/src/Core.scala:25:30
+  wire [63:0] _ExecuteUnit_io_memoryStage_data_rd_info_wdata_3;	// playground/src/Core.scala:25:30
+  wire [63:0] _ExecuteUnit_io_memoryStage_data_rd_info_wdata_4;	// playground/src/Core.scala:25:30
+  wire [63:0] _ExecuteUnit_io_memoryStage_data_src_info_src1_data;	// playground/src/Core.scala:25:30
+  wire        _ExecuteUnit_io_memoryStage_data_has_exception;	// playground/src/Core.scala:25:30
+  wire [63:0] _ExecuteUnit_Fu_Lsu_result__bore;	// playground/src/Core.scala:25:30
+  wire [11:0] _ExecuteUnit_Fu_Csr_interrupt__bore;	// playground/src/Core.scala:25:30
+  wire [1:0]  _ExecuteUnit_Fu_Csr_mode__bore;	// playground/src/Core.scala:25:30
+  wire [63:0] _ExecuteStage_io_executeUnit_data_pc;	// playground/src/Core.scala:24:30
+  wire        _ExecuteStage_io_executeUnit_data_info_valid;	// playground/src/Core.scala:24:30
+  wire [2:0]  _ExecuteStage_io_executeUnit_data_info_fusel;	// playground/src/Core.scala:24:30
+  wire [5:0]  _ExecuteStage_io_executeUnit_data_info_op;	// playground/src/Core.scala:24:30
+  wire        _ExecuteStage_io_executeUnit_data_info_reg_wen;	// playground/src/Core.scala:24:30
+  wire [4:0]  _ExecuteStage_io_executeUnit_data_info_reg_waddr;	// playground/src/Core.scala:24:30
+  wire [63:0] _ExecuteStage_io_executeUnit_data_info_imm;	// playground/src/Core.scala:24:30
+  wire [63:0] _ExecuteStage_io_executeUnit_data_info_inst;	// playground/src/Core.scala:24:30
+  wire [63:0] _ExecuteStage_io_executeUnit_data_src_info_src1_data;	// playground/src/Core.scala:24:30
+  wire [63:0] _ExecuteStage_io_executeUnit_data_src_info_src2_data;	// playground/src/Core.scala:24:30
+  wire        _ExecuteStage_io_executeUnit_data_ex_exception_0;	// playground/src/Core.scala:24:30
+  wire        _ExecuteStage_io_executeUnit_data_ex_exception_2;	// playground/src/Core.scala:24:30
+  wire        _ExecuteStage_io_executeUnit_data_ex_exception_3;	// playground/src/Core.scala:24:30
+  wire        _ExecuteStage_io_executeUnit_data_ex_exception_8;	// playground/src/Core.scala:24:30
+  wire        _ExecuteStage_io_executeUnit_data_ex_exception_9;	// playground/src/Core.scala:24:30
+  wire        _ExecuteStage_io_executeUnit_data_ex_exception_11;	// playground/src/Core.scala:24:30
+  wire        _ExecuteStage_io_executeUnit_data_ex_interrupt_0;	// playground/src/Core.scala:24:30
+  wire        _ExecuteStage_io_executeUnit_data_ex_interrupt_1;	// playground/src/Core.scala:24:30
+  wire        _ExecuteStage_io_executeUnit_data_ex_interrupt_2;	// playground/src/Core.scala:24:30
+  wire        _ExecuteStage_io_executeUnit_data_ex_interrupt_3;	// playground/src/Core.scala:24:30
+  wire        _ExecuteStage_io_executeUnit_data_ex_interrupt_4;	// playground/src/Core.scala:24:30
+  wire        _ExecuteStage_io_executeUnit_data_ex_interrupt_5;	// playground/src/Core.scala:24:30
+  wire        _ExecuteStage_io_executeUnit_data_ex_interrupt_6;	// playground/src/Core.scala:24:30
+  wire        _ExecuteStage_io_executeUnit_data_ex_interrupt_7;	// playground/src/Core.scala:24:30
+  wire        _ExecuteStage_io_executeUnit_data_ex_interrupt_8;	// playground/src/Core.scala:24:30
+  wire        _ExecuteStage_io_executeUnit_data_ex_interrupt_9;	// playground/src/Core.scala:24:30
+  wire        _ExecuteStage_io_executeUnit_data_ex_interrupt_10;	// playground/src/Core.scala:24:30
+  wire        _ExecuteStage_io_executeUnit_data_ex_interrupt_11;	// playground/src/Core.scala:24:30
+  wire [63:0] _ExecuteStage_io_executeUnit_data_ex_tval_0;	// playground/src/Core.scala:24:30
+  wire [63:0] _ARegFile_io_read_src1_rdata;	// playground/src/Core.scala:23:30
+  wire [63:0] _ARegFile_io_read_src2_rdata;	// playground/src/Core.scala:23:30
+  wire        _DecodeUnit_io_ctrl_info_src1_ren;	// playground/src/Core.scala:22:30
+  wire [4:0]  _DecodeUnit_io_ctrl_info_src1_raddr;	// playground/src/Core.scala:22:30
+  wire        _DecodeUnit_io_ctrl_info_src2_ren;	// playground/src/Core.scala:22:30
+  wire [4:0]  _DecodeUnit_io_ctrl_info_src2_raddr;	// playground/src/Core.scala:22:30
+  wire [4:0]  _DecodeUnit_io_regfile_src1_raddr;	// playground/src/Core.scala:22:30
+  wire [4:0]  _DecodeUnit_io_regfile_src2_raddr;	// playground/src/Core.scala:22:30
+  wire [63:0] _DecodeUnit_io_executeStage_data_pc;	// playground/src/Core.scala:22:30
+  wire        _DecodeUnit_io_executeStage_data_info_valid;	// playground/src/Core.scala:22:30
+  wire [2:0]  _DecodeUnit_io_executeStage_data_info_fusel;	// playground/src/Core.scala:22:30
+  wire [5:0]  _DecodeUnit_io_executeStage_data_info_op;	// playground/src/Core.scala:22:30
+  wire        _DecodeUnit_io_executeStage_data_info_reg_wen;	// playground/src/Core.scala:22:30
+  wire [4:0]  _DecodeUnit_io_executeStage_data_info_reg_waddr;	// playground/src/Core.scala:22:30
+  wire [63:0] _DecodeUnit_io_executeStage_data_info_imm;	// playground/src/Core.scala:22:30
+  wire [63:0] _DecodeUnit_io_executeStage_data_info_inst;	// playground/src/Core.scala:22:30
+  wire [63:0] _DecodeUnit_io_executeStage_data_src_info_src1_data;	// playground/src/Core.scala:22:30
+  wire [63:0] _DecodeUnit_io_executeStage_data_src_info_src2_data;	// playground/src/Core.scala:22:30
+  wire        _DecodeUnit_io_executeStage_data_ex_exception_0;	// playground/src/Core.scala:22:30
+  wire        _DecodeUnit_io_executeStage_data_ex_exception_2;	// playground/src/Core.scala:22:30
+  wire        _DecodeUnit_io_executeStage_data_ex_exception_3;	// playground/src/Core.scala:22:30
+  wire        _DecodeUnit_io_executeStage_data_ex_exception_8;	// playground/src/Core.scala:22:30
+  wire        _DecodeUnit_io_executeStage_data_ex_exception_9;	// playground/src/Core.scala:22:30
+  wire        _DecodeUnit_io_executeStage_data_ex_exception_11;	// playground/src/Core.scala:22:30
+  wire        _DecodeUnit_io_executeStage_data_ex_interrupt_0;	// playground/src/Core.scala:22:30
+  wire        _DecodeUnit_io_executeStage_data_ex_interrupt_1;	// playground/src/Core.scala:22:30
+  wire        _DecodeUnit_io_executeStage_data_ex_interrupt_2;	// playground/src/Core.scala:22:30
+  wire        _DecodeUnit_io_executeStage_data_ex_interrupt_3;	// playground/src/Core.scala:22:30
+  wire        _DecodeUnit_io_executeStage_data_ex_interrupt_4;	// playground/src/Core.scala:22:30
+  wire        _DecodeUnit_io_executeStage_data_ex_interrupt_5;	// playground/src/Core.scala:22:30
+  wire        _DecodeUnit_io_executeStage_data_ex_interrupt_6;	// playground/src/Core.scala:22:30
+  wire        _DecodeUnit_io_executeStage_data_ex_interrupt_7;	// playground/src/Core.scala:22:30
+  wire        _DecodeUnit_io_executeStage_data_ex_interrupt_8;	// playground/src/Core.scala:22:30
+  wire        _DecodeUnit_io_executeStage_data_ex_interrupt_9;	// playground/src/Core.scala:22:30
+  wire        _DecodeUnit_io_executeStage_data_ex_interrupt_10;	// playground/src/Core.scala:22:30
+  wire        _DecodeUnit_io_executeStage_data_ex_interrupt_11;	// playground/src/Core.scala:22:30
+  wire [63:0] _DecodeUnit_io_executeStage_data_ex_tval_0;	// playground/src/Core.scala:22:30
+  wire [63:0] _DecodeStage_io_decodeUnit_data_inst;	// playground/src/Core.scala:21:30
+  wire        _DecodeStage_io_decodeUnit_data_valid;	// playground/src/Core.scala:21:30
+  wire [63:0] _DecodeStage_io_decodeUnit_data_pc;	// playground/src/Core.scala:21:30
+  wire        _DecodeStage_io_decodeUnit_data_addr_misaligned;	// playground/src/Core.scala:21:30
+  wire [63:0] _FetchUnit_io_decodeStage_data_inst;	// playground/src/Core.scala:20:30
+  wire        _FetchUnit_io_decodeStage_data_valid;	// playground/src/Core.scala:20:30
+  wire [63:0] _FetchUnit_io_decodeStage_data_pc;	// playground/src/Core.scala:20:30
+  wire        _FetchUnit_io_decodeStage_data_addr_misaligned;	// playground/src/Core.scala:20:30
+  wire [63:0] _Ctrl_io_fetchUnit_target;	// playground/src/Core.scala:19:30
+  wire        _Ctrl_io_fetchUnit_ctrlSignal_allow_to_go;	// playground/src/Core.scala:19:30
+  wire        _Ctrl_io_fetchUnit_ctrlSignal_do_flush;	// playground/src/Core.scala:19:30
+  wire        _Ctrl_io_decodeUnit_ctrlSignal_allow_to_go;	// playground/src/Core.scala:19:30
+  wire        _Ctrl_io_decodeUnit_ctrlSignal_do_flush;	// playground/src/Core.scala:19:30
+  Ctrl Ctrl (	// playground/src/Core.scala:19:30
     .io_fetchUnit_target                  (_Ctrl_io_fetchUnit_target),
     .io_fetchUnit_ctrlSignal_allow_to_go  (_Ctrl_io_fetchUnit_ctrlSignal_allow_to_go),
     .io_fetchUnit_ctrlSignal_do_flush     (_Ctrl_io_fetchUnit_ctrlSignal_do_flush),
-    .io_decodeUnit_src_info_src1_ren      (_DecodeUnit_io_ctrl_src_info_src1_ren),	// playground/src/Core.scala:21:30
-    .io_decodeUnit_src_info_src1_raddr    (_DecodeUnit_io_ctrl_src_info_src1_raddr),	// playground/src/Core.scala:21:30
-    .io_decodeUnit_src_info_src2_ren      (_DecodeUnit_io_ctrl_src_info_src2_ren),	// playground/src/Core.scala:21:30
-    .io_decodeUnit_src_info_src2_raddr    (_DecodeUnit_io_ctrl_src_info_src2_raddr),	// playground/src/Core.scala:21:30
+    .io_decodeUnit_info_src1_ren          (_DecodeUnit_io_ctrl_info_src1_ren),	// playground/src/Core.scala:22:30
+    .io_decodeUnit_info_src1_raddr        (_DecodeUnit_io_ctrl_info_src1_raddr),	// playground/src/Core.scala:22:30
+    .io_decodeUnit_info_src2_ren          (_DecodeUnit_io_ctrl_info_src2_ren),	// playground/src/Core.scala:22:30
+    .io_decodeUnit_info_src2_raddr        (_DecodeUnit_io_ctrl_info_src2_raddr),	// playground/src/Core.scala:22:30
     .io_decodeUnit_ctrlSignal_allow_to_go (_Ctrl_io_decodeUnit_ctrlSignal_allow_to_go),
     .io_decodeUnit_ctrlSignal_do_flush    (_Ctrl_io_decodeUnit_ctrlSignal_do_flush),
-    .io_executeUnit_data_is_load          (_ExecuteUnit_io_ctrl_data_is_load),	// playground/src/Core.scala:24:30
-    .io_executeUnit_data_reg_waddr        (_ExecuteUnit_io_ctrl_data_reg_waddr),	// playground/src/Core.scala:24:30
-    .io_executeUnit_flush                 (_ExecuteUnit_io_ctrl_flush),	// playground/src/Core.scala:24:30
-    .io_executeUnit_target                (_ExecuteUnit_io_ctrl_target)	// playground/src/Core.scala:24:30
+    .io_executeUnit_info_valid            (_ExecuteUnit_io_ctrl_info_valid),	// playground/src/Core.scala:25:30
+    .io_executeUnit_info_fusel            (_ExecuteUnit_io_ctrl_info_fusel),	// playground/src/Core.scala:25:30
+    .io_executeUnit_info_op               (_ExecuteUnit_io_ctrl_info_op),	// playground/src/Core.scala:25:30
+    .io_executeUnit_info_reg_waddr        (_ExecuteUnit_io_ctrl_info_reg_waddr),	// playground/src/Core.scala:25:30
+    .io_executeUnit_flush                 (_ExecuteUnit_io_ctrl_flush),	// playground/src/Core.scala:25:30
+    .io_executeUnit_target                (_ExecuteUnit_io_ctrl_target)	// playground/src/Core.scala:25:30
   );
-  FetchUnit FetchUnit (	// playground/src/Core.scala:19:30
-    .clock                          (clock),
-    .reset                          (reset),
-    .io_ctrl_target                 (_Ctrl_io_fetchUnit_target),	// playground/src/Core.scala:18:30
-    .io_ctrl_ctrlSignal_allow_to_go (_Ctrl_io_fetchUnit_ctrlSignal_allow_to_go),	// playground/src/Core.scala:18:30
-    .io_ctrl_ctrlSignal_do_flush    (_Ctrl_io_fetchUnit_ctrlSignal_do_flush),	// playground/src/Core.scala:18:30
-    .io_decodeStage_data_inst       (_FetchUnit_io_decodeStage_data_inst),
-    .io_decodeStage_data_valid      (_FetchUnit_io_decodeStage_data_valid),
-    .io_decodeStage_data_pc         (_FetchUnit_io_decodeStage_data_pc),
-    .io_instSram_en                 (io_instSram_en),
-    .io_instSram_addr               (io_instSram_addr),
-    .io_instSram_rdata              (io_instSram_rdata)
+  FetchUnit FetchUnit (	// playground/src/Core.scala:20:30
+    .clock                               (clock),
+    .reset                               (reset),
+    .io_ctrl_target                      (_Ctrl_io_fetchUnit_target),	// playground/src/Core.scala:19:30
+    .io_ctrl_ctrlSignal_allow_to_go      (_Ctrl_io_fetchUnit_ctrlSignal_allow_to_go),	// playground/src/Core.scala:19:30
+    .io_ctrl_ctrlSignal_do_flush         (_Ctrl_io_fetchUnit_ctrlSignal_do_flush),	// playground/src/Core.scala:19:30
+    .io_decodeStage_data_inst            (_FetchUnit_io_decodeStage_data_inst),
+    .io_decodeStage_data_valid           (_FetchUnit_io_decodeStage_data_valid),
+    .io_decodeStage_data_pc              (_FetchUnit_io_decodeStage_data_pc),
+    .io_decodeStage_data_addr_misaligned (_FetchUnit_io_decodeStage_data_addr_misaligned),
+    .io_instSram_en                      (io_instSram_en),
+    .io_instSram_addr                    (io_instSram_addr),
+    .io_instSram_rdata                   (io_instSram_rdata)
   );
-  DecodeStage DecodeStage (	// playground/src/Core.scala:20:30
-    .clock                    (clock),
-    .reset                    (reset),
-    .io_ctrl_allow_to_go      (_Ctrl_io_fetchUnit_ctrlSignal_allow_to_go),	// playground/src/Core.scala:18:30
-    .io_ctrl_do_flush         (_Ctrl_io_fetchUnit_ctrlSignal_do_flush),	// playground/src/Core.scala:18:30
-    .io_fetchUnit_data_inst   (_FetchUnit_io_decodeStage_data_inst),	// playground/src/Core.scala:19:30
-    .io_fetchUnit_data_valid  (_FetchUnit_io_decodeStage_data_valid),	// playground/src/Core.scala:19:30
-    .io_fetchUnit_data_pc     (_FetchUnit_io_decodeStage_data_pc),	// playground/src/Core.scala:19:30
-    .io_decodeUnit_data_inst  (_DecodeStage_io_decodeUnit_data_inst),
-    .io_decodeUnit_data_valid (_DecodeStage_io_decodeUnit_data_valid),
-    .io_decodeUnit_data_pc    (_DecodeStage_io_decodeUnit_data_pc)
+  DecodeStage DecodeStage (	// playground/src/Core.scala:21:30
+    .clock                              (clock),
+    .reset                              (reset),
+    .io_ctrl_allow_to_go                (_Ctrl_io_fetchUnit_ctrlSignal_allow_to_go),	// playground/src/Core.scala:19:30
+    .io_ctrl_do_flush                   (_Ctrl_io_fetchUnit_ctrlSignal_do_flush),	// playground/src/Core.scala:19:30
+    .io_fetchUnit_data_inst             (_FetchUnit_io_decodeStage_data_inst),	// playground/src/Core.scala:20:30
+    .io_fetchUnit_data_valid            (_FetchUnit_io_decodeStage_data_valid),	// playground/src/Core.scala:20:30
+    .io_fetchUnit_data_pc               (_FetchUnit_io_decodeStage_data_pc),	// playground/src/Core.scala:20:30
+    .io_fetchUnit_data_addr_misaligned  (_FetchUnit_io_decodeStage_data_addr_misaligned),	// playground/src/Core.scala:20:30
+    .io_decodeUnit_data_inst            (_DecodeStage_io_decodeUnit_data_inst),
+    .io_decodeUnit_data_valid           (_DecodeStage_io_decodeUnit_data_valid),
+    .io_decodeUnit_data_pc              (_DecodeStage_io_decodeUnit_data_pc),
+    .io_decodeUnit_data_addr_misaligned (_DecodeStage_io_decodeUnit_data_addr_misaligned)
   );
-  DecodeUnit DecodeUnit (	// playground/src/Core.scala:21:30
-    .io_ctrl_src_info_src1_ren               (_DecodeUnit_io_ctrl_src_info_src1_ren),
-    .io_ctrl_src_info_src1_raddr             (_DecodeUnit_io_ctrl_src_info_src1_raddr),
-    .io_ctrl_src_info_src2_ren               (_DecodeUnit_io_ctrl_src_info_src2_ren),
-    .io_ctrl_src_info_src2_raddr             (_DecodeUnit_io_ctrl_src_info_src2_raddr),
-    .io_decodeStage_data_inst                (_DecodeStage_io_decodeUnit_data_inst),	// playground/src/Core.scala:20:30
-    .io_decodeStage_data_valid               (_DecodeStage_io_decodeUnit_data_valid),	// playground/src/Core.scala:20:30
-    .io_decodeStage_data_pc                  (_DecodeStage_io_decodeUnit_data_pc),	// playground/src/Core.scala:20:30
+  DecodeUnit DecodeUnit (	// playground/src/Core.scala:22:30
+    .io_ctrl_info_src1_ren                   (_DecodeUnit_io_ctrl_info_src1_ren),
+    .io_ctrl_info_src1_raddr                 (_DecodeUnit_io_ctrl_info_src1_raddr),
+    .io_ctrl_info_src2_ren                   (_DecodeUnit_io_ctrl_info_src2_ren),
+    .io_ctrl_info_src2_raddr                 (_DecodeUnit_io_ctrl_info_src2_raddr),
+    .io_decodeStage_data_inst                (_DecodeStage_io_decodeUnit_data_inst),	// playground/src/Core.scala:21:30
+    .io_decodeStage_data_valid               (_DecodeStage_io_decodeUnit_data_valid),	// playground/src/Core.scala:21:30
+    .io_decodeStage_data_pc                  (_DecodeStage_io_decodeUnit_data_pc),	// playground/src/Core.scala:21:30
+    .io_decodeStage_data_addr_misaligned
+      (_DecodeStage_io_decodeUnit_data_addr_misaligned),	// playground/src/Core.scala:21:30
     .io_regfile_src1_raddr                   (_DecodeUnit_io_regfile_src1_raddr),
-    .io_regfile_src1_rdata                   (_ARegFile_io_read_src1_rdata),	// playground/src/Core.scala:22:30
+    .io_regfile_src1_rdata                   (_ARegFile_io_read_src1_rdata),	// playground/src/Core.scala:23:30
     .io_regfile_src2_raddr                   (_DecodeUnit_io_regfile_src2_raddr),
-    .io_regfile_src2_rdata                   (_ARegFile_io_read_src2_rdata),	// playground/src/Core.scala:22:30
-    .io_forward_exe_wen                      (_ExecuteUnit_io_decodeUnit_forward_exe_wen),	// playground/src/Core.scala:24:30
-    .io_forward_exe_waddr
-      (_ExecuteUnit_io_decodeUnit_forward_exe_waddr),	// playground/src/Core.scala:24:30
-    .io_forward_exe_wdata
-      (_ExecuteUnit_io_decodeUnit_forward_exe_wdata),	// playground/src/Core.scala:24:30
-    .io_forward_is_load                      (_ExecuteUnit_io_decodeUnit_forward_is_load),	// playground/src/Core.scala:24:30
-    .io_forward_mem_wen                      (_MemoryUnit_io_decodeUnit_wen),	// playground/src/Core.scala:26:30
-    .io_forward_mem_waddr                    (_MemoryUnit_io_decodeUnit_waddr),	// playground/src/Core.scala:26:30
-    .io_forward_mem_wdata                    (_MemoryUnit_io_decodeUnit_wdata),	// playground/src/Core.scala:26:30
+    .io_regfile_src2_rdata                   (_ARegFile_io_read_src2_rdata),	// playground/src/Core.scala:23:30
+    .io_forward_exe_wen                      (_ExecuteUnit_io_decodeUnit_wen),	// playground/src/Core.scala:25:30
+    .io_forward_exe_waddr                    (_ExecuteUnit_io_decodeUnit_waddr),	// playground/src/Core.scala:25:30
+    .io_forward_exe_wdata                    (_ExecuteUnit_io_decodeUnit_wdata),	// playground/src/Core.scala:25:30
+    .io_forward_mem_wen                      (_MemoryUnit_io_decodeUnit_wen),	// playground/src/Core.scala:27:30
+    .io_forward_mem_waddr                    (_MemoryUnit_io_decodeUnit_waddr),	// playground/src/Core.scala:27:30
+    .io_forward_mem_wdata                    (_MemoryUnit_io_decodeUnit_wdata),	// playground/src/Core.scala:27:30
     .io_executeStage_data_pc                 (_DecodeUnit_io_executeStage_data_pc),
     .io_executeStage_data_info_valid
       (_DecodeUnit_io_executeStage_data_info_valid),
@@ -1897,40 +2948,118 @@ module Core(	// playground/src/Core.scala:10:7
     .io_executeStage_data_info_reg_waddr
       (_DecodeUnit_io_executeStage_data_info_reg_waddr),
     .io_executeStage_data_info_imm           (_DecodeUnit_io_executeStage_data_info_imm),
+    .io_executeStage_data_info_inst          (_DecodeUnit_io_executeStage_data_info_inst),
     .io_executeStage_data_src_info_src1_data
       (_DecodeUnit_io_executeStage_data_src_info_src1_data),
     .io_executeStage_data_src_info_src2_data
-      (_DecodeUnit_io_executeStage_data_src_info_src2_data)
+      (_DecodeUnit_io_executeStage_data_src_info_src2_data),
+    .io_executeStage_data_ex_exception_0
+      (_DecodeUnit_io_executeStage_data_ex_exception_0),
+    .io_executeStage_data_ex_exception_2
+      (_DecodeUnit_io_executeStage_data_ex_exception_2),
+    .io_executeStage_data_ex_exception_3
+      (_DecodeUnit_io_executeStage_data_ex_exception_3),
+    .io_executeStage_data_ex_exception_8
+      (_DecodeUnit_io_executeStage_data_ex_exception_8),
+    .io_executeStage_data_ex_exception_9
+      (_DecodeUnit_io_executeStage_data_ex_exception_9),
+    .io_executeStage_data_ex_exception_11
+      (_DecodeUnit_io_executeStage_data_ex_exception_11),
+    .io_executeStage_data_ex_interrupt_0
+      (_DecodeUnit_io_executeStage_data_ex_interrupt_0),
+    .io_executeStage_data_ex_interrupt_1
+      (_DecodeUnit_io_executeStage_data_ex_interrupt_1),
+    .io_executeStage_data_ex_interrupt_2
+      (_DecodeUnit_io_executeStage_data_ex_interrupt_2),
+    .io_executeStage_data_ex_interrupt_3
+      (_DecodeUnit_io_executeStage_data_ex_interrupt_3),
+    .io_executeStage_data_ex_interrupt_4
+      (_DecodeUnit_io_executeStage_data_ex_interrupt_4),
+    .io_executeStage_data_ex_interrupt_5
+      (_DecodeUnit_io_executeStage_data_ex_interrupt_5),
+    .io_executeStage_data_ex_interrupt_6
+      (_DecodeUnit_io_executeStage_data_ex_interrupt_6),
+    .io_executeStage_data_ex_interrupt_7
+      (_DecodeUnit_io_executeStage_data_ex_interrupt_7),
+    .io_executeStage_data_ex_interrupt_8
+      (_DecodeUnit_io_executeStage_data_ex_interrupt_8),
+    .io_executeStage_data_ex_interrupt_9
+      (_DecodeUnit_io_executeStage_data_ex_interrupt_9),
+    .io_executeStage_data_ex_interrupt_10
+      (_DecodeUnit_io_executeStage_data_ex_interrupt_10),
+    .io_executeStage_data_ex_interrupt_11
+      (_DecodeUnit_io_executeStage_data_ex_interrupt_11),
+    .io_executeStage_data_ex_tval_0          (_DecodeUnit_io_executeStage_data_ex_tval_0),
+    .interrupt__bore                         (_ExecuteUnit_Fu_Csr_interrupt__bore),	// playground/src/Core.scala:25:30
+    .mode__bore                              (_ExecuteUnit_Fu_Csr_mode__bore)	// playground/src/Core.scala:25:30
   );
-  ARegFile ARegFile (	// playground/src/Core.scala:22:30
+  ARegFile ARegFile (	// playground/src/Core.scala:23:30
     .clock              (clock),
     .reset              (reset),
-    .io_read_src1_raddr (_DecodeUnit_io_regfile_src1_raddr),	// playground/src/Core.scala:21:30
+    .io_read_src1_raddr (_DecodeUnit_io_regfile_src1_raddr),	// playground/src/Core.scala:22:30
     .io_read_src1_rdata (_ARegFile_io_read_src1_rdata),
-    .io_read_src2_raddr (_DecodeUnit_io_regfile_src2_raddr),	// playground/src/Core.scala:21:30
+    .io_read_src2_raddr (_DecodeUnit_io_regfile_src2_raddr),	// playground/src/Core.scala:22:30
     .io_read_src2_rdata (_ARegFile_io_read_src2_rdata),
-    .io_write_wen       (_WriteBackUnit_io_regfile_wen),	// playground/src/Core.scala:28:30
-    .io_write_waddr     (_WriteBackUnit_io_regfile_waddr),	// playground/src/Core.scala:28:30
-    .io_write_wdata     (_WriteBackUnit_io_regfile_wdata)	// playground/src/Core.scala:28:30
+    .io_write_wen       (_WriteBackUnit_io_regfile_wen),	// playground/src/Core.scala:29:30
+    .io_write_waddr     (_WriteBackUnit_io_regfile_waddr),	// playground/src/Core.scala:29:30
+    .io_write_wdata     (_WriteBackUnit_io_regfile_wdata)	// playground/src/Core.scala:29:30
   );
-  ExecuteStage ExecuteStage (	// playground/src/Core.scala:23:30
+  ExecuteStage ExecuteStage (	// playground/src/Core.scala:24:30
     .clock                                  (clock),
     .reset                                  (reset),
-    .io_ctrl_allow_to_go                    (_Ctrl_io_decodeUnit_ctrlSignal_allow_to_go),	// playground/src/Core.scala:18:30
-    .io_ctrl_do_flush                       (_Ctrl_io_decodeUnit_ctrlSignal_do_flush),	// playground/src/Core.scala:18:30
-    .io_decodeUnit_data_pc                  (_DecodeUnit_io_executeStage_data_pc),	// playground/src/Core.scala:21:30
-    .io_decodeUnit_data_info_valid          (_DecodeUnit_io_executeStage_data_info_valid),	// playground/src/Core.scala:21:30
-    .io_decodeUnit_data_info_fusel          (_DecodeUnit_io_executeStage_data_info_fusel),	// playground/src/Core.scala:21:30
-    .io_decodeUnit_data_info_op             (_DecodeUnit_io_executeStage_data_info_op),	// playground/src/Core.scala:21:30
+    .io_ctrl_allow_to_go                    (_Ctrl_io_decodeUnit_ctrlSignal_allow_to_go),	// playground/src/Core.scala:19:30
+    .io_ctrl_do_flush                       (_Ctrl_io_decodeUnit_ctrlSignal_do_flush),	// playground/src/Core.scala:19:30
+    .io_decodeUnit_data_pc                  (_DecodeUnit_io_executeStage_data_pc),	// playground/src/Core.scala:22:30
+    .io_decodeUnit_data_info_valid          (_DecodeUnit_io_executeStage_data_info_valid),	// playground/src/Core.scala:22:30
+    .io_decodeUnit_data_info_fusel          (_DecodeUnit_io_executeStage_data_info_fusel),	// playground/src/Core.scala:22:30
+    .io_decodeUnit_data_info_op             (_DecodeUnit_io_executeStage_data_info_op),	// playground/src/Core.scala:22:30
     .io_decodeUnit_data_info_reg_wen
-      (_DecodeUnit_io_executeStage_data_info_reg_wen),	// playground/src/Core.scala:21:30
+      (_DecodeUnit_io_executeStage_data_info_reg_wen),	// playground/src/Core.scala:22:30
     .io_decodeUnit_data_info_reg_waddr
-      (_DecodeUnit_io_executeStage_data_info_reg_waddr),	// playground/src/Core.scala:21:30
-    .io_decodeUnit_data_info_imm            (_DecodeUnit_io_executeStage_data_info_imm),	// playground/src/Core.scala:21:30
+      (_DecodeUnit_io_executeStage_data_info_reg_waddr),	// playground/src/Core.scala:22:30
+    .io_decodeUnit_data_info_imm            (_DecodeUnit_io_executeStage_data_info_imm),	// playground/src/Core.scala:22:30
+    .io_decodeUnit_data_info_inst           (_DecodeUnit_io_executeStage_data_info_inst),	// playground/src/Core.scala:22:30
     .io_decodeUnit_data_src_info_src1_data
-      (_DecodeUnit_io_executeStage_data_src_info_src1_data),	// playground/src/Core.scala:21:30
+      (_DecodeUnit_io_executeStage_data_src_info_src1_data),	// playground/src/Core.scala:22:30
     .io_decodeUnit_data_src_info_src2_data
-      (_DecodeUnit_io_executeStage_data_src_info_src2_data),	// playground/src/Core.scala:21:30
+      (_DecodeUnit_io_executeStage_data_src_info_src2_data),	// playground/src/Core.scala:22:30
+    .io_decodeUnit_data_ex_exception_0
+      (_DecodeUnit_io_executeStage_data_ex_exception_0),	// playground/src/Core.scala:22:30
+    .io_decodeUnit_data_ex_exception_2
+      (_DecodeUnit_io_executeStage_data_ex_exception_2),	// playground/src/Core.scala:22:30
+    .io_decodeUnit_data_ex_exception_3
+      (_DecodeUnit_io_executeStage_data_ex_exception_3),	// playground/src/Core.scala:22:30
+    .io_decodeUnit_data_ex_exception_8
+      (_DecodeUnit_io_executeStage_data_ex_exception_8),	// playground/src/Core.scala:22:30
+    .io_decodeUnit_data_ex_exception_9
+      (_DecodeUnit_io_executeStage_data_ex_exception_9),	// playground/src/Core.scala:22:30
+    .io_decodeUnit_data_ex_exception_11
+      (_DecodeUnit_io_executeStage_data_ex_exception_11),	// playground/src/Core.scala:22:30
+    .io_decodeUnit_data_ex_interrupt_0
+      (_DecodeUnit_io_executeStage_data_ex_interrupt_0),	// playground/src/Core.scala:22:30
+    .io_decodeUnit_data_ex_interrupt_1
+      (_DecodeUnit_io_executeStage_data_ex_interrupt_1),	// playground/src/Core.scala:22:30
+    .io_decodeUnit_data_ex_interrupt_2
+      (_DecodeUnit_io_executeStage_data_ex_interrupt_2),	// playground/src/Core.scala:22:30
+    .io_decodeUnit_data_ex_interrupt_3
+      (_DecodeUnit_io_executeStage_data_ex_interrupt_3),	// playground/src/Core.scala:22:30
+    .io_decodeUnit_data_ex_interrupt_4
+      (_DecodeUnit_io_executeStage_data_ex_interrupt_4),	// playground/src/Core.scala:22:30
+    .io_decodeUnit_data_ex_interrupt_5
+      (_DecodeUnit_io_executeStage_data_ex_interrupt_5),	// playground/src/Core.scala:22:30
+    .io_decodeUnit_data_ex_interrupt_6
+      (_DecodeUnit_io_executeStage_data_ex_interrupt_6),	// playground/src/Core.scala:22:30
+    .io_decodeUnit_data_ex_interrupt_7
+      (_DecodeUnit_io_executeStage_data_ex_interrupt_7),	// playground/src/Core.scala:22:30
+    .io_decodeUnit_data_ex_interrupt_8
+      (_DecodeUnit_io_executeStage_data_ex_interrupt_8),	// playground/src/Core.scala:22:30
+    .io_decodeUnit_data_ex_interrupt_9
+      (_DecodeUnit_io_executeStage_data_ex_interrupt_9),	// playground/src/Core.scala:22:30
+    .io_decodeUnit_data_ex_interrupt_10
+      (_DecodeUnit_io_executeStage_data_ex_interrupt_10),	// playground/src/Core.scala:22:30
+    .io_decodeUnit_data_ex_interrupt_11
+      (_DecodeUnit_io_executeStage_data_ex_interrupt_11),	// playground/src/Core.scala:22:30
+    .io_decodeUnit_data_ex_tval_0           (_DecodeUnit_io_executeStage_data_ex_tval_0),	// playground/src/Core.scala:22:30
     .io_executeUnit_data_pc                 (_ExecuteStage_io_executeUnit_data_pc),
     .io_executeUnit_data_info_valid
       (_ExecuteStage_io_executeUnit_data_info_valid),
@@ -1942,39 +3071,117 @@ module Core(	// playground/src/Core.scala:10:7
     .io_executeUnit_data_info_reg_waddr
       (_ExecuteStage_io_executeUnit_data_info_reg_waddr),
     .io_executeUnit_data_info_imm           (_ExecuteStage_io_executeUnit_data_info_imm),
+    .io_executeUnit_data_info_inst          (_ExecuteStage_io_executeUnit_data_info_inst),
     .io_executeUnit_data_src_info_src1_data
       (_ExecuteStage_io_executeUnit_data_src_info_src1_data),
     .io_executeUnit_data_src_info_src2_data
-      (_ExecuteStage_io_executeUnit_data_src_info_src2_data)
+      (_ExecuteStage_io_executeUnit_data_src_info_src2_data),
+    .io_executeUnit_data_ex_exception_0
+      (_ExecuteStage_io_executeUnit_data_ex_exception_0),
+    .io_executeUnit_data_ex_exception_2
+      (_ExecuteStage_io_executeUnit_data_ex_exception_2),
+    .io_executeUnit_data_ex_exception_3
+      (_ExecuteStage_io_executeUnit_data_ex_exception_3),
+    .io_executeUnit_data_ex_exception_8
+      (_ExecuteStage_io_executeUnit_data_ex_exception_8),
+    .io_executeUnit_data_ex_exception_9
+      (_ExecuteStage_io_executeUnit_data_ex_exception_9),
+    .io_executeUnit_data_ex_exception_11
+      (_ExecuteStage_io_executeUnit_data_ex_exception_11),
+    .io_executeUnit_data_ex_interrupt_0
+      (_ExecuteStage_io_executeUnit_data_ex_interrupt_0),
+    .io_executeUnit_data_ex_interrupt_1
+      (_ExecuteStage_io_executeUnit_data_ex_interrupt_1),
+    .io_executeUnit_data_ex_interrupt_2
+      (_ExecuteStage_io_executeUnit_data_ex_interrupt_2),
+    .io_executeUnit_data_ex_interrupt_3
+      (_ExecuteStage_io_executeUnit_data_ex_interrupt_3),
+    .io_executeUnit_data_ex_interrupt_4
+      (_ExecuteStage_io_executeUnit_data_ex_interrupt_4),
+    .io_executeUnit_data_ex_interrupt_5
+      (_ExecuteStage_io_executeUnit_data_ex_interrupt_5),
+    .io_executeUnit_data_ex_interrupt_6
+      (_ExecuteStage_io_executeUnit_data_ex_interrupt_6),
+    .io_executeUnit_data_ex_interrupt_7
+      (_ExecuteStage_io_executeUnit_data_ex_interrupt_7),
+    .io_executeUnit_data_ex_interrupt_8
+      (_ExecuteStage_io_executeUnit_data_ex_interrupt_8),
+    .io_executeUnit_data_ex_interrupt_9
+      (_ExecuteStage_io_executeUnit_data_ex_interrupt_9),
+    .io_executeUnit_data_ex_interrupt_10
+      (_ExecuteStage_io_executeUnit_data_ex_interrupt_10),
+    .io_executeUnit_data_ex_interrupt_11
+      (_ExecuteStage_io_executeUnit_data_ex_interrupt_11),
+    .io_executeUnit_data_ex_tval_0          (_ExecuteStage_io_executeUnit_data_ex_tval_0)
   );
-  ExecuteUnit ExecuteUnit (	// playground/src/Core.scala:24:30
+  ExecuteUnit ExecuteUnit (	// playground/src/Core.scala:25:30
     .clock                                   (clock),
-    .io_ctrl_data_is_load                    (_ExecuteUnit_io_ctrl_data_is_load),
-    .io_ctrl_data_reg_waddr                  (_ExecuteUnit_io_ctrl_data_reg_waddr),
+    .reset                                   (reset),
+    .io_ctrl_info_valid                      (_ExecuteUnit_io_ctrl_info_valid),
+    .io_ctrl_info_fusel                      (_ExecuteUnit_io_ctrl_info_fusel),
+    .io_ctrl_info_op                         (_ExecuteUnit_io_ctrl_info_op),
+    .io_ctrl_info_reg_waddr                  (_ExecuteUnit_io_ctrl_info_reg_waddr),
     .io_ctrl_flush                           (_ExecuteUnit_io_ctrl_flush),
     .io_ctrl_target                          (_ExecuteUnit_io_ctrl_target),
-    .io_ctrl_ctrlSignal_allow_to_go          (1'h1),	// playground/src/Core.scala:18:30, :24:30, :25:30, :26:30, :27:30, :28:30
-    .io_executeStage_data_pc                 (_ExecuteStage_io_executeUnit_data_pc),	// playground/src/Core.scala:23:30
+    .io_ctrl_ctrlSignal_allow_to_go          (1'h1),	// playground/src/Core.scala:19:30, :25:30, :26:30, :27:30, :28:30, :29:30
+    .io_executeStage_data_pc                 (_ExecuteStage_io_executeUnit_data_pc),	// playground/src/Core.scala:24:30
     .io_executeStage_data_info_valid
-      (_ExecuteStage_io_executeUnit_data_info_valid),	// playground/src/Core.scala:23:30
+      (_ExecuteStage_io_executeUnit_data_info_valid),	// playground/src/Core.scala:24:30
     .io_executeStage_data_info_fusel
-      (_ExecuteStage_io_executeUnit_data_info_fusel),	// playground/src/Core.scala:23:30
-    .io_executeStage_data_info_op            (_ExecuteStage_io_executeUnit_data_info_op),	// playground/src/Core.scala:23:30
+      (_ExecuteStage_io_executeUnit_data_info_fusel),	// playground/src/Core.scala:24:30
+    .io_executeStage_data_info_op            (_ExecuteStage_io_executeUnit_data_info_op),	// playground/src/Core.scala:24:30
     .io_executeStage_data_info_reg_wen
-      (_ExecuteStage_io_executeUnit_data_info_reg_wen),	// playground/src/Core.scala:23:30
+      (_ExecuteStage_io_executeUnit_data_info_reg_wen),	// playground/src/Core.scala:24:30
     .io_executeStage_data_info_reg_waddr
-      (_ExecuteStage_io_executeUnit_data_info_reg_waddr),	// playground/src/Core.scala:23:30
-    .io_executeStage_data_info_imm           (_ExecuteStage_io_executeUnit_data_info_imm),	// playground/src/Core.scala:23:30
+      (_ExecuteStage_io_executeUnit_data_info_reg_waddr),	// playground/src/Core.scala:24:30
+    .io_executeStage_data_info_imm           (_ExecuteStage_io_executeUnit_data_info_imm),	// playground/src/Core.scala:24:30
+    .io_executeStage_data_info_inst
+      (_ExecuteStage_io_executeUnit_data_info_inst),	// playground/src/Core.scala:24:30
     .io_executeStage_data_src_info_src1_data
-      (_ExecuteStage_io_executeUnit_data_src_info_src1_data),	// playground/src/Core.scala:23:30
+      (_ExecuteStage_io_executeUnit_data_src_info_src1_data),	// playground/src/Core.scala:24:30
     .io_executeStage_data_src_info_src2_data
-      (_ExecuteStage_io_executeUnit_data_src_info_src2_data),	// playground/src/Core.scala:23:30
-    .io_decodeUnit_forward_exe_wen           (_ExecuteUnit_io_decodeUnit_forward_exe_wen),
-    .io_decodeUnit_forward_exe_waddr
-      (_ExecuteUnit_io_decodeUnit_forward_exe_waddr),
-    .io_decodeUnit_forward_exe_wdata
-      (_ExecuteUnit_io_decodeUnit_forward_exe_wdata),
-    .io_decodeUnit_forward_is_load           (_ExecuteUnit_io_decodeUnit_forward_is_load),
+      (_ExecuteStage_io_executeUnit_data_src_info_src2_data),	// playground/src/Core.scala:24:30
+    .io_executeStage_data_ex_exception_0
+      (_ExecuteStage_io_executeUnit_data_ex_exception_0),	// playground/src/Core.scala:24:30
+    .io_executeStage_data_ex_exception_2
+      (_ExecuteStage_io_executeUnit_data_ex_exception_2),	// playground/src/Core.scala:24:30
+    .io_executeStage_data_ex_exception_3
+      (_ExecuteStage_io_executeUnit_data_ex_exception_3),	// playground/src/Core.scala:24:30
+    .io_executeStage_data_ex_exception_8
+      (_ExecuteStage_io_executeUnit_data_ex_exception_8),	// playground/src/Core.scala:24:30
+    .io_executeStage_data_ex_exception_9
+      (_ExecuteStage_io_executeUnit_data_ex_exception_9),	// playground/src/Core.scala:24:30
+    .io_executeStage_data_ex_exception_11
+      (_ExecuteStage_io_executeUnit_data_ex_exception_11),	// playground/src/Core.scala:24:30
+    .io_executeStage_data_ex_interrupt_0
+      (_ExecuteStage_io_executeUnit_data_ex_interrupt_0),	// playground/src/Core.scala:24:30
+    .io_executeStage_data_ex_interrupt_1
+      (_ExecuteStage_io_executeUnit_data_ex_interrupt_1),	// playground/src/Core.scala:24:30
+    .io_executeStage_data_ex_interrupt_2
+      (_ExecuteStage_io_executeUnit_data_ex_interrupt_2),	// playground/src/Core.scala:24:30
+    .io_executeStage_data_ex_interrupt_3
+      (_ExecuteStage_io_executeUnit_data_ex_interrupt_3),	// playground/src/Core.scala:24:30
+    .io_executeStage_data_ex_interrupt_4
+      (_ExecuteStage_io_executeUnit_data_ex_interrupt_4),	// playground/src/Core.scala:24:30
+    .io_executeStage_data_ex_interrupt_5
+      (_ExecuteStage_io_executeUnit_data_ex_interrupt_5),	// playground/src/Core.scala:24:30
+    .io_executeStage_data_ex_interrupt_6
+      (_ExecuteStage_io_executeUnit_data_ex_interrupt_6),	// playground/src/Core.scala:24:30
+    .io_executeStage_data_ex_interrupt_7
+      (_ExecuteStage_io_executeUnit_data_ex_interrupt_7),	// playground/src/Core.scala:24:30
+    .io_executeStage_data_ex_interrupt_8
+      (_ExecuteStage_io_executeUnit_data_ex_interrupt_8),	// playground/src/Core.scala:24:30
+    .io_executeStage_data_ex_interrupt_9
+      (_ExecuteStage_io_executeUnit_data_ex_interrupt_9),	// playground/src/Core.scala:24:30
+    .io_executeStage_data_ex_interrupt_10
+      (_ExecuteStage_io_executeUnit_data_ex_interrupt_10),	// playground/src/Core.scala:24:30
+    .io_executeStage_data_ex_interrupt_11
+      (_ExecuteStage_io_executeUnit_data_ex_interrupt_11),	// playground/src/Core.scala:24:30
+    .io_executeStage_data_ex_tval_0
+      (_ExecuteStage_io_executeUnit_data_ex_tval_0),	// playground/src/Core.scala:24:30
+    .io_decodeUnit_wen                       (_ExecuteUnit_io_decodeUnit_wen),
+    .io_decodeUnit_waddr                     (_ExecuteUnit_io_decodeUnit_waddr),
+    .io_decodeUnit_wdata                     (_ExecuteUnit_io_decodeUnit_wdata),
     .io_memoryStage_data_pc                  (_ExecuteUnit_io_memoryStage_data_pc),
     .io_memoryStage_data_info_valid
       (_ExecuteUnit_io_memoryStage_data_info_valid),
@@ -1988,41 +3195,56 @@ module Core(	// playground/src/Core.scala:10:7
     .io_memoryStage_data_info_imm            (_ExecuteUnit_io_memoryStage_data_info_imm),
     .io_memoryStage_data_rd_info_wdata_0
       (_ExecuteUnit_io_memoryStage_data_rd_info_wdata_0),
-    .io_memoryStage_data_rd_info_wdata_2
-      (_ExecuteUnit_io_memoryStage_data_rd_info_wdata_2),
-    .io_memoryStage_data_rd_info_wdata_5
-      (_ExecuteUnit_io_memoryStage_data_rd_info_wdata_5),
+    .io_memoryStage_data_rd_info_wdata_1
+      (_ExecuteUnit_io_memoryStage_data_rd_info_wdata_1),
+    .io_memoryStage_data_rd_info_wdata_3
+      (_ExecuteUnit_io_memoryStage_data_rd_info_wdata_3),
+    .io_memoryStage_data_rd_info_wdata_4
+      (_ExecuteUnit_io_memoryStage_data_rd_info_wdata_4),
     .io_memoryStage_data_src_info_src1_data
       (_ExecuteUnit_io_memoryStage_data_src_info_src1_data),
+    .io_memoryStage_data_has_exception
+      (_ExecuteUnit_io_memoryStage_data_has_exception),
     .io_dataSram_en                          (io_dataSram_en),
     .io_dataSram_addr                        (io_dataSram_addr),
     .io_dataSram_wdata                       (io_dataSram_wdata),
     .io_dataSram_wen                         (io_dataSram_wen),
     .io_dataSram_rdata                       (io_dataSram_rdata),
+    .Fu_Csr_commit_num__bore
+      ({1'h0, _WriteBackUnit_io_debug_commit__bore}),	// playground/src/Core.scala:29:30
+    .Fu_Csr_mtip__bore                       (io_interrupt_mti),
     .Fu_Lsu_result__bore                     (_ExecuteUnit_Fu_Lsu_result__bore),
-    .Fu_Lsu_mem_addr__bore                   (_MemoryUnit_addr__bore),	// playground/src/Core.scala:26:30
-    .Fu_Lsu_mem_op__bore                     (_MemoryUnit_op__bore)	// playground/src/Core.scala:26:30
+    .Fu_Csr_meip__bore                       (io_interrupt_mei),
+    .Fu_Csr_interrupt__bore                  (_ExecuteUnit_Fu_Csr_interrupt__bore),
+    .Fu_Csr_msip__bore                       (io_interrupt_msi),
+    .Fu_Csr_mode__bore                       (_ExecuteUnit_Fu_Csr_mode__bore),
+    .Fu_Lsu_mem_op__bore                     (_MemoryUnit_op__bore),	// playground/src/Core.scala:27:30
+    .Fu_Lsu_mem_addr__bore                   (_MemoryUnit_addr__bore)	// playground/src/Core.scala:27:30
   );
-  MemoryStage MemoryStage (	// playground/src/Core.scala:25:30
+  MemoryStage MemoryStage (	// playground/src/Core.scala:26:30
     .clock                                  (clock),
     .reset                                  (reset),
-    .io_executeUnit_data_pc                 (_ExecuteUnit_io_memoryStage_data_pc),	// playground/src/Core.scala:24:30
-    .io_executeUnit_data_info_valid         (_ExecuteUnit_io_memoryStage_data_info_valid),	// playground/src/Core.scala:24:30
-    .io_executeUnit_data_info_fusel         (_ExecuteUnit_io_memoryStage_data_info_fusel),	// playground/src/Core.scala:24:30
-    .io_executeUnit_data_info_op            (_ExecuteUnit_io_memoryStage_data_info_op),	// playground/src/Core.scala:24:30
+    .io_executeUnit_data_pc                 (_ExecuteUnit_io_memoryStage_data_pc),	// playground/src/Core.scala:25:30
+    .io_executeUnit_data_info_valid         (_ExecuteUnit_io_memoryStage_data_info_valid),	// playground/src/Core.scala:25:30
+    .io_executeUnit_data_info_fusel         (_ExecuteUnit_io_memoryStage_data_info_fusel),	// playground/src/Core.scala:25:30
+    .io_executeUnit_data_info_op            (_ExecuteUnit_io_memoryStage_data_info_op),	// playground/src/Core.scala:25:30
     .io_executeUnit_data_info_reg_wen
-      (_ExecuteUnit_io_memoryStage_data_info_reg_wen),	// playground/src/Core.scala:24:30
+      (_ExecuteUnit_io_memoryStage_data_info_reg_wen),	// playground/src/Core.scala:25:30
     .io_executeUnit_data_info_reg_waddr
-      (_ExecuteUnit_io_memoryStage_data_info_reg_waddr),	// playground/src/Core.scala:24:30
-    .io_executeUnit_data_info_imm           (_ExecuteUnit_io_memoryStage_data_info_imm),	// playground/src/Core.scala:24:30
+      (_ExecuteUnit_io_memoryStage_data_info_reg_waddr),	// playground/src/Core.scala:25:30
+    .io_executeUnit_data_info_imm           (_ExecuteUnit_io_memoryStage_data_info_imm),	// playground/src/Core.scala:25:30
     .io_executeUnit_data_rd_info_wdata_0
-      (_ExecuteUnit_io_memoryStage_data_rd_info_wdata_0),	// playground/src/Core.scala:24:30
-    .io_executeUnit_data_rd_info_wdata_2
-      (_ExecuteUnit_io_memoryStage_data_rd_info_wdata_2),	// playground/src/Core.scala:24:30
-    .io_executeUnit_data_rd_info_wdata_5
-      (_ExecuteUnit_io_memoryStage_data_rd_info_wdata_5),	// playground/src/Core.scala:24:30
+      (_ExecuteUnit_io_memoryStage_data_rd_info_wdata_0),	// playground/src/Core.scala:25:30
+    .io_executeUnit_data_rd_info_wdata_1
+      (_ExecuteUnit_io_memoryStage_data_rd_info_wdata_1),	// playground/src/Core.scala:25:30
+    .io_executeUnit_data_rd_info_wdata_3
+      (_ExecuteUnit_io_memoryStage_data_rd_info_wdata_3),	// playground/src/Core.scala:25:30
+    .io_executeUnit_data_rd_info_wdata_4
+      (_ExecuteUnit_io_memoryStage_data_rd_info_wdata_4),	// playground/src/Core.scala:25:30
     .io_executeUnit_data_src_info_src1_data
-      (_ExecuteUnit_io_memoryStage_data_src_info_src1_data),	// playground/src/Core.scala:24:30
+      (_ExecuteUnit_io_memoryStage_data_src_info_src1_data),	// playground/src/Core.scala:25:30
+    .io_executeUnit_data_has_exception
+      (_ExecuteUnit_io_memoryStage_data_has_exception),	// playground/src/Core.scala:25:30
     .io_memoryUnit_data_pc                  (_MemoryStage_io_memoryUnit_data_pc),
     .io_memoryUnit_data_info_valid          (_MemoryStage_io_memoryUnit_data_info_valid),
     .io_memoryUnit_data_info_fusel          (_MemoryStage_io_memoryUnit_data_info_fusel),
@@ -2034,31 +3256,39 @@ module Core(	// playground/src/Core.scala:10:7
     .io_memoryUnit_data_info_imm            (_MemoryStage_io_memoryUnit_data_info_imm),
     .io_memoryUnit_data_rd_info_wdata_0
       (_MemoryStage_io_memoryUnit_data_rd_info_wdata_0),
-    .io_memoryUnit_data_rd_info_wdata_2
-      (_MemoryStage_io_memoryUnit_data_rd_info_wdata_2),
-    .io_memoryUnit_data_rd_info_wdata_5
-      (_MemoryStage_io_memoryUnit_data_rd_info_wdata_5),
+    .io_memoryUnit_data_rd_info_wdata_1
+      (_MemoryStage_io_memoryUnit_data_rd_info_wdata_1),
+    .io_memoryUnit_data_rd_info_wdata_3
+      (_MemoryStage_io_memoryUnit_data_rd_info_wdata_3),
+    .io_memoryUnit_data_rd_info_wdata_4
+      (_MemoryStage_io_memoryUnit_data_rd_info_wdata_4),
     .io_memoryUnit_data_src_info_src1_data
-      (_MemoryStage_io_memoryUnit_data_src_info_src1_data)
+      (_MemoryStage_io_memoryUnit_data_src_info_src1_data),
+    .io_memoryUnit_data_has_exception
+      (_MemoryStage_io_memoryUnit_data_has_exception)
   );
-  MemoryUnit MemoryUnit (	// playground/src/Core.scala:26:30
-    .io_memoryStage_data_pc                 (_MemoryStage_io_memoryUnit_data_pc),	// playground/src/Core.scala:25:30
-    .io_memoryStage_data_info_valid         (_MemoryStage_io_memoryUnit_data_info_valid),	// playground/src/Core.scala:25:30
-    .io_memoryStage_data_info_fusel         (_MemoryStage_io_memoryUnit_data_info_fusel),	// playground/src/Core.scala:25:30
-    .io_memoryStage_data_info_op            (_MemoryStage_io_memoryUnit_data_info_op),	// playground/src/Core.scala:25:30
+  MemoryUnit MemoryUnit (	// playground/src/Core.scala:27:30
+    .io_memoryStage_data_pc                 (_MemoryStage_io_memoryUnit_data_pc),	// playground/src/Core.scala:26:30
+    .io_memoryStage_data_info_valid         (_MemoryStage_io_memoryUnit_data_info_valid),	// playground/src/Core.scala:26:30
+    .io_memoryStage_data_info_fusel         (_MemoryStage_io_memoryUnit_data_info_fusel),	// playground/src/Core.scala:26:30
+    .io_memoryStage_data_info_op            (_MemoryStage_io_memoryUnit_data_info_op),	// playground/src/Core.scala:26:30
     .io_memoryStage_data_info_reg_wen
-      (_MemoryStage_io_memoryUnit_data_info_reg_wen),	// playground/src/Core.scala:25:30
+      (_MemoryStage_io_memoryUnit_data_info_reg_wen),	// playground/src/Core.scala:26:30
     .io_memoryStage_data_info_reg_waddr
-      (_MemoryStage_io_memoryUnit_data_info_reg_waddr),	// playground/src/Core.scala:25:30
-    .io_memoryStage_data_info_imm           (_MemoryStage_io_memoryUnit_data_info_imm),	// playground/src/Core.scala:25:30
+      (_MemoryStage_io_memoryUnit_data_info_reg_waddr),	// playground/src/Core.scala:26:30
+    .io_memoryStage_data_info_imm           (_MemoryStage_io_memoryUnit_data_info_imm),	// playground/src/Core.scala:26:30
     .io_memoryStage_data_rd_info_wdata_0
-      (_MemoryStage_io_memoryUnit_data_rd_info_wdata_0),	// playground/src/Core.scala:25:30
-    .io_memoryStage_data_rd_info_wdata_2
-      (_MemoryStage_io_memoryUnit_data_rd_info_wdata_2),	// playground/src/Core.scala:25:30
-    .io_memoryStage_data_rd_info_wdata_5
-      (_MemoryStage_io_memoryUnit_data_rd_info_wdata_5),	// playground/src/Core.scala:25:30
+      (_MemoryStage_io_memoryUnit_data_rd_info_wdata_0),	// playground/src/Core.scala:26:30
+    .io_memoryStage_data_rd_info_wdata_1
+      (_MemoryStage_io_memoryUnit_data_rd_info_wdata_1),	// playground/src/Core.scala:26:30
+    .io_memoryStage_data_rd_info_wdata_3
+      (_MemoryStage_io_memoryUnit_data_rd_info_wdata_3),	// playground/src/Core.scala:26:30
+    .io_memoryStage_data_rd_info_wdata_4
+      (_MemoryStage_io_memoryUnit_data_rd_info_wdata_4),	// playground/src/Core.scala:26:30
     .io_memoryStage_data_src_info_src1_data
-      (_MemoryStage_io_memoryUnit_data_src_info_src1_data),	// playground/src/Core.scala:25:30
+      (_MemoryStage_io_memoryUnit_data_src_info_src1_data),	// playground/src/Core.scala:26:30
+    .io_memoryStage_data_has_exception
+      (_MemoryStage_io_memoryUnit_data_has_exception),	// playground/src/Core.scala:26:30
     .io_decodeUnit_wen                      (_MemoryUnit_io_decodeUnit_wen),
     .io_decodeUnit_waddr                    (_MemoryUnit_io_decodeUnit_waddr),
     .io_decodeUnit_wdata                    (_MemoryUnit_io_decodeUnit_wdata),
@@ -2077,32 +3307,40 @@ module Core(	// playground/src/Core.scala:10:7
       (_MemoryUnit_io_writeBackStage_data_rd_info_wdata_1),
     .io_writeBackStage_data_rd_info_wdata_2
       (_MemoryUnit_io_writeBackStage_data_rd_info_wdata_2),
-    .io_writeBackStage_data_rd_info_wdata_5
-      (_MemoryUnit_io_writeBackStage_data_rd_info_wdata_5),
-    .rdata__bore                            (_ExecuteUnit_Fu_Lsu_result__bore),	// playground/src/Core.scala:24:30
-    .addr__bore                             (_MemoryUnit_addr__bore),
-    .op__bore                               (_MemoryUnit_op__bore)
+    .io_writeBackStage_data_rd_info_wdata_3
+      (_MemoryUnit_io_writeBackStage_data_rd_info_wdata_3),
+    .io_writeBackStage_data_rd_info_wdata_4
+      (_MemoryUnit_io_writeBackStage_data_rd_info_wdata_4),
+    .io_writeBackStage_data_has_exception
+      (_MemoryUnit_io_writeBackStage_data_has_exception),
+    .rdata__bore                            (_ExecuteUnit_Fu_Lsu_result__bore),	// playground/src/Core.scala:25:30
+    .op__bore                               (_MemoryUnit_op__bore),
+    .addr__bore                             (_MemoryUnit_addr__bore)
   );
-  WriteBackStage WriteBackStage (	// playground/src/Core.scala:27:30
+  WriteBackStage WriteBackStage (	// playground/src/Core.scala:28:30
     .clock                                 (clock),
     .reset                                 (reset),
-    .io_memoryUnit_data_pc                 (_MemoryUnit_io_writeBackStage_data_pc),	// playground/src/Core.scala:26:30
+    .io_memoryUnit_data_pc                 (_MemoryUnit_io_writeBackStage_data_pc),	// playground/src/Core.scala:27:30
     .io_memoryUnit_data_info_valid
-      (_MemoryUnit_io_writeBackStage_data_info_valid),	// playground/src/Core.scala:26:30
+      (_MemoryUnit_io_writeBackStage_data_info_valid),	// playground/src/Core.scala:27:30
     .io_memoryUnit_data_info_fusel
-      (_MemoryUnit_io_writeBackStage_data_info_fusel),	// playground/src/Core.scala:26:30
+      (_MemoryUnit_io_writeBackStage_data_info_fusel),	// playground/src/Core.scala:27:30
     .io_memoryUnit_data_info_reg_wen
-      (_MemoryUnit_io_writeBackStage_data_info_reg_wen),	// playground/src/Core.scala:26:30
+      (_MemoryUnit_io_writeBackStage_data_info_reg_wen),	// playground/src/Core.scala:27:30
     .io_memoryUnit_data_info_reg_waddr
-      (_MemoryUnit_io_writeBackStage_data_info_reg_waddr),	// playground/src/Core.scala:26:30
+      (_MemoryUnit_io_writeBackStage_data_info_reg_waddr),	// playground/src/Core.scala:27:30
     .io_memoryUnit_data_rd_info_wdata_0
-      (_MemoryUnit_io_writeBackStage_data_rd_info_wdata_0),	// playground/src/Core.scala:26:30
+      (_MemoryUnit_io_writeBackStage_data_rd_info_wdata_0),	// playground/src/Core.scala:27:30
     .io_memoryUnit_data_rd_info_wdata_1
-      (_MemoryUnit_io_writeBackStage_data_rd_info_wdata_1),	// playground/src/Core.scala:26:30
+      (_MemoryUnit_io_writeBackStage_data_rd_info_wdata_1),	// playground/src/Core.scala:27:30
     .io_memoryUnit_data_rd_info_wdata_2
-      (_MemoryUnit_io_writeBackStage_data_rd_info_wdata_2),	// playground/src/Core.scala:26:30
-    .io_memoryUnit_data_rd_info_wdata_5
-      (_MemoryUnit_io_writeBackStage_data_rd_info_wdata_5),	// playground/src/Core.scala:26:30
+      (_MemoryUnit_io_writeBackStage_data_rd_info_wdata_2),	// playground/src/Core.scala:27:30
+    .io_memoryUnit_data_rd_info_wdata_3
+      (_MemoryUnit_io_writeBackStage_data_rd_info_wdata_3),	// playground/src/Core.scala:27:30
+    .io_memoryUnit_data_rd_info_wdata_4
+      (_MemoryUnit_io_writeBackStage_data_rd_info_wdata_4),	// playground/src/Core.scala:27:30
+    .io_memoryUnit_data_has_exception
+      (_MemoryUnit_io_writeBackStage_data_has_exception),	// playground/src/Core.scala:27:30
     .io_writeBackUnit_data_pc              (_WriteBackStage_io_writeBackUnit_data_pc),
     .io_writeBackUnit_data_info_valid
       (_WriteBackStage_io_writeBackUnit_data_info_valid),
@@ -2122,47 +3360,48 @@ module Core(	// playground/src/Core.scala:10:7
       (_WriteBackStage_io_writeBackUnit_data_rd_info_wdata_3),
     .io_writeBackUnit_data_rd_info_wdata_4
       (_WriteBackStage_io_writeBackUnit_data_rd_info_wdata_4),
-    .io_writeBackUnit_data_rd_info_wdata_5
-      (_WriteBackStage_io_writeBackUnit_data_rd_info_wdata_5)
+    .io_writeBackUnit_data_has_exception
+      (_WriteBackStage_io_writeBackUnit_data_has_exception)
   );
-  WriteBackUnit WriteBackUnit (	// playground/src/Core.scala:28:30
-    .io_writeBackStage_data_pc              (_WriteBackStage_io_writeBackUnit_data_pc),	// playground/src/Core.scala:27:30
+  WriteBackUnit WriteBackUnit (	// playground/src/Core.scala:29:30
+    .io_writeBackStage_data_pc              (_WriteBackStage_io_writeBackUnit_data_pc),	// playground/src/Core.scala:28:30
     .io_writeBackStage_data_info_valid
-      (_WriteBackStage_io_writeBackUnit_data_info_valid),	// playground/src/Core.scala:27:30
+      (_WriteBackStage_io_writeBackUnit_data_info_valid),	// playground/src/Core.scala:28:30
     .io_writeBackStage_data_info_fusel
-      (_WriteBackStage_io_writeBackUnit_data_info_fusel),	// playground/src/Core.scala:27:30
+      (_WriteBackStage_io_writeBackUnit_data_info_fusel),	// playground/src/Core.scala:28:30
     .io_writeBackStage_data_info_reg_wen
-      (_WriteBackStage_io_writeBackUnit_data_info_reg_wen),	// playground/src/Core.scala:27:30
+      (_WriteBackStage_io_writeBackUnit_data_info_reg_wen),	// playground/src/Core.scala:28:30
     .io_writeBackStage_data_info_reg_waddr
-      (_WriteBackStage_io_writeBackUnit_data_info_reg_waddr),	// playground/src/Core.scala:27:30
+      (_WriteBackStage_io_writeBackUnit_data_info_reg_waddr),	// playground/src/Core.scala:28:30
     .io_writeBackStage_data_rd_info_wdata_0
-      (_WriteBackStage_io_writeBackUnit_data_rd_info_wdata_0),	// playground/src/Core.scala:27:30
+      (_WriteBackStage_io_writeBackUnit_data_rd_info_wdata_0),	// playground/src/Core.scala:28:30
     .io_writeBackStage_data_rd_info_wdata_1
-      (_WriteBackStage_io_writeBackUnit_data_rd_info_wdata_1),	// playground/src/Core.scala:27:30
+      (_WriteBackStage_io_writeBackUnit_data_rd_info_wdata_1),	// playground/src/Core.scala:28:30
     .io_writeBackStage_data_rd_info_wdata_2
-      (_WriteBackStage_io_writeBackUnit_data_rd_info_wdata_2),	// playground/src/Core.scala:27:30
+      (_WriteBackStage_io_writeBackUnit_data_rd_info_wdata_2),	// playground/src/Core.scala:28:30
     .io_writeBackStage_data_rd_info_wdata_3
-      (_WriteBackStage_io_writeBackUnit_data_rd_info_wdata_3),	// playground/src/Core.scala:27:30
+      (_WriteBackStage_io_writeBackUnit_data_rd_info_wdata_3),	// playground/src/Core.scala:28:30
     .io_writeBackStage_data_rd_info_wdata_4
-      (_WriteBackStage_io_writeBackUnit_data_rd_info_wdata_4),	// playground/src/Core.scala:27:30
-    .io_writeBackStage_data_rd_info_wdata_5
-      (_WriteBackStage_io_writeBackUnit_data_rd_info_wdata_5),	// playground/src/Core.scala:27:30
+      (_WriteBackStage_io_writeBackUnit_data_rd_info_wdata_4),	// playground/src/Core.scala:28:30
+    .io_writeBackStage_data_has_exception
+      (_WriteBackStage_io_writeBackUnit_data_has_exception),	// playground/src/Core.scala:28:30
     .io_regfile_wen                         (_WriteBackUnit_io_regfile_wen),
     .io_regfile_waddr                       (_WriteBackUnit_io_regfile_waddr),
     .io_regfile_wdata                       (_WriteBackUnit_io_regfile_wdata),
     .io_debug_pc                            (io_debug_pc),
     .io_debug_commit                        (io_debug_commit),
     .io_debug_rf_wnum                       (io_debug_rf_wnum),
-    .io_debug_rf_wdata                      (io_debug_rf_wdata)
+    .io_debug_rf_wdata                      (io_debug_rf_wdata),
+    .io_debug_commit__bore                  (_WriteBackUnit_io_debug_commit__bore)
   );
 endmodule
 
 module PuaCpu(	// playground/src/PuaCpu.scala:6:7
   input         clock,	// playground/src/PuaCpu.scala:6:7
                 reset,	// playground/src/PuaCpu.scala:6:7
-                io_ext_int_ei,	// playground/src/PuaCpu.scala:7:14
-                io_ext_int_ti,	// playground/src/PuaCpu.scala:7:14
-                io_ext_int_si,	// playground/src/PuaCpu.scala:7:14
+                io_ext_int_mei,	// playground/src/PuaCpu.scala:7:14
+                io_ext_int_mti,	// playground/src/PuaCpu.scala:7:14
+                io_ext_int_msi,	// playground/src/PuaCpu.scala:7:14
   output        io_inst_sram_en,	// playground/src/PuaCpu.scala:7:14
   output [31:0] io_inst_sram_addr,	// playground/src/PuaCpu.scala:7:14
                 io_inst_sram_wdata,	// playground/src/PuaCpu.scala:7:14
@@ -2182,6 +3421,9 @@ module PuaCpu(	// playground/src/PuaCpu.scala:6:7
   Core core (	// playground/src/PuaCpu.scala:14:20
     .clock             (clock),
     .reset             (reset),
+    .io_interrupt_mei  (io_ext_int_mei),
+    .io_interrupt_mti  (io_ext_int_mti),
+    .io_interrupt_msi  (io_ext_int_msi),
     .io_instSram_en    (io_inst_sram_en),
     .io_instSram_addr  (io_inst_sram_addr),
     .io_instSram_rdata (io_inst_sram_rdata),

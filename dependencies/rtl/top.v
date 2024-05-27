@@ -24,9 +24,9 @@ PuaCpu core(
     .clock                    (clock),
     .reset                    (reset),
     // interrupts     
-    .io_ext_int_ei           (1'b0),
-    .io_ext_int_ti           (1'b0),
-    .io_ext_int_si           (1'b0),
+    .io_ext_int_mei           (1'b0),
+    .io_ext_int_mti           (1'b0),
+    .io_ext_int_msi           (1'b0),
 
     // inst sram interface 
     .io_inst_sram_en          (inst_sram_en),
