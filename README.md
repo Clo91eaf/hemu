@@ -11,14 +11,7 @@ To install HEMU, you will need to have Rust installed on your machine. You can d
 Once Rust is installed, you can clone the HEMU repository from Github:
 
 ```sh
-git clone --recurse-submodules https://github.com/Clo91eaf/hemu.git
-```
-
-or
-
-```sh
 git clone https://github.com/Clo91eaf/hemu.git
-git submodule update --init --recursive
 ```
 
 ### Runing
@@ -37,21 +30,38 @@ cargo run -- -k ./dependencies/tests/bin/am-tests/add
 
 #### Difftest
 
-if you want to run difftest, you can use the following command:
+Verilator file should be placed in the `./dependencies/rtl` directory.
+then you can use the following command:
 
 ```sh
-cargo run -- -k ./dependencies/tests/bin/am-tests/add --diff
+cargo clean && cargo run -- -k ./dependencies/tests/bin/am-tests/add --diff
 ```
+
+To build the verilator file and ffi, cargo clean is necessary when you change the verilator file.
 
 #### Difftest With Tui
 
 if you want to run difftest with TUI, you can use the following command:
 
 ```sh
-cargo run -- -k ./dependencies/tests/bin/am-tests/add --diff --tui
+cargo clean && cargo run -- -k ./dependencies/tests/bin/am-tests/add --diff --tui
 ```
 
 In Tui, you can press 'c' to continue, 's' to step, 'q' to quit.
+
+#### CLI usage
+
+Usage: hemu [OPTIONS] --kernel <KERNEL>
+
+Options:
+  -k, --kernel <KERNEL>  A kernel ELF image without headers
+  -f, --file <FILE>      A raw disk image
+  -l, --log <LOG>        specify the log level. Including "error", "warn", "info", "debug", "trace" [default: info]
+  -d, --diff             Enable difftest
+      --tui              Enable tui
+      --trace            Enable wave trace
+  -h, --help             Print help
+  -v, --version          Print version
 
 #### Run opensbi
 
