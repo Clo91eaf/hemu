@@ -78,29 +78,4 @@ pub struct Top {
   pub debug_rf_wnum: [bool; 5],
   #[port(output)]
   pub debug_rf_wdata: [bool; 64],
-<<<<<<< HEAD
-=======
-  // debug csr
-  #[port(output)]
-  pub debug_csr_interrupt: bool,
-  #[port(output)]
-  pub debug_csr_mcycle: [bool; 64],
-  #[port(output)]
-  pub debug_csr_mip: [bool; 64],
-  #[port(output)]
-  pub debug_csr_minstret: [bool; 64],
-  // perf
-  #[port(output)]
-  pub debug_perf_icache_req: bool,
-  #[port(output)]
-  pub debug_perf_icache_hit: bool,
-  #[port(output)]
-  pub debug_perf_dcache_req: bool,
-  #[port(output)]
-  pub debug_perf_dcache_hit: bool,
-  #[port(output)]
-  pub debug_perf_bru_pred_branch: bool,
-  #[port(output)]
-  pub debug_perf_bru_pred_fail: bool,
->>>>>>> 7030c90 ([dut] use axi interface in top.rs)
 }
